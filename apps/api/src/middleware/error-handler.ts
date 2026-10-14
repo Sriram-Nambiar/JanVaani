@@ -36,12 +36,13 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ): void {
-  // Catch malformed JSON syntax error from express.json()
+  // Catch malformed JSON syntax error specifically from body-parser
   const isMalformedJson =
     err instanceof SyntaxError &&
+    'type' in err &&
+    (err as { type?: unknown }).type === 'entity.parse.failed' &&
     (('status' in err && (err as { status?: unknown }).status === 400) ||
-      ('statusCode' in err && (err as { statusCode?: unknown }).statusCode === 400) ||
-      ('type' in err && (err as { type?: unknown }).type === 'entity.parse.failed'));
+      ('statusCode' in err && (err as { statusCode?: unknown }).statusCode === 400));
 
   if (isMalformedJson) {
     res.status(400).json({
@@ -53,7 +54,8 @@ export function errorHandler(
     return;
   }
 
-  const isDebug = process.env.DEBUG === 'true' || process.env.SHOW_STACK_TRACE === 'true';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isDebug = !isProduction && (process.env.DEBUG === 'true' || process.env.SHOW_STACK_TRACE === 'true');
 
   if (err instanceof AppError) {
     const response: ApiErrorResponse = {
@@ -70,7 +72,6 @@ export function errorHandler(
     return;
   }
 
-  const isProduction = process.env.NODE_ENV === 'production';
   const response: ApiErrorResponse = {
     error: {
       code: 'INTERNAL_SERVER_ERROR',

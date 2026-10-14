@@ -103,7 +103,7 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(responseData.error?.stack, undefined);
     });
 
-    it('errorHandler catches SyntaxError without body property as MALFORMED_JSON', () => {
+    it('errorHandler catches body-parser entity.parse.failed SyntaxError as MALFORMED_JSON', () => {
       let responseData: any = null;
       let responseStatus = 0;
       const mockRes: any = {
@@ -117,13 +117,70 @@ describe('JanVaani API Test Suite', () => {
         },
       };
 
-      const syntaxErr = Object.assign(new SyntaxError('Unexpected token in JSON'), {
+      const bodyParserErr = Object.assign(new SyntaxError('Unexpected token in JSON'), {
         status: 400,
+        type: 'entity.parse.failed',
       });
-      errorHandler(syntaxErr, {} as any, mockRes, (() => {}) as any);
+      errorHandler(bodyParserErr, {} as any, mockRes, (() => {}) as any);
 
       assert.strictEqual(responseStatus, 400);
       assert.strictEqual(responseData.error?.code, 'MALFORMED_JSON');
+    });
+
+    it('errorHandler does not misclassify application SyntaxErrors as MALFORMED_JSON', () => {
+      let responseData: any = null;
+      let responseStatus = 0;
+      const mockRes: any = {
+        status(code: number) {
+          responseStatus = code;
+          return this;
+        },
+        json(data: any) {
+          responseData = data;
+          return this;
+        },
+      };
+
+      const appSyntaxErr = Object.assign(new SyntaxError('Invalid SQL or query syntax'), {
+        status: 400,
+      });
+      errorHandler(appSyntaxErr, {} as any, mockRes, (() => {}) as any);
+
+      assert.strictEqual(responseStatus, 500);
+      assert.strictEqual(responseData.error?.code, 'INTERNAL_SERVER_ERROR');
+    });
+
+    it('errorHandler suppresses stack traces in production even if DEBUG is set', () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalDebug = process.env.DEBUG;
+      process.env.NODE_ENV = 'production';
+      process.env.DEBUG = 'true';
+
+      try {
+        let responseData: any = null;
+        let responseStatus = 0;
+        const mockRes: any = {
+          status(code: number) {
+            responseStatus = code;
+            return this;
+          },
+          json(data: any) {
+            responseData = data;
+            return this;
+          },
+        };
+
+        const err = new Error('Database connection failed');
+        errorHandler(err, {} as any, mockRes, (() => {}) as any);
+
+        assert.strictEqual(responseStatus, 500);
+        assert.strictEqual(responseData.error?.code, 'INTERNAL_SERVER_ERROR');
+        assert.strictEqual(responseData.error?.message, 'An unexpected error occurred.');
+        assert.strictEqual(responseData.error?.stack, undefined);
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+        process.env.DEBUG = originalDebug;
+      }
     });
   });
 
@@ -323,19 +380,22 @@ describe('JanVaani API Test Suite', () => {
       const proto = {};
       Object.defineProperty(proto, 'query', {
         get() {
-          return { query: 'original' };
+          return { query: 'raw_input' };
         },
         configurable: true,
       });
       const req: any = Object.create(proto);
       let nextCalled = false;
       const res: any = {};
-      const schema = z.object({ query: z.string() });
+      const schema = z.object({
+        query: z.string().transform((val) => `validated_${val}`),
+      });
       await validateQuery(schema)(req, res, () => {
         nextCalled = true;
       });
       assert.strictEqual(nextCalled, true);
-      assert.strictEqual(req.query.query, 'original');
+      assert.strictEqual(req.query.query, 'validated_raw_input');
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(req, 'query'), true);
     });
   });
 
