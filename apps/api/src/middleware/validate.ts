@@ -44,6 +44,17 @@ export function validateBody<T extends ZodTypeAny>(schema: T) {
   };
 }
 
+/**
+ * Express middleware that validates incoming request query parameters against a Zod schema.
+ *
+ * Contract:
+ * - Validates the raw `req.query` object against the provided Zod schema.
+ * - On validation failure: responds immediately with HTTP 400 and structured VALIDATION_ERROR details.
+ * - On validation success: stores the parsed, typed, and coerced result on `res.locals.validatedQuery`
+ *   and `(req as Request & { validatedQuery: unknown }).validatedQuery`.
+ * - Leaves the raw `req.query` string dictionary intact to preserve Express 5 prototype getter semantics
+ *   and prevent downstream query parser / string-expectation regressions.
+ */
 export function validateQuery<T extends ZodTypeAny>(schema: T) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const result = await schema.safeParseAsync(req.query);
@@ -66,12 +77,8 @@ export function validateQuery<T extends ZodTypeAny>(schema: T) {
       return;
     }
 
-    Object.defineProperty(req, 'query', {
-      value: result.data,
-      writable: true,
-      configurable: true,
-      enumerable: true,
-    });
+    res.locals.validatedQuery = result.data;
+    (req as Request & { validatedQuery?: unknown }).validatedQuery = result.data;
     next();
   };
 }

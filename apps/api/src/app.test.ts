@@ -376,7 +376,27 @@ describe('JanVaani API Test Suite', () => {
       assert.ok(fieldError);
     });
 
-    it('safely assigns req.query even if req has a prototype getter', async () => {
+    it('rejects page number exceeding maximum (1000)', async () => {
+      const res = await fetch(`${baseUrl}/api/services?query=ration&page=1001`);
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error?.code, 'VALIDATION_ERROR');
+      const fieldError = data.error?.details?.find((d: any) => d.field === 'page');
+      assert.ok(fieldError);
+      assert.strictEqual(fieldError.message, 'Page cannot exceed 1000.');
+    });
+
+    it('rejects exponential or unbounded page numbers (e.g. 1e9)', async () => {
+      const res = await fetch(`${baseUrl}/api/services?query=ration&page=1e9`);
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error?.code, 'VALIDATION_ERROR');
+      const fieldError = data.error?.details?.find((d: any) => d.field === 'page');
+      assert.ok(fieldError);
+      assert.strictEqual(fieldError.message, 'Page cannot exceed 1000.');
+    });
+
+    it('stores parsed and transformed query on res.locals and leaves req.query intact', async () => {
       const proto = {};
       Object.defineProperty(proto, 'query', {
         get() {
@@ -385,8 +405,8 @@ describe('JanVaani API Test Suite', () => {
         configurable: true,
       });
       const req: any = Object.create(proto);
+      const res: any = { locals: {} };
       let nextCalled = false;
-      const res: any = {};
       const schema = z.object({
         query: z.string().transform((val) => `validated_${val}`),
       });
@@ -394,8 +414,9 @@ describe('JanVaani API Test Suite', () => {
         nextCalled = true;
       });
       assert.strictEqual(nextCalled, true);
-      assert.strictEqual(req.query.query, 'validated_raw_input');
-      assert.strictEqual(Object.prototype.hasOwnProperty.call(req, 'query'), true);
+      assert.strictEqual(res.locals.validatedQuery.query, 'validated_raw_input');
+      assert.strictEqual(req.validatedQuery.query, 'validated_raw_input');
+      assert.strictEqual(req.query.query, 'raw_input');
     });
   });
 

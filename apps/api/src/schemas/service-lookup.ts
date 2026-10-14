@@ -23,6 +23,7 @@ export const serviceLookupSchema = z.object({
     .number({ error: 'Page must be a valid number.' })
     .int('Page must be an integer.')
     .min(1, 'Page must be at least 1.')
+    .max(1000, 'Page cannot exceed 1000.')
     .default(1),
   limit: z.coerce
     .number({ error: 'Limit must be a valid number.' })

@@ -38,7 +38,7 @@ export function createApp() {
     res.status(200).json({
       status: 'ok',
       data: {
-        query: req.query,
+        query: res.locals.validatedQuery ?? req.query,
         results: [],
       },
     });
