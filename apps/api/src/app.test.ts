@@ -1,7 +1,8 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
-import { app } from './index.js';
+import { fileURLToPath } from 'node:url';
+import { app, checkIsMainModule } from './index.js';
 
 describe('API routes', () => {
   let server: Server;
@@ -38,12 +39,21 @@ describe('API routes', () => {
     const data = await res.json();
     assert.deepStrictEqual(data, { message: 'JanVaani API' });
   });
+});
 
-  it('does not unintentionally bind default port 3001 on module import', async () => {
-    await assert.rejects(
-      async () => {
-        await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(500) });
-      }
-    );
+describe('Entrypoint guard (checkIsMainModule)', () => {
+  const currentMetaUrl = import.meta.url;
+
+  it('returns true when argv[1] matches module path exactly', () => {
+    const filePath = fileURLToPath(currentMetaUrl);
+    assert.strictEqual(checkIsMainModule(currentMetaUrl, filePath), true);
+  });
+
+  it('returns false when argv[1] is a different file ending in index.ts', () => {
+    assert.strictEqual(checkIsMainModule(currentMetaUrl, '/different/path/worker-index.ts'), false);
+  });
+
+  it('returns false when argv[1] is undefined', () => {
+    assert.strictEqual(checkIsMainModule(currentMetaUrl, undefined), false);
   });
 });

@@ -14,14 +14,14 @@ app.get('/', (_req, res) => {
   res.json({ message: 'JanVaani API' });
 });
 
+export function checkIsMainModule(metaUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false;
+  return path.resolve(fileURLToPath(metaUrl)) === path.resolve(argv1);
+}
+
 const PORT = process.env.PORT || 3001;
 
-const isMainModule = Boolean(
-  process.argv[1] &&
-  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
-);
-
-if (isMainModule) {
+if (checkIsMainModule(import.meta.url, process.argv[1])) {
   app.listen(PORT, () => {
     console.log(`JanVaani API running on http://localhost:${PORT}`);
   });
