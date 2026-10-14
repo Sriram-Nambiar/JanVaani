@@ -1,0 +1,15 @@
+{
+  "name": "janvaani",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter \"*\" --parallel dev",
+    "dev:web": "bun --filter @janvaani/web dev",
+    "dev:api": "bun --filter @janvaani/api dev",
+    "build": "bun --filter \"*\" build",
+    "typecheck": "bun --filter \"*\" typecheck",
+    "test": "bun test apps/api/src"
+  }
+}
