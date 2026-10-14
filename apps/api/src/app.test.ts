@@ -2,6 +2,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { app, checkIsMainModule } from './index.js';
 
 describe('API routes', () => {
@@ -49,8 +50,8 @@ describe('Entrypoint guard (checkIsMainModule)', () => {
     assert.strictEqual(checkIsMainModule(currentMetaUrl, filePath), true);
   });
 
-  it('returns false when argv[1] is a different file ending in index.ts', () => {
-    assert.strictEqual(checkIsMainModule(currentMetaUrl, '/different/path/worker-index.ts'), false);
+  it('returns false when argv[1] is a different file named index.ts', () => {
+    assert.strictEqual(checkIsMainModule(currentMetaUrl, path.resolve('/different/path/index.ts')), false);
   });
 
   it('returns false when argv[1] is undefined', () => {
