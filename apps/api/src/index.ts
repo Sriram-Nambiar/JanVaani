@@ -1,4 +1,6 @@
 import express from 'express';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 export const app = express();
 
@@ -14,8 +16,12 @@ app.get('/', (_req, res) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Start server when run directly as entrypoint
-if (/index\.[cm]?[jt]s$/i.test(process.argv[1] || '')) {
+const isMainModule = Boolean(
+  process.argv[1] &&
+  path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1])
+);
+
+if (isMainModule) {
   app.listen(PORT, () => {
     console.log(`JanVaani API running on http://localhost:${PORT}`);
   });

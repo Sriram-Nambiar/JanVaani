@@ -1,5 +1,4 @@
-import { describe, it, before, after } from 'node:test';
-import assert from 'node:assert';
+import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
 import type { Server } from 'node:http';
 import { app } from './index.js';
 
@@ -7,7 +6,7 @@ describe('API routes', () => {
   let server: Server;
   let baseUrl: string;
 
-  before(async () => {
+  beforeAll(async () => {
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
@@ -19,7 +18,7 @@ describe('API routes', () => {
     });
   });
 
-  after(async () => {
+  afterAll(async () => {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
@@ -27,15 +26,15 @@ describe('API routes', () => {
 
   it('GET /health returns status ok', async () => {
     const res = await fetch(`${baseUrl}/health`);
-    assert.strictEqual(res.status, 200);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    assert.deepStrictEqual(data, { status: 'ok', service: 'janvaani-api' });
+    expect(data).toEqual({ status: 'ok', service: 'janvaani-api' });
   });
 
   it('GET / returns api message', async () => {
     const res = await fetch(`${baseUrl}/`);
-    assert.strictEqual(res.status, 200);
+    expect(res.status).toBe(200);
     const data = await res.json();
-    assert.deepStrictEqual(data, { message: 'JanVaani API' });
+    expect(data).toEqual({ message: 'JanVaani API' });
   });
 });
