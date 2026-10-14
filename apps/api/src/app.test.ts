@@ -1,5 +1,6 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -46,7 +47,7 @@ describe('Entrypoint guard (checkIsMainModule)', () => {
   const currentMetaUrl = import.meta.url;
 
   it('returns true when argv[1] matches module path exactly', () => {
-    const filePath = fileURLToPath(currentMetaUrl);
+    const filePath = fs.realpathSync(fileURLToPath(currentMetaUrl));
     assert.strictEqual(checkIsMainModule(currentMetaUrl, filePath), true);
   });
 
