@@ -115,6 +115,30 @@ JanVaani is at the **initial planning and documentation stage**. The application
 
 ---
 
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) (v1.1+)
+- [Node.js](https://nodejs.org/) (v20+)
+
+### Installation
+
+```bash
+bun install
+```
+
+### Development Scripts
+
+- `bun run dev`: Start both the web frontend and API concurrently
+- `bun run dev:web`: Start the web application (`apps/web`) on port 5173
+- `bun run dev:api`: Start the API service (`apps/api`) on port 3001
+- `bun run build`: Build all workspaces
+- `bun run typecheck`: Run TypeScript typechecks across all workspaces
+- `bun run test`: Run the test suite
+
+---
+
 ## Contributing
 
 Contributions, feedback, and suggestions are welcome! Whether you are interested in civic technology, documentation, Kannada localization, or full-stack development, your input helps shape the project.
