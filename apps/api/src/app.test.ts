@@ -4,8 +4,11 @@ import fs from 'node:fs';
 import type { Server } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { z } from 'zod';
 import { app } from './app.js';
-import { checkIsMainModule } from './index.js';
+import { checkIsMainModule } from './utils/entrypoint.js';
+import { errorHandler, AppError } from './middleware/error-handler.js';
+import { validateQuery } from './middleware/validate.js';
 
 describe('JanVaani API Test Suite', () => {
   let server: Server;
@@ -75,6 +78,52 @@ describe('JanVaani API Test Suite', () => {
       const data = await res.json();
       assert.strictEqual(data.error?.code, 'MALFORMED_JSON');
       assert.strictEqual(data.error?.message, 'The request body contains invalid JSON.');
+      assert.strictEqual(data.error?.stack, undefined);
+    });
+
+    it('errorHandler does not expose stack traces by default', () => {
+      let responseData: any = null;
+      let responseStatus = 0;
+      const mockRes: any = {
+        status(code: number) {
+          responseStatus = code;
+          return this;
+        },
+        json(data: any) {
+          responseData = data;
+          return this;
+        },
+      };
+
+      const err = new Error('Sensitive database connection failure');
+      errorHandler(err, {} as any, mockRes, (() => {}) as any);
+
+      assert.strictEqual(responseStatus, 500);
+      assert.strictEqual(responseData.error?.code, 'INTERNAL_SERVER_ERROR');
+      assert.strictEqual(responseData.error?.stack, undefined);
+    });
+
+    it('errorHandler catches SyntaxError without body property as MALFORMED_JSON', () => {
+      let responseData: any = null;
+      let responseStatus = 0;
+      const mockRes: any = {
+        status(code: number) {
+          responseStatus = code;
+          return this;
+        },
+        json(data: any) {
+          responseData = data;
+          return this;
+        },
+      };
+
+      const syntaxErr = Object.assign(new SyntaxError('Unexpected token in JSON'), {
+        status: 400,
+      });
+      errorHandler(syntaxErr, {} as any, mockRes, (() => {}) as any);
+
+      assert.strictEqual(responseStatus, 400);
+      assert.strictEqual(responseData.error?.code, 'MALFORMED_JSON');
     });
   });
 
@@ -268,6 +317,25 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(data.error?.code, 'VALIDATION_ERROR');
       const fieldError = data.error?.details?.find((d: any) => d.field === 'page');
       assert.ok(fieldError);
+    });
+
+    it('safely assigns req.query even if req has a prototype getter', async () => {
+      const proto = {};
+      Object.defineProperty(proto, 'query', {
+        get() {
+          return { query: 'original' };
+        },
+        configurable: true,
+      });
+      const req: any = Object.create(proto);
+      let nextCalled = false;
+      const res: any = {};
+      const schema = z.object({ query: z.string() });
+      await validateQuery(schema)(req, res, () => {
+        nextCalled = true;
+      });
+      assert.strictEqual(nextCalled, true);
+      assert.strictEqual(req.query.query, 'original');
     });
   });
 

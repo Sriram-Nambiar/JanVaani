@@ -66,7 +66,12 @@ export function validateQuery<T extends ZodTypeAny>(schema: T) {
       return;
     }
 
-    (req as { query: unknown }).query = result.data;
+    Object.defineProperty(req, 'query', {
+      value: result.data,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
     next();
   };
 }

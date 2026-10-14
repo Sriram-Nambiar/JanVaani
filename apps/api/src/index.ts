@@ -1,18 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { app } from './app.js';
-
-export function checkIsMainModule(metaUrl: string, argv1: string | undefined): boolean {
-  if (!argv1) return false;
-  try {
-    const resolvedArgv = fs.realpathSync(path.resolve(argv1));
-    const resolvedMeta = fs.realpathSync(fileURLToPath(metaUrl));
-    return resolvedMeta === resolvedArgv;
-  } catch {
-    return path.resolve(fileURLToPath(metaUrl)) === path.resolve(argv1);
-  }
-}
+import { checkIsMainModule } from './utils/entrypoint.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -22,4 +9,4 @@ if (checkIsMainModule(import.meta.url, process.argv[1])) {
   });
 }
 
-export { app };
+export { app, checkIsMainModule };

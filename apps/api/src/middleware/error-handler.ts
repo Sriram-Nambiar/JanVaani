@@ -37,12 +37,13 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   // Catch malformed JSON syntax error from express.json()
-  if (
+  const isMalformedJson =
     err instanceof SyntaxError &&
-    'status' in err &&
-    (err as { status?: number }).status === 400 &&
-    'body' in err
-  ) {
+    (('status' in err && (err as { status?: unknown }).status === 400) ||
+      ('statusCode' in err && (err as { statusCode?: unknown }).statusCode === 400) ||
+      ('type' in err && (err as { type?: unknown }).type === 'entity.parse.failed'));
+
+  if (isMalformedJson) {
     res.status(400).json({
       error: {
         code: 'MALFORMED_JSON',
@@ -52,6 +53,8 @@ export function errorHandler(
     return;
   }
 
+  const isDebug = process.env.DEBUG === 'true' || process.env.SHOW_STACK_TRACE === 'true';
+
   if (err instanceof AppError) {
     const response: ApiErrorResponse = {
       error: {
@@ -60,7 +63,7 @@ export function errorHandler(
         ...(err.details && err.details.length > 0 ? { details: err.details } : {}),
       },
     };
-    if (process.env.NODE_ENV !== 'production' && err.stack) {
+    if (isDebug && err.stack) {
       response.error.stack = err.stack;
     }
     res.status(err.statusCode).json(response);
@@ -79,7 +82,7 @@ export function errorHandler(
     },
   };
 
-  if (!isProduction && err instanceof Error && err.stack) {
+  if (isDebug && err instanceof Error && err.stack) {
     response.error.stack = err.stack;
   }
 
