@@ -1,7 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
-import { app } from './app.js';
+import { app } from './index.js';
 
 describe('API routes', () => {
   let server: Server;
