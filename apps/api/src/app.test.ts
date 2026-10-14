@@ -38,4 +38,12 @@ describe('API routes', () => {
     const data = await res.json();
     assert.deepStrictEqual(data, { message: 'JanVaani API' });
   });
+
+  it('does not unintentionally bind default port 3001 on module import', async () => {
+    await assert.rejects(
+      async () => {
+        await fetch('http://localhost:3001/health', { signal: AbortSignal.timeout(500) });
+      }
+    );
+  });
 });
