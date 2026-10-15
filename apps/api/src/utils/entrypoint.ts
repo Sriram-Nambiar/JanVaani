@@ -1,0 +1,14 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export function checkIsMainModule(metaUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false;
+  try {
+    const resolvedArgv = fs.realpathSync(path.resolve(argv1));
+    const resolvedMeta = fs.realpathSync(fileURLToPath(metaUrl));
+    return resolvedMeta === resolvedArgv;
+  } catch {
+    return path.resolve(fileURLToPath(metaUrl)) === path.resolve(argv1);
+  }
+}
