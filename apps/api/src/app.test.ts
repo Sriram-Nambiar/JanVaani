@@ -182,6 +182,29 @@ describe('JanVaani API Test Suite', () => {
         process.env.DEBUG = originalDebug;
       }
     });
+
+    it('errorHandler delegates to next(err) if res.headersSent is true', () => {
+      let nextCalledWith: unknown = null;
+      let statusCalled = false;
+      const mockRes: any = {
+        headersSent: true,
+        status() {
+          statusCalled = true;
+          return this;
+        },
+        json() {
+          return this;
+        },
+      };
+
+      const err = new Error('Late failure after response started');
+      errorHandler(err, {} as any, mockRes, ((e: unknown) => {
+        nextCalledWith = e;
+      }) as any);
+
+      assert.strictEqual(statusCalled, false);
+      assert.strictEqual(nextCalledWith, err);
+    });
   });
 
   describe('Citizen Question Validation (POST /api/questions)', () => {

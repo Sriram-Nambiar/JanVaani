@@ -34,8 +34,13 @@ export function errorHandler(
   err: unknown,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
   // Catch malformed JSON syntax error specifically from body-parser
   const isMalformedJson =
     err instanceof SyntaxError &&
