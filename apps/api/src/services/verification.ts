@@ -65,7 +65,7 @@ export class CertificateVerificationService {
       verifiedAt: new Date().toISOString(),
       spokenVerificationKn,
       audioBase64,
-      aadhaarMasked: maskId('582910492817'),
+      aadhaarMasked: record.aadhaarMasked || maskId(record.ackNumber),
     };
   }
 }

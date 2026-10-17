@@ -18,6 +18,7 @@ export interface ApplicationStatusRecord {
   schemeNameKn: string;
   schemeNameEn: string;
   applicantName: string;
+  aadhaarMasked?: string;
   currentStageKn: string;
   currentStageEn: string;
   timeline: ApplicationTimelineStep[];
@@ -47,6 +48,7 @@ export class ApplicationTrackerService {
       schemeNameKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ',
       schemeNameEn: 'Caste & Income Certificate',
       applicantName: 'ಸವಿತಾ (Savitha)',
+      aadhaarMasked: maskId('582910492817'),
       currentStageKn: 'ತಹಸೀಲ್ದಾರ್ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)',
       currentStageEn: 'Approved by Tahsildar (Ready for Download)',
       isReadyForDownload: true,
@@ -83,6 +85,7 @@ export class ApplicationTrackerService {
       schemeNameKn: 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆ',
       schemeNameEn: 'Gruha Lakshmi Scheme',
       applicantName: 'ಮಂಜುಳಾ (Manjula)',
+      aadhaarMasked: maskId('982340192834'),
       currentStageKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ ಪರಿಶೀಲನೆಯ ಹಂತದಲ್ಲಿದೆ',
       currentStageEn: 'Verification by Revenue Inspector In Progress',
       isReadyForDownload: false,
@@ -119,6 +122,7 @@ export class ApplicationTrackerService {
       schemeNameKn: 'ಪಡಿತರ ಚೀಟಿ ತಿದ್ದುಪಡಿ',
       schemeNameEn: 'Ration Card Correction',
       applicantName: 'ಬಸವರಾಜ್ (Basavaraj)',
+      aadhaarMasked: maskId('710294827103'),
       currentStageKn: 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)',
       currentStageEn: 'Action Required: Incomplete Family Tree Document',
       isReadyForDownload: false,
@@ -172,6 +176,7 @@ export class ApplicationTrackerService {
       schemeNameKn: 'ಕರ್ನಾಟಕ ಸರ್ಕಾರಿ ಸೇವಾ ಅರ್ಜಿ',
       schemeNameEn: 'Karnataka Public Service Application',
       applicantName: 'ನಾಗರಿಕರು (Citizen)',
+      aadhaarMasked: maskId(cleaned),
       currentStageKn: 'ಅರ್ಜಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
       currentStageEn: 'Application Received & Under Verification',
       isReadyForDownload: false,
