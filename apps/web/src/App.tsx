@@ -8,6 +8,7 @@ import { DocumentAuditModal } from './components/DocumentAuditModal';
 import { JanaSpandanaModal } from './components/JanaSpandanaModal';
 import { GramaOneKioskModal } from './components/GramaOneKioskModal';
 import { QRVerificationModal } from './components/QRVerificationModal';
+import { MeterSubsidyModal } from './components/MeterSubsidyModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -34,6 +35,7 @@ export function App() {
   const [isGrievanceModalOpen, setIsGrievanceModalOpen] = useState(false);
   const [isKioskModalOpen, setIsKioskModalOpen] = useState(false);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isMeterModalOpen, setIsMeterModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -295,6 +297,26 @@ export function App() {
             <span>🛡️</span> QR ಪರಿಶೀಲನೆ (QR Verify)
           </button>
 
+          {/* Gruha Jyothi Meter Subsidy Modal Trigger */}
+          <button
+            onClick={() => setIsMeterModalOpen(true)}
+            style={{
+              backgroundColor: '#78350f',
+              color: '#fef3c7',
+              border: '1px solid #b45309',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>⚡</span> ಮೀಟರ್ ಲೆಕ್ಕಾಚಾರ (Meter Subsidy)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -442,6 +464,12 @@ export function App() {
         isOpen={isQRModalOpen}
         onClose={() => setIsQRModalOpen(false)}
         prefillAckNumber={lastAck}
+      />
+
+      {/* Gruha Jyothi 200-Unit Meter Subsidy Modal */}
+      <MeterSubsidyModal
+        isOpen={isMeterModalOpen}
+        onClose={() => setIsMeterModalOpen(false)}
       />
     </div>
   );
