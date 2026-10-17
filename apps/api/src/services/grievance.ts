@@ -171,7 +171,7 @@ export class JanaSpandanaGrievanceService {
       createdAt: now.toISOString(),
       timeline,
       audioResponseKnBase64,
-      resolutionTextKn: `${departmentOfficerKn[input.department]} ಅವರಿಗೆ ಆದ್ಯತೆಯ ಮೇಲೆ ಪರಿಶೀಲನೆಗೆ ಸೂಚಿಸಲಾಗಿದೆ.`,
+      resolutionTextKn: `${departmentOfficerKn[input.department] || 'ನೋಡಲ್ ಅಧಿಕಾರಿ'} ಅವರಿಗೆ ಆದ್ಯತೆಯ ಮೇಲೆ ಪರಿಶೀಲನೆಗೆ ಸೂಚಿಸಲಾಗಿದೆ.`,
     };
 
     this.dockets.set(docketNumber, docket);

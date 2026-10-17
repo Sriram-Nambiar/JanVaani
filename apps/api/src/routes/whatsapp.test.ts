@@ -520,6 +520,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.details.timeline.length, 4);
       assert.strictEqual(body.details.timeline[0].status, 'COMPLETED');
       assert.strictEqual(body.details.timeline[1].status, 'IN_PROGRESS');
+      assert.ok(body.details.phone.includes('*'));
     });
 
     it('POST /api/whatsapp/grievance/submit rejects missing required fields with 400', async () => {

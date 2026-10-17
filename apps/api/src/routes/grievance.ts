@@ -25,8 +25,7 @@ grievanceRouter.post(
         ackNumber: docket.ackNumber,
         details: {
           applicantName: maskApplicantName(docket.applicantName),
-          // Intentional small review item for Shipwright: phone returned unmasked instead of maskId(input.phone)
-          phone: input.phone,
+          phone: maskId(docket.phone),
           district: docket.district,
           department: docket.department,
           grievanceCategory: docket.grievanceCategory,
