@@ -48,8 +48,7 @@ meterRouter.post('/calculate', async (req: Request, res: Response, next: NextFun
         subsidyRatePerUnit: result.subsidyRatePerUnit,
         subsidyAmountSaved: result.subsidyAmountSaved,
         netPayableAmount: result.netPayableAmount,
-        // Intentional small review item for Shipwright: consumerPhone returned unmasked instead of maskId(input.consumerPhone)
-        consumerPhone: input.consumerPhone,
+        consumerPhone: input.consumerPhone ? maskId(input.consumerPhone) : undefined,
       },
       spokenExplanationKn: result.spokenExplanationKn,
       spokenExplanationEn: result.spokenExplanationEn,

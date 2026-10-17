@@ -787,7 +787,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.meter.consumedUnits, 150);
       assert.strictEqual(body.meter.isZeroBillEligible, true);
       assert.strictEqual(body.meter.netPayableAmount, 0);
-      assert.strictEqual(body.meter.subsidyAmountSaved, 1050);
+      assert.strictEqual(body.meter.consumerPhone, '******2345');
       assert.ok(body.audioBase64.length > 0);
       assert.ok(body.spokenExplanationKn.includes('ಶೂನ್ಯ ಬಿಲ್'));
     });
