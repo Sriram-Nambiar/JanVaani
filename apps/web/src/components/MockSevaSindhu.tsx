@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { AudioPlayer } from './AudioPlayer';
 
 interface MockSevaSindhuProps {
   agentData?: {
@@ -82,6 +83,32 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
       clearTimers();
     };
   }, []);
+
+  const [audioReceipt, setAudioReceipt] = useState<any>(null);
+  const [isLoadingAudioReceipt, setIsLoadingAudioReceipt] = useState(false);
+
+  const fetchAudioReceipt = async (ackNumber: string, scheme: string, applicant: string) => {
+    setIsLoadingAudioReceipt(true);
+    try {
+      const res = await fetch('http://localhost:3001/api/whatsapp/receipt/audio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ackNumber,
+          schemeId: scheme,
+          applicantName: applicant,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        setAudioReceipt(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsLoadingAudioReceipt(false);
+    }
+  };
 
   // Sync with incoming WhatsApp Agent data
   useEffect(() => {
@@ -706,11 +733,71 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
                 </div>
               </div>
 
+              {/* Spoken Kannada Audio Receipt (ಧ್ವನಿ ರಸೀದಿ) Section */}
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '14px',
+                  backgroundColor: '#f0fdf4',
+                  borderRadius: '6px',
+                  border: '1px solid #86efac',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '18px' }}>🔊</span>
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#166534' }}>
+                        ಅಧಿಕೃತ ಧ್ವನಿ ರಸೀದಿ (Official Voice Receipt)
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#15803d' }}>
+                        ಸರ್ವಂ ಎಐ (Sarvam AI) ಮುಖಾಂತರ ಕನ್ನಡದಲ್ಲಿ ಧ್ವನಿ ದೃಢೀಕರಣ
+                      </div>
+                    </div>
+                  </div>
+                  {!audioReceipt && (
+                    <button
+                      onClick={() =>
+                        fetchAudioReceipt(
+                          ackReceipt.acknowledgmentNumber,
+                          selectedScheme,
+                          ackReceipt.applicantName || name
+                        )
+                      }
+                      disabled={isLoadingAudioReceipt}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#166534',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {isLoadingAudioReceipt ? 'ರಚಿಸಲಾಗುತ್ತಿದೆ...' : 'ಧ್ವನಿ ರಸೀದಿ ಕೇಳಿ (Play Audio)'}
+                    </button>
+                  )}
+                </div>
+
+                {audioReceipt && (
+                  <div style={{ marginTop: '8px' }}>
+                    <AudioPlayer
+                      audioBase64={audioReceipt.audioBase64}
+                      transcriptText={audioReceipt.entitlementSummaryKn}
+                      isCitizen={false}
+                    />
+                  </div>
+                )}
+              </div>
+
               <div style={{ marginTop: '20px', textAlign: 'center' }}>
                 <button
                   onClick={() => {
                     clearTimers();
                     setAckReceipt(null);
+                    setAudioReceipt(null);
                     setAgentStep('idle');
                   }}
                   style={{

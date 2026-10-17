@@ -572,4 +572,86 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(body.dockets.length >= 1);
     });
   });
+
+  describe('Kannada Spoken Audio Receipt Endpoints', () => {
+    it('POST /api/whatsapp/receipt/audio generates Gruha Jyothi voice receipt with 200 units entitlement', async () => {
+      const payload = {
+        ackNumber: 'GJ-BESCOM-2026-F91A2B',
+        schemeId: 'gruha_jyothi',
+        applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+        consumerId: '1029384756',
+      };
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/receipt/audio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.ackNumber, 'GJ-BESCOM-2026-F91A2B');
+      assert.ok(body.schemeTitleKn.includes('ಗೃಹಜ್ಯೋತಿ'));
+      assert.ok(body.entitlementSummaryKn.includes('200'));
+      assert.ok(body.applicantNameMasked.includes('*'));
+      assert.ok(body.audioBase64.length > 0);
+    });
+
+    it('POST /api/whatsapp/receipt/audio generates Gruha Lakshmi voice receipt', async () => {
+      const payload = {
+        ackNumber: 'GL-KAR-2026-C4B821',
+        schemeId: 'gruha_lakshmi',
+        applicantName: 'ಲಕ್ಷ್ಮೀದೇವಿ',
+        rationCardNumber: 'RC9876543210',
+      };
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/receipt/audio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.entitlementSummaryKn.includes('2,000'));
+      assert.ok(body.audioBase64.length > 0);
+    });
+
+    it('POST /api/whatsapp/receipt/audio rejects invalid payload with 400', async () => {
+      const invalidPayload = {
+        ackNumber: 'G', // too short (< 3)
+        schemeId: 'invalid_scheme',
+      };
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/receipt/audio`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalidPayload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('GET /api/whatsapp/receipt/audio/:ackNumber auto-synthesizes audio receipt for known RD001', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/receipt/audio/RD001`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.receipt.ackNumber, 'RD001');
+      assert.ok(body.receipt.audioBase64.length > 0);
+    });
+
+    it('GET /api/whatsapp/receipt/audio/:ackNumber returns 404 for unknown acknowledgment', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/receipt/audio/UNKNOWN-NOT-EXIST`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.code, 'RECEIPT_NOT_FOUND');
+    });
+  });
 });
