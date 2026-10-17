@@ -12,6 +12,7 @@ import { MeterSubsidyModal } from './components/MeterSubsidyModal';
 import { YuvaNidhiModal } from './components/YuvaNidhiModal';
 import { ShaktiPassModal } from './components/ShaktiPassModal';
 import { AnnaBhagyaModal } from './components/AnnaBhagyaModal';
+import { BhoomiRtcModal } from './components/BhoomiRtcModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -42,6 +43,7 @@ export function App() {
   const [isYuvaModalOpen, setIsYuvaModalOpen] = useState(false);
   const [isShaktiModalOpen, setIsShaktiModalOpen] = useState(false);
   const [isAnnaBhagyaModalOpen, setIsAnnaBhagyaModalOpen] = useState(false);
+  const [isBhoomiModalOpen, setIsBhoomiModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -383,6 +385,26 @@ export function App() {
             <span>🌾</span> ಅನ್ನಭಾಗ್ಯ (Anna Bhagya)
           </button>
 
+          {/* Bhoomi RTC Pahani Verification Trigger */}
+          <button
+            onClick={() => setIsBhoomiModalOpen(true)}
+            style={{
+              backgroundColor: '#78350f',
+              color: '#fef3c7',
+              border: '1px solid #d97706',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🏛️</span> ಭೂಮಿ ಪಹಣಿ (Bhoomi RTC)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -554,6 +576,12 @@ export function App() {
       <AnnaBhagyaModal
         isOpen={isAnnaBhagyaModalOpen}
         onClose={() => setIsAnnaBhagyaModalOpen(false)}
+      />
+
+      {/* Karnataka Bhoomi RTC Pahani Land Records Modal */}
+      <BhoomiRtcModal
+        isOpen={isBhoomiModalOpen}
+        onClose={() => setIsBhoomiModalOpen(false)}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import {
   bhoomiRtcFetchSchema,
   bhoomiRtcLookupParamSchema,
+  bhoomiRtcExportSchema,
 } from '../schemas/bhoomi.js';
 import { bhoomiService } from '../services/bhoomi.js';
 import { maskId } from '../services/tracker.js';
@@ -91,5 +92,44 @@ bhoomiRouter.get('/rtc/:rtcNumber', (req: Request, res: Response) => {
   return res.status(200).json({
     status: 'ok',
     rtc: safeRecord,
+  });
+});
+
+/**
+ * POST /api/bhoomi/rtc/export
+ * Export certified Bhoomi RTC slip to citizen phone
+ */
+bhoomiRouter.post('/rtc/export', (req: Request, res: Response) => {
+  const parsed = bhoomiRtcExportSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      status: 'error',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid export parameters',
+        details: parsed.error.issues,
+      },
+    });
+  }
+
+  const { rtcNumber, citizenPhone } = parsed.data;
+  const record = bhoomiService.lookupRtc(rtcNumber);
+  if (!record) {
+    return res.status(404).json({
+      status: 'error',
+      error: {
+        code: 'RTC_NOT_FOUND',
+        message: `No active Bhoomi RTC record found for: ${rtcNumber}`,
+      },
+    });
+  }
+
+  return res.status(200).json({
+    status: 'ok',
+    export: {
+      rtcNumber,
+      citizenPhone: maskId(citizenPhone),
+      sentAt: new Date().toISOString(),
+    },
   });
 });

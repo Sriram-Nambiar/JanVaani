@@ -23,3 +23,13 @@ export const bhoomiRtcLookupParamSchema = z.object({
 });
 
 export type BhoomiRtcLookupParam = z.infer<typeof bhoomiRtcLookupParamSchema>;
+
+export const bhoomiRtcExportSchema = z.object({
+  rtcNumber: z.string().trim().min(5, 'RTC number is required'),
+  citizenPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[\d\s-]{10,15}$/, 'Invalid phone number format'),
+});
+
+export type BhoomiRtcExportInput = z.infer<typeof bhoomiRtcExportSchema>;

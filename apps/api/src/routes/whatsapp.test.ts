@@ -1255,5 +1255,41 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 404);
       assert.strictEqual(body.error.code, 'RTC_NOT_FOUND');
     });
+
+    it('POST /api/bhoomi/rtc/export validates schema and returns masked phone number', async () => {
+      const payload = {
+        rtcNumber: 'BHOOMI-BLR-DEV-2026-S102',
+        citizenPhone: '9845012345',
+      };
+
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.export.rtcNumber, 'BHOOMI-BLR-DEV-2026-S102');
+      assert.strictEqual(body.export.citizenPhone, '******2345');
+    });
+
+    it('POST /api/bhoomi/rtc/export rejects invalid phone number with 400', async () => {
+      const payload = {
+        rtcNumber: 'BHOOMI-BLR-DEV-2026-S102',
+        citizenPhone: '123', // invalid phone
+      };
+
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
   });
 });
