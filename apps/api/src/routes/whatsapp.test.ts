@@ -854,4 +854,107 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.code, 'METER_NOT_FOUND');
     });
   });
+
+  describe('Karnataka Yuva Nidhi Allowance Endpoints', () => {
+    it('POST /api/yuva-nidhi/check evaluates eligible Graduate candidate for ₹3,000 monthly allowance', async () => {
+      const payload = {
+        educationRegNo: 'ENG-2024-8491',
+        applicantName: 'ಚೇತನ್ ಕುಮಾರ್',
+        qualification: 'GRADUATE',
+        passingYear: 2024,
+        monthsUnemployed: 8,
+        isEmployed: false,
+        isPursuingHigherStudies: false,
+        isKarnatakaDomicile: true,
+        rationCardNumber: 'KA-04-9841284',
+      };
+
+      const res = await fetch(`${baseUrl}/api/yuva-nidhi/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.eligibility.educationRegNo, 'ENG-2024-8491');
+      assert.strictEqual(body.eligibility.isEligible, true);
+      assert.strictEqual(body.eligibility.benefitAmountPerMonth, 3000);
+      assert.strictEqual(body.eligibility.maxBenefitDurationMonths, 24);
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenExplanationKn.includes('ಯುವನಿಧಿ'));
+    });
+
+    it('POST /api/yuva-nidhi/check evaluates eligible Diploma candidate for ₹1,500 monthly allowance', async () => {
+      const payload = {
+        educationRegNo: 'DIP-2025-1042',
+        applicantName: 'ರಮ್ಯಾ ಎಸ್',
+        qualification: 'DIPLOMA',
+        passingYear: 2025,
+        monthsUnemployed: 7,
+        isEmployed: false,
+        isPursuingHigherStudies: false,
+        isKarnatakaDomicile: true,
+      };
+
+      const res = await fetch(`${baseUrl}/api/yuva-nidhi/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.eligibility.qualification, 'DIPLOMA');
+      assert.strictEqual(body.eligibility.isEligible, true);
+      assert.strictEqual(body.eligibility.benefitAmountPerMonth, 1500);
+      assert.ok(body.audioBase64.length > 0);
+    });
+
+    it('POST /api/yuva-nidhi/check flags ineligible candidate with < 6 months unemployment or currently employed', async () => {
+      const payload = {
+        educationRegNo: 'ENG-2026-0012',
+        applicantName: 'ರಾಜು',
+        qualification: 'GRADUATE',
+        passingYear: 2026,
+        monthsUnemployed: 2,
+        isEmployed: true,
+        isPursuingHigherStudies: false,
+        isKarnatakaDomicile: true,
+      };
+
+      const res = await fetch(`${baseUrl}/api/yuva-nidhi/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.eligibility.isEligible, false);
+      assert.strictEqual(body.eligibility.benefitAmountPerMonth, 0);
+      assert.ok(body.eligibility.disqualificationReasonsKn.length >= 2);
+    });
+
+    it('GET /api/yuva-nidhi/:educationRegNo returns demo candidate record', async () => {
+      const res = await fetch(`${baseUrl}/api/yuva-nidhi/ENG-2024-8491`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.demo.educationRegNo, 'ENG-2024-8491');
+      assert.strictEqual(body.demo.qualification, 'GRADUATE');
+    });
+
+    it('GET /api/yuva-nidhi/:educationRegNo returns 404 for unknown candidate', async () => {
+      const res = await fetch(`${baseUrl}/api/yuva-nidhi/UNKNOWN-CANDIDATE-9999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.code, 'CANDIDATE_NOT_FOUND');
+    });
+  });
 });

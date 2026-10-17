@@ -9,6 +9,7 @@ import { JanaSpandanaModal } from './components/JanaSpandanaModal';
 import { GramaOneKioskModal } from './components/GramaOneKioskModal';
 import { QRVerificationModal } from './components/QRVerificationModal';
 import { MeterSubsidyModal } from './components/MeterSubsidyModal';
+import { YuvaNidhiModal } from './components/YuvaNidhiModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -36,6 +37,7 @@ export function App() {
   const [isKioskModalOpen, setIsKioskModalOpen] = useState(false);
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isMeterModalOpen, setIsMeterModalOpen] = useState(false);
+  const [isYuvaModalOpen, setIsYuvaModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -317,6 +319,26 @@ export function App() {
             <span>⚡</span> ಮೀಟರ್ ಲೆಕ್ಕಾಚಾರ (Meter Subsidy)
           </button>
 
+          {/* Yuva Nidhi Allowance Modal Trigger */}
+          <button
+            onClick={() => setIsYuvaModalOpen(true)}
+            style={{
+              backgroundColor: '#1e3a8a',
+              color: '#dbeafe',
+              border: '1px solid #2563eb',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🎓</span> ಯುವನಿಧಿ (Yuva Nidhi)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -470,6 +492,12 @@ export function App() {
       <MeterSubsidyModal
         isOpen={isMeterModalOpen}
         onClose={() => setIsMeterModalOpen(false)}
+      />
+
+      {/* Karnataka Yuva Nidhi Allowance Modal */}
+      <YuvaNidhiModal
+        isOpen={isYuvaModalOpen}
+        onClose={() => setIsYuvaModalOpen(false)}
       />
     </div>
   );
