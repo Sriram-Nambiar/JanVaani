@@ -57,15 +57,10 @@ export const whatsappMessageSchema = z.object({
 
 export type WhatsAppMessageInput = z.infer<typeof whatsappMessageSchema>;
 
-export const sevaSindhuSubmissionSchema = z.object({
-  schemeId: z.literal('gruha_jyothi'),
-  fields: z.object({
-    applicantName: z.string().trim().min(2, 'Applicant name must be at least 2 characters').max(100),
-    consumerId: z.string().trim().min(5, 'Valid Consumer/Account ID is required').max(30),
-    escomName: z.enum(['BESCOM', 'HESCOM', 'GESCOM', 'MESCOM', 'CESC']),
-    aadhaarNumber: z.string().trim().max(20).optional(),
-    occupancyType: z.enum(['Owner', 'Tenant']).optional(),
-  }),
-});
-
-export type SevaSindhuSubmissionInput = z.infer<typeof sevaSindhuSubmissionSchema>;
+export {
+  sevaSindhuSubmissionSchema,
+  type SevaSindhuSubmissionInput,
+  type GruhaJyothiFields,
+  type GruhaLakshmiFields,
+  type CasteIncomeFields,
+} from './seva-sindhu.js';

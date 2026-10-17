@@ -4,6 +4,7 @@ import { InspectorPanel } from './components/InspectorPanel';
 import { MockSevaSindhu } from './components/MockSevaSindhu';
 import { DraftViewerModal } from './components/DraftViewerModal';
 import { OfficerPushSimulator } from './components/OfficerPushSimulator';
+import { DocumentAuditModal } from './components/DocumentAuditModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
   const [draftModalAck, setDraftModalAck] = useState<string | null>(null);
   const [pushedMessage, setPushedMessage] = useState<ChatMessage | null>(null);
   const [lastAck, setLastAck] = useState<string>('RD002');
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -37,14 +39,10 @@ export function App() {
       isMock: data.isMock,
     });
 
-    if (data.formDraft?.schemeId === 'gruha_jyothi') {
+    if (data.formDraft?.schemeId) {
       setAgentData({
-        schemeId: 'gruha_jyothi',
-        applicantName: data.formDraft.extractedFields.applicantName,
-        consumerId: data.formDraft.extractedFields.consumerId,
-        escomName: data.formDraft.extractedFields.escomName,
-        aadhaarNumber: data.formDraft.extractedFields.aadhaarNumber,
-        occupancyType: data.formDraft.extractedFields.occupancyType,
+        schemeId: data.formDraft.schemeId,
+        ...data.formDraft.extractedFields,
       });
 
       if (data.formDraft.isComplete) {
@@ -211,6 +209,26 @@ export function App() {
             </button>
           </div>
 
+          {/* Kagada-Check Auditor Trigger */}
+          <button
+            onClick={() => setIsAuditModalOpen(true)}
+            style={{
+              backgroundColor: '#065f46',
+              color: '#d1fae5',
+              border: '1px solid #047857',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🔍</span> Kagada-Check (ಕಾಗದ ಪರಿಶೀಲನೆ)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -323,6 +341,20 @@ export function App() {
         ackNumber={draftModalAck || ''}
         isOpen={Boolean(draftModalAck)}
         onClose={() => setDraftModalAck(null)}
+      />
+
+      {/* Kagada-Check Document Auditor Modal */}
+      <DocumentAuditModal
+        isOpen={isAuditModalOpen}
+        onClose={() => setIsAuditModalOpen(false)}
+        onProceedWithDraft={() => {
+          setAgentData((prev: any) => ({
+            ...prev,
+            schemeId: 'gruha_lakshmi',
+            applicantName: 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)',
+          }));
+          setRightPanelView('sevasindhu');
+        }}
       />
     </div>
   );

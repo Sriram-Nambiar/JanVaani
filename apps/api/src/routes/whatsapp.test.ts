@@ -345,6 +345,56 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(lookupData.data.applicantName, data.applicantName);
     });
 
+    it('POST /api/whatsapp/agent/submit-seva-sindhu submits Gruha Lakshmi application with GL-KAR- acknowledgment', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_lakshmi',
+          fields: {
+            applicantName: 'ಮಂಜುಳಾ ಗೌಡ (Manjula Gowda)',
+            rationCardNumber: 'RC9876543210',
+            aadhaarNumber: '582910492817',
+            bankAccountNumber: '9876543210123',
+            ifscCode: 'SBIN0001234',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'gruha_lakshmi');
+      assert.match(data.acknowledgmentNumber, /^GL-KAR-2026-[0-9A-F]{8}$/);
+      assert.ok(data.applicantName.includes('*'));
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu submits Caste & Income Certificate application with RD-KAR- acknowledgment', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'caste_income',
+          fields: {
+            applicantName: 'ಬಸವರಾಜ್ (Basavaraj)',
+            parentOrSpouseName: 'ಶಿವಣ್ಣ (Shivanna)',
+            category: 'Category-2A',
+            caste: 'ಕುರುಬ (Kuruba)',
+            annualIncome: 120000,
+            taluk: 'ಹಾವೇರಿ (Haveri)',
+            district: 'ಹಾವೇರಿ (Haveri)',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'caste_income');
+      assert.match(data.acknowledgmentNumber, /^RD-KAR-2026-[0-9A-F]{8}$/);
+      assert.ok(data.applicantName.includes('*'));
+    });
+
     it('POST /api/whatsapp/draft/generate-html generates print-ready bilingual application draft', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/draft/generate-html`, {
         method: 'POST',
