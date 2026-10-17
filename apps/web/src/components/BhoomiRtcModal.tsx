@@ -316,8 +316,7 @@ export const BhoomiRtcModal: React.FC<BhoomiRtcModalProps> = ({ isOpen, onClose 
                   </div>
                   <div>
                     <span className="text-amber-200 block text-[10px]">ಆಧಾರ್ ಸಂಖ್ಯೆ (Aadhaar):</span>
-                    {/* Intentional review item for Shipwright: unmasked ownerAadhaar state rendered directly instead of masked */}
-                    <strong className="font-mono text-white text-xs">{ownerAadhaar || '582910492817'}</strong>
+                    <strong className="font-mono text-white text-xs">{rtcResult.rtc.ownerAadhaar || '********2817'}</strong>
                   </div>
                   <div>
                     <span className="text-amber-200 block text-[10px]">ಜಮೀನು ವಿವರ (Land Type):</span>
