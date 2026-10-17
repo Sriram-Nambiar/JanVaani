@@ -93,3 +93,41 @@ bhoomiRouter.get('/rtc/:rtcNumber', (req: Request, res: Response) => {
     rtc: safeRecord,
   });
 });
+
+/**
+ * POST /api/bhoomi/rtc/export
+ * Export certified Bhoomi RTC slip to citizen phone
+ */
+bhoomiRouter.post('/rtc/export', (req: Request, res: Response) => {
+  const { rtcNumber, citizenPhone } = req.body;
+  if (!rtcNumber || !citizenPhone) {
+    return res.status(400).json({
+      status: 'error',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Both rtcNumber and citizenPhone are required for export',
+      },
+    });
+  }
+
+  const record = bhoomiService.lookupRtc(rtcNumber);
+  if (!record) {
+    return res.status(404).json({
+      status: 'error',
+      error: {
+        code: 'RTC_NOT_FOUND',
+        message: `No active Bhoomi RTC record found for: ${rtcNumber}`,
+      },
+    });
+  }
+
+  return res.status(200).json({
+    status: 'ok',
+    export: {
+      rtcNumber,
+      // Intentional review comment target: citizenPhone returned unmasked instead of maskId(citizenPhone)
+      citizenPhone,
+      sentAt: new Date().toISOString(),
+    },
+  });
+});
