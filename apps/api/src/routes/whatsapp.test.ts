@@ -762,4 +762,96 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
     });
   });
+
+  describe('Gruha Jyothi 200-Unit Subsidy Meter Reading Endpoints', () => {
+    it('POST /api/meter/calculate calculates zero-bill subsidy for consumption within quota', async () => {
+      const payload = {
+        rrNumber: 'BESCOM-W1-4029',
+        escomName: 'BESCOM',
+        previousReading: 1240,
+        currentReading: 1390,
+        averageMonthlyUnits: 160,
+        consumerPhone: '9845012345',
+      };
+
+      const res = await fetch(`${baseUrl}/api/meter/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.meter.rrNumber, 'BESCOM-W1-4029');
+      assert.strictEqual(body.meter.consumedUnits, 150);
+      assert.strictEqual(body.meter.isZeroBillEligible, true);
+      assert.strictEqual(body.meter.netPayableAmount, 0);
+      assert.strictEqual(body.meter.subsidyAmountSaved, 1050);
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenExplanationKn.includes('ಶೂನ್ಯ ಬಿಲ್'));
+    });
+
+    it('POST /api/meter/calculate calculates excess payable bill when consumption exceeds quota', async () => {
+      const payload = {
+        rrNumber: 'HESCOM-HD-8102',
+        escomName: 'HESCOM',
+        previousReading: 2100,
+        currentReading: 2320,
+        averageMonthlyUnits: 180,
+      };
+
+      const res = await fetch(`${baseUrl}/api/meter/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.meter.consumedUnits, 220);
+      assert.strictEqual(body.meter.isZeroBillEligible, false);
+      assert.strictEqual(body.meter.chargeableUnits, 22);
+      assert.strictEqual(body.meter.netPayableAmount, 154);
+      assert.ok(body.audioBase64.length > 0);
+    });
+
+    it('POST /api/meter/calculate rejects currentReading < previousReading with 400', async () => {
+      const payload = {
+        rrNumber: 'BESCOM-W1-4029',
+        escomName: 'BESCOM',
+        previousReading: 1500,
+        currentReading: 1400,
+      };
+
+      const res = await fetch(`${baseUrl}/api/meter/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_METER_READING');
+    });
+
+    it('GET /api/meter/:rrNumber returns demo parameters for known BESCOM-W1-4029', async () => {
+      const res = await fetch(`${baseUrl}/api/meter/BESCOM-W1-4029`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.demo.rrNumber, 'BESCOM-W1-4029');
+      assert.strictEqual(body.demo.escomName, 'BESCOM');
+    });
+
+    it('GET /api/meter/:rrNumber returns 404 for unknown RR number', async () => {
+      const res = await fetch(`${baseUrl}/api/meter/UNKNOWN-RR-9999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.code, 'METER_NOT_FOUND');
+    });
+  });
 });

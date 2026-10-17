@@ -8,6 +8,7 @@ import { grievanceRouter } from './routes/grievance.js';
 import { receiptRouter } from './routes/receipt.js';
 import { kioskRouter } from './routes/kiosk.js';
 import { verificationRouter } from './routes/verification.js';
+import { meterRouter } from './routes/meter.js';
 
 export function createApp() {
   const app = express();
@@ -62,6 +63,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/meter', meterRouter);
   app.use('/api/verify', verificationRouter);
   app.use('/api/kiosk', kioskRouter);
   app.use('/api/whatsapp/receipt', receiptRouter);
