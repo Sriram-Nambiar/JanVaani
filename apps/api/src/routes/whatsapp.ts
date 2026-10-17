@@ -1,9 +1,15 @@
+import crypto from 'node:crypto';
 import { Router, Request, Response, NextFunction } from 'express';
 import { validateBody } from '../middleware/validate.js';
-import { whatsappMessageSchema, WhatsAppMessageInput } from '../schemas/whatsapp-message.js';
+import {
+  whatsappMessageSchema,
+  WhatsAppMessageInput,
+  sevaSindhuSubmissionSchema,
+  SevaSindhuSubmissionInput,
+} from '../schemas/whatsapp-message.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
-import { trackerService } from '../services/tracker.js';
+import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
 
 export const whatsappRouter = Router();
 
@@ -149,56 +155,90 @@ whatsappRouter.get('/schemes', (_req: Request, res: Response) => {
 
 /**
  * Autonomous Agent Endpoint: Submits application to Mock Seva Sindhu Portal
+ * Protected with Zod schema validation, cryptographically unique receipt generation, and PII masking
  */
-whatsappRouter.post('/agent/submit-seva-sindhu', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { schemeId = 'gruha_jyothi', fields = {} } = req.body || {};
-    const applicantName = fields.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
-    const consumerId = fields.consumerId || '1029384756';
-    const escomName = fields.escomName || 'BESCOM';
-    
-    // Generate official Karnataka receipt number
-    const randomSuffix = Math.floor(100000 + Math.random() * 900000);
-    const ackNumber = `GJ-BESCOM-2026-${randomSuffix}`;
+whatsappRouter.post(
+  '/agent/submit-seva-sindhu',
+  validateBody(sevaSindhuSubmissionSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { schemeId, fields } = req.body as SevaSindhuSubmissionInput;
 
-    const statusRecord = {
-      ackNumber,
-      schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
-      schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
-      applicantName,
-      currentStageKn: 'ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ಬೆಸ್ಕಾಂ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
-      currentStageEn: 'Received at Seva Sindhu - Under ESCOM Verification',
-      isReadyForDownload: false,
-      timeline: [
-        { step: 1, labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ', labelEn: 'Application Submitted via Seva Sindhu', status: 'COMPLETED' as const, updatedAt: new Date().toISOString().split('T')[0] },
-        { step: 2, labelKn: 'ಬೆಸ್ಕಾಂ ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ', labelEn: 'ESCOM Consumer Account Verification', status: 'IN_PROGRESS' as const },
-        { step: 3, labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್', labelEn: 'Aadhaar & Meter Linking', status: 'PENDING' as const },
-        { step: 4, labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)', labelEn: 'Zero Bill Subsidy Activated', status: 'PENDING' as const },
-      ],
-      spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
-      spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
-    };
+      // Generate cryptographically secure, high-entropy, unique acknowledgment number (prevents guessing/enumeration)
+      let ackNumber = '';
+      let attempts = 0;
+      do {
+        if (attempts++ > 10) {
+          throw new Error('Failed to generate unique acknowledgment number');
+        }
+        const entropy = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars = 32-bit cryptographically secure entropy
+        ackNumber = `GJ-${fields.escomName}-2026-${entropy}`;
+      } while (trackerService.hasRecord(ackNumber));
 
-    trackerService.registerRecord(statusRecord);
-    const ttsResult = await sarvamService.textToSpeech(statusRecord.spokenNotificationKn);
+      // Mask sensitive citizen PII to prevent data exposure upon public acknowledgment lookup
+      const maskedName = maskApplicantName(fields.applicantName);
+      const maskedConsumerId = maskId(fields.consumerId);
 
-    res.status(200).json({
-      status: 'ok',
-      acknowledgmentNumber: ackNumber,
-      schemeId,
-      applicantName,
-      consumerId,
-      escomName,
-      submittedAt: new Date().toISOString(),
-      audioBase64: ttsResult.audioBase64,
-      spokenNotificationKn: statusRecord.spokenNotificationKn,
-      spokenNotificationEn: statusRecord.spokenNotificationEn,
-      statusRecord,
-    });
-  } catch (err) {
-    next(err);
+      const statusRecord = {
+        ackNumber,
+        schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
+        schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
+        applicantName: maskedName,
+        currentStageKn: `ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ${fields.escomName} ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
+        currentStageEn: `Received at Seva Sindhu - Under ${fields.escomName} Verification`,
+        isReadyForDownload: false,
+        timeline: [
+          {
+            step: 1,
+            labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
+            labelEn: 'Application Submitted via Seva Sindhu',
+            status: 'COMPLETED' as const,
+            updatedAt: new Date().toISOString().split('T')[0],
+          },
+          {
+            step: 2,
+            labelKn: `${fields.escomName} ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ`,
+            labelEn: `${fields.escomName} Consumer Account Verification`,
+            status: 'IN_PROGRESS' as const,
+          },
+          {
+            step: 3,
+            labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್',
+            labelEn: 'Aadhaar & Meter Linking',
+            status: 'PENDING' as const,
+          },
+          {
+            step: 4,
+            labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)',
+            labelEn: 'Zero Bill Subsidy Activated',
+            status: 'PENDING' as const,
+          },
+        ],
+        spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+        spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
+      };
+
+      trackerService.registerRecord(statusRecord);
+      const ttsResult = await sarvamService.textToSpeech(statusRecord.spokenNotificationKn);
+
+      res.status(200).json({
+        status: 'ok',
+        acknowledgmentNumber: ackNumber,
+        schemeId,
+        applicantName: maskedName,
+        consumerId: maskedConsumerId,
+        escomName: fields.escomName,
+        submittedAt: new Date().toISOString(),
+        audioBase64: ttsResult.audioBase64,
+        spokenNotificationKn: statusRecord.spokenNotificationKn,
+        spokenNotificationEn: statusRecord.spokenNotificationEn,
+        statusRecord,
+      });
+    } catch (err) {
+      next(err);
+    }
   }
-});
+);
 
 /**
  * Direct lookup for application status by acknowledgment number

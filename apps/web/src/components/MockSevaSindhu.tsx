@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface MockSevaSindhuProps {
   agentData?: {
@@ -24,8 +24,37 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
   const [occupancy, setOccupancy] = useState('Tenant');
   const [declaration, setDeclaration] = useState(false);
 
-  const [agentStep, setAgentStep] = useState<'idle' | 'typing' | 'submitting' | 'submitted'>('idle');
+  const [agentStep, setAgentStep] = useState<'idle' | 'typing' | 'submitting' | 'submitted' | 'error'>('idle');
   const [ackReceipt, setAckReceipt] = useState<any>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Stable callback ref to prevent unneeded effect re-runs
+  const onSubmissionCompleteRef = useRef(onSubmissionComplete);
+  useEffect(() => {
+    onSubmissionCompleteRef.current = onSubmissionComplete;
+  }, [onSubmissionComplete]);
+
+  // Timers and auto-fill lifecycle tracking
+  const isAutoFillingRef = useRef(false);
+  const timer1Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer2Ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTimers = () => {
+    if (timer1Ref.current) {
+      clearTimeout(timer1Ref.current);
+      timer1Ref.current = null;
+    }
+    if (timer2Ref.current) {
+      clearTimeout(timer2Ref.current);
+      timer2Ref.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimers();
+    };
+  }, []);
 
   // Sync with incoming WhatsApp Agent data
   useEffect(() => {
@@ -49,62 +78,9 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
     }
   }, [agentData]);
 
-  // Handle agent auto-fill animation
-  useEffect(() => {
-    if (isAgentActive && agentStep === 'idle') {
-      setAgentStep('typing');
-
-      const timer1 = setTimeout(() => {
-        setEscom('BESCOM');
-        setName(agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)');
-        setAadhaar(agentData?.aadhaarNumber || 'XXXX-XXXX-4821');
-        setConsumerId(agentData?.consumerId || '1029384756');
-        setOccupancy('Tenant');
-        setDeclaration(true);
-        setAgentStep('submitting');
-
-        const timer2 = setTimeout(async () => {
-          try {
-            const res = await fetch('/api/whatsapp/agent/submit-seva-sindhu', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                schemeId: 'gruha_jyothi',
-                fields: {
-                  applicantName: agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ',
-                  consumerId: agentData?.consumerId || '1029384756',
-                  escomName: 'BESCOM',
-                },
-              }),
-            });
-            const json = await res.json();
-            setAckReceipt(json);
-            setAgentStep('submitted');
-            if (onSubmissionComplete) {
-              onSubmissionComplete(json.acknowledgmentNumber, json);
-            }
-          } catch {
-            const fallbackAck = `GJ-BESCOM-2026-${Math.floor(100000 + Math.random() * 900000)}`;
-            setAckReceipt({
-              acknowledgmentNumber: fallbackAck,
-              submittedAt: new Date().toISOString(),
-              consumerId: '1029384756',
-              applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
-            });
-            setAgentStep('submitted');
-          }
-        }, 1500);
-
-        return () => clearTimeout(timer2);
-      }, 1000);
-
-      return () => clearTimeout(timer1);
-    }
-  }, [isAgentActive, agentStep, agentData, onSubmissionComplete]);
-
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const executeSubmission = async (payload: { applicantName: string; consumerId: string; escomName: string }) => {
     setAgentStep('submitting');
+    setErrorMessage(null);
     try {
       const res = await fetch('/api/whatsapp/agent/submit-seva-sindhu', {
         method: 'POST',
@@ -112,21 +88,99 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
         body: JSON.stringify({
           schemeId: 'gruha_jyothi',
           fields: {
-            applicantName: name || 'ಸವಿತಾ ಕುಮಾರಿ',
-            consumerId: consumerId || '1029384756',
-            escomName: escom,
+            applicantName: payload.applicantName,
+            consumerId: payload.consumerId,
+            escomName: payload.escomName,
           },
         }),
       });
+
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => null);
+        throw new Error(errorJson?.error?.message || `Seva Sindhu portal returned HTTP ${res.status}`);
+      }
+
       const json = await res.json();
       setAckReceipt(json);
       setAgentStep('submitted');
-      if (onSubmissionComplete) {
-        onSubmissionComplete(json.acknowledgmentNumber, json);
+      if (onSubmissionCompleteRef.current) {
+        onSubmissionCompleteRef.current(json.acknowledgmentNumber, json);
       }
-    } catch {
-      setAgentStep('submitted');
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'ಸೇವಾ ಸಿಂಧು ಸರ್ವರ್ ಸಂಪರ್ಕ ವಿಫಲವಾಗಿದೆ / Server connection failed. Application could not be submitted.');
+      setAgentStep('error');
+    } finally {
+      isAutoFillingRef.current = false;
     }
+  };
+
+  // Handle agent auto-fill animation
+  useEffect(() => {
+    if (isAgentActive && !isAutoFillingRef.current && agentStep === 'idle') {
+      isAutoFillingRef.current = true;
+      setAgentStep('typing');
+      clearTimers();
+
+      timer1Ref.current = setTimeout(() => {
+        const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+        const consumer = agentData?.consumerId || '1029384756';
+        const escomVal = agentData?.escomName?.includes('BESCOM') ? 'BESCOM' : 'BESCOM';
+
+        setEscom(escomVal);
+        setName(applicantName);
+        setAadhaar(agentData?.aadhaarNumber || 'XXXX-XXXX-4821');
+        setConsumerId(consumer);
+        setOccupancy('Tenant');
+        setDeclaration(true);
+
+        timer2Ref.current = setTimeout(() => {
+          executeSubmission({
+            applicantName,
+            consumerId: consumer,
+            escomName: escomVal,
+          });
+        }, 1200);
+      }, 1000);
+    }
+  }, [isAgentActive, agentStep, agentData]);
+
+  const handleTriggerTestAgent = () => {
+    clearTimers();
+    isAutoFillingRef.current = true;
+    setErrorMessage(null);
+    setAckReceipt(null);
+    setAgentStep('typing');
+
+    timer1Ref.current = setTimeout(() => {
+      const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+      const consumer = agentData?.consumerId || '1029384756';
+      const escomVal = 'BESCOM';
+
+      setEscom(escomVal);
+      setName(applicantName);
+      setAadhaar(agentData?.aadhaarNumber || 'XXXX-XXXX-4821');
+      setConsumerId(consumer);
+      setOccupancy('Tenant');
+      setDeclaration(true);
+
+      timer2Ref.current = setTimeout(() => {
+        executeSubmission({
+          applicantName,
+          consumerId: consumer,
+          escomName: escomVal,
+        });
+      }, 1200);
+    }, 1000);
+  };
+
+  const handleManualSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearTimers();
+    await executeSubmission({
+      applicantName: name || 'ಸವಿತಾ ಕುಮಾರಿ',
+      consumerId: consumerId || '1029384756',
+      escomName: escom,
+    });
   };
 
   return (
@@ -195,6 +249,8 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
               ? '#fef08a'
               : agentStep === 'submitted'
               ? '#bbf7d0'
+              : agentStep === 'error'
+              ? '#fee2e2'
               : '#e0f2fe',
           borderBottom: '1px solid #d1d5db',
           display: 'flex',
@@ -207,6 +263,8 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
               ? '#854d0e'
               : agentStep === 'submitted'
               ? '#166534'
+              : agentStep === 'error'
+              ? '#991b1b'
               : '#0369a1',
         }}
       >
@@ -215,16 +273,15 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
             {agentStep === 'typing' && '🤖 JanVaani Voice Agent is automatically filling the Seva Sindhu form...'}
             {agentStep === 'submitting' && '⏳ Form-Filler Agent Submitting to Karnataka State Gateway...'}
             {agentStep === 'submitted' && '✅ Agent Execution Complete! Official Seva Sindhu Acknowledgment Generated.'}
+            {agentStep === 'error' && '❌ Seva Sindhu Gateway Error • Submission Halted'}
             {agentStep === 'idle' && '🟢 Seva Sindhu Portal Ready • Awaiting WhatsApp Voice Agent Dispatch'}
           </span>
         </div>
 
         {agentStep !== 'submitted' && (
           <button
-            onClick={() => {
-              setAgentStep('idle');
-              setTimeout(() => setAgentStep('typing'), 100);
-            }}
+            onClick={handleTriggerTestAgent}
+            disabled={agentStep === 'typing' || agentStep === 'submitting'}
             style={{
               padding: '4px 10px',
               fontSize: '11px',
@@ -232,8 +289,9 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
               color: '#ffffff',
               border: 'none',
               borderRadius: '4px',
-              cursor: 'pointer',
+              cursor: agentStep === 'typing' || agentStep === 'submitting' ? 'not-allowed' : 'pointer',
               fontWeight: 600,
+              opacity: agentStep === 'typing' || agentStep === 'submitting' ? 0.6 : 1,
             }}
           >
             ⚡ Test Agent Auto-Fill
@@ -243,6 +301,45 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
 
       {/* Form Content */}
       <div style={{ padding: '24px', maxWidth: '720px', margin: '0 auto', width: '100%' }}>
+        {agentStep === 'error' && (
+          <div
+            style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #f87171',
+              color: '#991b1b',
+              padding: '14px 18px',
+              borderRadius: '8px',
+              marginBottom: '16px',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '14px' }}>
+              ⚠️ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ ವಿಫಲವಾಗಿದೆ (Submission Failed)
+            </div>
+            <div style={{ fontSize: '13px', marginTop: '4px' }}>
+              {errorMessage || 'Unable to connect to Seva Sindhu gateway. Please verify connection and retry.'}
+            </div>
+            <button
+              onClick={() => {
+                setErrorMessage(null);
+                setAgentStep('idle');
+              }}
+              style={{
+                marginTop: '10px',
+                padding: '5px 14px',
+                fontSize: '12px',
+                fontWeight: 600,
+                backgroundColor: '#991b1b',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              ಮರುಪ್ರಯತ್ನಿಸಿ (Retry)
+            </button>
+          </div>
+        )}
+
         {agentStep === 'submitted' && ackReceipt ? (
           /* Official Acknowledgment Receipt */
           <div

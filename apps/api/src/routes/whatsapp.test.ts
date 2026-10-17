@@ -262,5 +262,51 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(data.audioBase64.length > 0);
       assert.ok(data.spokenNotificationKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
     });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu rejects malformed payload with 400 VALIDATION_ERROR', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'A',
+            consumerId: '123',
+            escomName: 'INVALID_ESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu masks citizen PII and generates high-entropy acknowledgment', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+            consumerId: '1029384756',
+            escomName: 'BESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.match(data.acknowledgmentNumber, /^GJ-BESCOM-2026-[0-9A-F]{8}$/);
+      assert.ok(data.applicantName.includes('*'));
+      assert.strictEqual(data.consumerId, '******4756');
+
+      const lookupRes = await fetch(`${baseUrl}/api/whatsapp/status/${data.acknowledgmentNumber}`);
+      assert.strictEqual(lookupRes.status, 200);
+      const lookupData = await lookupRes.json();
+      assert.strictEqual(lookupData.data.applicantName, data.applicantName);
+    });
   });
 });

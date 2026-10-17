@@ -129,11 +129,44 @@ export class ApplicationTrackerService {
   }
 
   /**
-   * Register a newly submitted application record
+   * Check if a record exists for the given acknowledgment number
+   */
+  hasRecord(rawAckNumber: string): boolean {
+    return this.records.has(rawAckNumber.trim().toUpperCase());
+  }
+
+  /**
+   * Register a newly submitted application record with collision guard
    */
   registerRecord(record: ApplicationStatusRecord): void {
-    this.records.set(record.ackNumber.toUpperCase(), record);
+    const key = record.ackNumber.trim().toUpperCase();
+    if (this.records.has(key)) {
+      throw new Error(`Record with acknowledgment number ${key} already exists.`);
+    }
+    this.records.set(key, record);
   }
+}
+
+/**
+ * Mask applicant name to preserve privacy in shared/public lookup interfaces
+ */
+export function maskApplicantName(name: string): string {
+  if (!name) return 'ನಾಗರಿಕರು (Citizen)';
+  const parts = name.trim().split(/\s+/);
+  return parts
+    .map((p) => {
+      if (p.length <= 2) return p;
+      return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
+    })
+    .join(' ');
+}
+
+/**
+ * Mask identifier (e.g. consumer ID or Aadhaar) to keep last 4 digits only
+ */
+export function maskId(id: string): string {
+  if (!id || id.length < 4) return '****';
+  return '*'.repeat(id.length - 4) + id.slice(-4);
 }
 
 export const trackerService = new ApplicationTrackerService();
