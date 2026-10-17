@@ -367,6 +367,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(data.schemeId, 'gruha_lakshmi');
       assert.match(data.acknowledgmentNumber, /^GL-KAR-2026-[0-9A-F]{8}$/);
       assert.ok(data.applicantName.includes('*'));
+      assert.ok(data.bankAccountNumber.includes('*'));
     });
 
     it('POST /api/whatsapp/agent/submit-seva-sindhu submits Caste & Income Certificate application with RD-KAR- acknowledgment', async () => {

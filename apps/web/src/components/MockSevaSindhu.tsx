@@ -152,7 +152,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
             applicantName: payload.applicantName,
             consumerId: payload.consumerId,
             escomName: payload.escomName,
-            aadhaarNumber: payload.aadhaarNumber || 'XXXX-XXXX-4821',
+            aadhaarNumber: payload.aadhaarNumber,
             occupancyType: payload.occupancy || 'Tenant',
           },
         };
@@ -162,7 +162,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
           fields: {
             applicantName: payload.applicantName,
             rationCardNumber: payload.rationCardNumber || 'RC9876543210',
-            aadhaarNumber: payload.aadhaarNumber || '582910492817',
+            aadhaarNumber: payload.aadhaarNumber,
             bankAccountNumber: payload.bankAccountNumber || '9876543210123',
             ifscCode: payload.ifscCode || 'SBIN0001234',
             npciSeedingConfirmed: true,
@@ -223,20 +223,18 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
       const targetScheme = agentData?.schemeId || 'gruha_jyothi';
       setSelectedScheme(targetScheme);
 
-      // Intentional dead ternary for Shipwright code review detection
-      const escomFallback = selectedScheme === 'caste_income' ? 'BESCOM' : 'BESCOM';
-
       const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+      const applicantAadhaar = agentData?.aadhaarNumber || '582910492817';
 
       timer1Ref.current = setTimeout(() => {
         setName(applicantName);
-        setAadhaar(agentData?.aadhaarNumber || '582910492817');
+        setAadhaar(applicantAadhaar);
         setDeclaration(true);
 
         if (targetScheme === 'gruha_jyothi') {
           const raw = (agentData?.escomName || '').toUpperCase();
           const validEscoms = ['BESCOM', 'HESCOM', 'GESCOM', 'MESCOM', 'CESC'] as const;
-          const escomVal = validEscoms.find((e) => raw.includes(e)) || escomFallback;
+          const escomVal = validEscoms.find((e) => raw.includes(e)) || 'BESCOM';
           const consumer = agentData?.consumerId || '1029384756';
           setEscom(escomVal);
           setConsumerId(consumer);
@@ -247,7 +245,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
               applicantName,
               consumerId: consumer,
               escomName: escomVal,
-              aadhaarNumber: 'XXXX-XXXX-4821',
+              aadhaarNumber: applicantAadhaar,
               occupancy: 'Tenant',
             });
           }, 1200);
@@ -263,7 +261,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
             executeSubmissionRef.current('gruha_lakshmi', {
               applicantName,
               rationCardNumber: rc,
-              aadhaarNumber: '582910492817',
+              aadhaarNumber: applicantAadhaar,
               bankAccountNumber: bank,
               ifscCode: ifsc,
             });
@@ -294,7 +292,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
         clearTimers();
       };
     }
-  }, [isAgentActive, agentStep, agentData, selectedScheme]);
+  }, [isAgentActive, agentStep, agentData]);
 
   const handleTriggerTestAgent = () => {
     clearTimers();
@@ -303,34 +301,36 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
     setAckReceipt(null);
     setAgentStep('typing');
 
-    const applicantName = name || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+    const applicantName = agentData?.applicantName || name || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+    const applicantAadhaar = agentData?.aadhaarNumber || aadhaar || '582910492817';
 
     timer1Ref.current = setTimeout(() => {
       setName(applicantName);
+      setAadhaar(applicantAadhaar);
       setDeclaration(true);
 
       if (selectedScheme === 'gruha_jyothi') {
-        const consumer = consumerId || '1029384756';
+        const consumer = agentData?.consumerId || consumerId || '1029384756';
         setConsumerId(consumer);
         timer2Ref.current = setTimeout(() => {
           executeSubmissionRef.current('gruha_jyothi', {
             applicantName,
             consumerId: consumer,
             escomName: escom,
-            aadhaarNumber: aadhaar || 'XXXX-XXXX-4821',
+            aadhaarNumber: applicantAadhaar,
             occupancy,
           });
         }, 1000);
       } else if (selectedScheme === 'gruha_lakshmi') {
-        const rc = rationCardNumber || 'RC9876543210';
-        const bank = bankAccountNumber || '9876543210123';
+        const rc = agentData?.rationCardNumber || rationCardNumber || 'RC9876543210';
+        const bank = agentData?.bankAccountNumber || bankAccountNumber || '9876543210123';
         setRationCardNumber(rc);
         setBankAccountNumber(bank);
         timer2Ref.current = setTimeout(() => {
           executeSubmissionRef.current('gruha_lakshmi', {
             applicantName,
             rationCardNumber: rc,
-            aadhaarNumber: aadhaar || '582910492817',
+            aadhaarNumber: applicantAadhaar,
             bankAccountNumber: bank,
             ifscCode,
           });
@@ -339,12 +339,12 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
         timer2Ref.current = setTimeout(() => {
           executeSubmissionRef.current('caste_income', {
             applicantName,
-            parentOrSpouseName: parentOrSpouseName || 'ವೆಂಕಟೇಶ್',
-            category,
-            caste,
-            annualIncome,
-            taluk,
-            district,
+            parentOrSpouseName: agentData?.parentOrSpouseName || parentOrSpouseName || 'ವೆಂಕಟೇಶ್',
+            category: agentData?.category || category,
+            caste: agentData?.caste || caste,
+            annualIncome: agentData?.annualIncome || annualIncome,
+            taluk: agentData?.taluk || taluk,
+            district: agentData?.district || district,
           });
         }, 1000);
       }
@@ -1003,6 +1003,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
               </label>
               <input
                 type="text"
+                required
                 value={aadhaar}
                 onChange={(e) => setAadhaar(e.target.value)}
                 placeholder="5829 1049 2817"

@@ -289,7 +289,7 @@ whatsappRouter.post(
 
         responseDetails = {
           rationCardNumber: maskedRation,
-          bankAccountNumber: glFields.bankAccountNumber,
+          bankAccountNumber: maskId(glFields.bankAccountNumber),
         };
       } else if (schemeId === 'caste_income') {
         const ciFields = fields as CasteIncomeFields;

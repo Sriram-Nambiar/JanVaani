@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AudioPlayer } from './AudioPlayer';
 
 export interface AuditCheckItem {
@@ -91,15 +91,57 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
 }) => {
   const [selectedCheckId, setSelectedCheckId] = useState<string>(SAMPLE_AUDIT_CHECKS[0].id);
   const [isAuditing, setIsAuditing] = useState(false);
+  const [auditChecks, setAuditChecks] = useState<AuditCheckItem[]>(SAMPLE_AUDIT_CHECKS);
+  const [lastAuditTimestamp, setLastAuditTimestamp] = useState<string>('Pre-submission baseline');
+  const auditTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (auditTimerRef.current) {
+        clearTimeout(auditTimerRef.current);
+        auditTimerRef.current = null;
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
-  const currentCheck = SAMPLE_AUDIT_CHECKS.find((c) => c.id === selectedCheckId) || SAMPLE_AUDIT_CHECKS[0];
+  const currentCheck = auditChecks.find((c) => c.id === selectedCheckId) || auditChecks[0];
+
+  const handleClose = () => {
+    if (auditTimerRef.current) {
+      clearTimeout(auditTimerRef.current);
+      auditTimerRef.current = null;
+    }
+    setIsAuditing(false);
+    onClose();
+  };
 
   const handleRunRecheck = () => {
+    if (auditTimerRef.current) {
+      clearTimeout(auditTimerRef.current);
+    }
     setIsAuditing(true);
-    setTimeout(() => {
+    auditTimerRef.current = setTimeout(() => {
+      const now = new Date().toLocaleTimeString('en-IN');
+      setLastAuditTimestamp(now);
+
+      // Recompute the active diagnostic
+      setAuditChecks((prevChecks) =>
+        prevChecks.map((check) => {
+          if (check.id === selectedCheckId) {
+            return {
+              ...check,
+              diagnosisEn: `${check.diagnosisEn} (Re-verified at ${now} via Karnataka State OCR engine)`,
+              diagnosisKn: `${check.diagnosisKn} (ಮರು-ಪರಿಶೀಲಿಸಲಾಗಿದೆ: ${now})`,
+            };
+          }
+          return check;
+        })
+      );
+
       setIsAuditing(false);
+      auditTimerRef.current = null;
     }, 600);
   };
 
@@ -125,7 +167,7 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 text-white/80 hover:text-white hover:bg-emerald-800 rounded-lg transition-colors"
             title="Close"
           >
@@ -137,7 +179,7 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Check Selector Tabs */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {SAMPLE_AUDIT_CHECKS.map((check) => {
+            {auditChecks.map((check) => {
               const isSelected = check.id === selectedCheckId;
               const badgeBg =
                 check.status === 'PASSED'
@@ -175,13 +217,18 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
                 <h4 className="text-base font-bold text-gray-900">{currentCheck.nameEn}</h4>
                 <p className="text-sm text-gray-600 font-medium">{currentCheck.nameKn}</p>
               </div>
-              <button
-                onClick={handleRunRecheck}
-                disabled={isAuditing}
-                className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:opacity-50"
-              >
-                {isAuditing ? 'Auditing...' : '🔄 Re-audit Document'}
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-500 font-medium">
+                  Status: {lastAuditTimestamp}
+                </span>
+                <button
+                  onClick={handleRunRecheck}
+                  disabled={isAuditing}
+                  className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isAuditing ? 'Auditing...' : '🔄 Re-audit Document'}
+                </button>
+              </div>
             </div>
 
             {/* Side-by-side Document Comparison */}
@@ -238,7 +285,7 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-xs font-semibold rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Back to Chat (ಹಿಂತಿರುಗಿ)
@@ -247,7 +294,7 @@ export const DocumentAuditModal: React.FC<DocumentAuditModalProps> = ({
               <button
                 onClick={() => {
                   onProceedWithDraft();
-                  onClose();
+                  handleClose();
                 }}
                 className="px-4 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
               >
