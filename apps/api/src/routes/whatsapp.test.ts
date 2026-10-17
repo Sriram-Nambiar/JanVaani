@@ -374,21 +374,40 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(data.html.includes('GJ-BESCOM-2026-TEST1234'));
     });
 
-    it('GET /api/whatsapp/draft/:ackNumber/html returns printable HTML document', async () => {
-      const res = await fetch(`${baseUrl}/api/whatsapp/draft/RD001/html`);
+    it('GET /api/whatsapp/draft/:ackNumber/html returns printable HTML document with record audit findings', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/draft/RD003/html`);
       assert.strictEqual(res.status, 200);
       const contentType = res.headers.get('content-type');
       assert.ok(contentType?.includes('text/html'));
       const html = await res.text();
       assert.ok(html.includes('<!DOCTYPE html>'));
-      assert.ok(html.includes('RD001'));
-      assert.ok(html.includes('ಕರ್ನಾಟಕ ಸರ್ಕಾರ'));
+      assert.ok(html.includes('RD003'));
+      assert.ok(html.includes('Family Tree Certificate'));
+      assert.ok(html.includes('FLAGGED'));
     });
 
-    it('POST /api/whatsapp/status/simulate-push advances stage and generates synthesized voice notification', async () => {
+    it('POST /api/whatsapp/status/simulate-push rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ackNumber: 'RD002',
+          stage: 'APPROVED',
+        }),
+      });
+
+      assert.strictEqual(res.status, 401);
+      const data = await res.json();
+      assert.strictEqual(data.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/whatsapp/status/simulate-push advances stage and generates synthesized voice notification with valid auth', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': 'janvaani_demo_secret',
+        },
         body: JSON.stringify({
           ackNumber: 'RD002',
           stage: 'APPROVED',
@@ -407,7 +426,10 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
     it('POST /api/whatsapp/status/simulate-push rejects invalid stage with 400', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': 'janvaani_demo_secret',
+        },
         body: JSON.stringify({
           ackNumber: 'RD002',
           stage: 'INVALID_STAGE_NAME',

@@ -33,7 +33,11 @@ export const OfficerPushSimulator: React.FC<OfficerPushSimulatorProps> = ({
     try {
       const res = await fetch('/api/whatsapp/status/simulate-push', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': 'janvaani_demo_secret',
+          'x-janvaani-role': 'officer-simulator',
+        },
         body: JSON.stringify({
           ackNumber: selectedAck,
           stage,

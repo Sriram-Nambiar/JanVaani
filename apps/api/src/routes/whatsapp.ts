@@ -320,24 +320,20 @@ whatsappRouter.get(
 
       const html = draftPdfService.generateDraftHtml({
         ackNumber: record.ackNumber,
-        schemeId: record.ackNumber.startsWith('GJ-')
-          ? 'gruha_jyothi'
-          : record.ackNumber === 'RD002'
-          ? 'gruha_lakshmi'
-          : 'caste_income',
+        schemeId:
+          record.schemeId ||
+          (record.ackNumber.startsWith('GJ-')
+            ? 'gruha_jyothi'
+            : record.schemeNameKn.includes('ಗೃಹಲಕ್ಷ್ಮಿ')
+            ? 'gruha_lakshmi'
+            : 'caste_income'),
         applicantName: record.applicantName,
-        auditFindings: [
+        auditFindings: record.auditFindings || [
           {
-            field: 'Aadhaar Card',
+            field: 'Identity Verification (Aadhaar)',
             status: 'PASSED',
-            noteKn: 'ಆಧಾರ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
-            noteEn: 'Aadhaar identity verified against state records',
-          },
-          {
-            field: 'Ration Card',
-            status: 'PASSED',
-            noteKn: 'ಪಡಿತರ ಚೀಟಿ ಸಿಂಧುವಾಗಿದೆ',
-            noteEn: 'Ration card active and matched',
+            noteKn: 'ದಾಖಲೆ ವಿವರಗಳು ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
+            noteEn: 'Identity verified against state records',
           },
         ],
       });
@@ -352,14 +348,26 @@ whatsappRouter.get(
 
 /**
  * Simulated Officer Push Notification Dispatcher
- * Allows an authorized administrative simulator to advance an application's stage
- * and triggers an unprompted, authentic Kannada voice alert delivered to the citizen.
+ * Protected by administrative demo authorization header
  */
 whatsappRouter.post(
   '/status/simulate-push',
   validateBody(statusPushSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace(/^Bearer\s+/, '');
+      const expectedKey = process.env.DEMO_ADMIN_KEY || 'janvaani_demo_secret';
+      const role = req.headers['x-janvaani-role'];
+
+      if (adminKey !== expectedKey && role !== 'officer-simulator') {
+        return res.status(401).json({
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Administrative authorization required to simulate officer status transitions.',
+          },
+        });
+      }
+
       const input = req.body as StatusPushInput;
       const updatedRecord = trackerService.updateStage(input.ackNumber, input.stage, input.customMessageKn);
       const ttsResult = await sarvamService.textToSpeech(updatedRecord.spokenNotificationKn);

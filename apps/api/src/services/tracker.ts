@@ -14,6 +14,7 @@ export interface ApplicationTimelineStep {
 
 export interface ApplicationStatusRecord {
   ackNumber: string;
+  schemeId?: 'gruha_jyothi' | 'gruha_lakshmi' | 'caste_income';
   schemeNameKn: string;
   schemeNameEn: string;
   applicantName: string;
@@ -23,6 +24,12 @@ export interface ApplicationStatusRecord {
   spokenNotificationKn: string;
   spokenNotificationEn: string;
   isReadyForDownload: boolean;
+  auditFindings?: Array<{
+    field: string;
+    status: 'PASSED' | 'FLAGGED' | 'WARNING';
+    noteKn: string;
+    noteEn: string;
+  }>;
 }
 
 export class ApplicationTrackerService {
@@ -36,12 +43,27 @@ export class ApplicationTrackerService {
     // Seed 1: Approved and Ready (RD001)
     this.records.set('RD001', {
       ackNumber: 'RD001',
+      schemeId: 'caste_income',
       schemeNameKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ',
       schemeNameEn: 'Caste & Income Certificate',
       applicantName: 'ಸವಿತಾ (Savitha)',
       currentStageKn: 'ತಹಸೀಲ್ದಾರ್ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)',
       currentStageEn: 'Approved by Tahsildar (Ready for Download)',
       isReadyForDownload: true,
+      auditFindings: [
+        {
+          field: 'Aadhaar Card',
+          status: 'PASSED',
+          noteKn: 'ಆಧಾರ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
+          noteEn: 'Aadhaar identity verified',
+        },
+        {
+          field: 'Income Certificate Affidavit',
+          status: 'PASSED',
+          noteKn: 'ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ ಅನುಮೋದನೆಗೊಂಡಿದೆ',
+          noteEn: 'Income certificate affidavit approved',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಗ್ರಾಮ ಒನ್‌ನಲ್ಲಿ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ', labelEn: 'Application Submitted at Grama One', status: 'COMPLETED', updatedAt: '2026-10-10' },
         { step: 2, labelKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ (RI) ಸ್ಥಳ ಪರಿಶೀಲನೆ', labelEn: 'Revenue Inspector Verification', status: 'COMPLETED', updatedAt: '2026-10-12' },
@@ -57,12 +79,27 @@ export class ApplicationTrackerService {
     // Seed 2: In-Progress at Revenue Inspector (RD002)
     this.records.set('RD002', {
       ackNumber: 'RD002',
+      schemeId: 'gruha_lakshmi',
       schemeNameKn: 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆ',
       schemeNameEn: 'Gruha Lakshmi Scheme',
       applicantName: 'ಮಂಜುಳಾ (Manjula)',
       currentStageKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ ಪರಿಶೀಲನೆಯ ಹಂತದಲ್ಲಿದೆ',
       currentStageEn: 'Verification by Revenue Inspector In Progress',
       isReadyForDownload: false,
+      auditFindings: [
+        {
+          field: 'Ration Card',
+          status: 'PASSED',
+          noteKn: 'ಕುಟುಂಬದ ಯಜಮಾನಿ ಮಹಿಳೆ ಎಂದು ದೃಢೀಕರಿಸಲಾಗಿದೆ',
+          noteEn: 'Head of household confirmed',
+        },
+        {
+          field: 'Bank Account Aadhaar Seeding',
+          status: 'PASSED',
+          noteKn: 'ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಆಧಾರ್ ಲಿಂಕ್ ಆಗಿದೆ',
+          noteEn: 'Bank account NPCI mapping active',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಅರ್ಜಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', labelEn: 'Application Submitted', status: 'COMPLETED', updatedAt: '2026-10-13' },
         { step: 2, labelKn: 'ಗ್ರಾಮ ಆಡಳಿತಾಧಿಕಾರಿ ಮತ್ತು RI ಪರಿಶೀಲನೆ', labelEn: 'Field Verification in Progress', status: 'IN_PROGRESS', updatedAt: '2026-10-15' },
@@ -78,12 +115,21 @@ export class ApplicationTrackerService {
     // Seed 3: Action Required / Document Issue (RD003)
     this.records.set('RD003', {
       ackNumber: 'RD003',
+      schemeId: 'caste_income',
       schemeNameKn: 'ಪಡಿತರ ಚೀಟಿ ತಿದ್ದುಪಡಿ',
       schemeNameEn: 'Ration Card Correction',
       applicantName: 'ಬಸವರಾಜ್ (Basavaraj)',
       currentStageKn: 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)',
       currentStageEn: 'Action Required: Incomplete Family Tree Document',
       isReadyForDownload: false,
+      auditFindings: [
+        {
+          field: 'Family Tree Certificate (ವಂಶವೃಕ್ಷ)',
+          status: 'FLAGGED',
+          noteKn: 'ವಂಶವೃಕ್ಷ ಪ್ರಮಾಣ ಪತ್ರ ಅಪೂರ್ಣವಾಗಿದೆ',
+          noteEn: 'Incomplete family tree affidavit requiring re-submission',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಅರ್ಜಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', labelEn: 'Application Submitted', status: 'COMPLETED', updatedAt: '2026-10-11' },
         { step: 2, labelKn: 'ದಾಖಲೆ ಪರಿಶೀಲನೆಯಲ್ಲಿ ದೋಷ', labelEn: 'Document Discrepancy Flagged', status: 'REJECTED', updatedAt: '2026-10-14' },
@@ -214,7 +260,7 @@ export class ApplicationTrackerService {
         customMessageKn ||
         `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಕಂದಾಯ ನಿರೀಕ್ಷಕರಿಂದ ಸ್ಥಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ.`;
       spokenEn = `Field verification is underway for application ${record.ackNumber}.`;
-    } else {
+    } else if (stage === 'REJECTED') {
       currentStageKn = 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ (Rejected)';
       currentStageEn = 'Application Rejected';
       isReadyForDownload = false;
@@ -222,6 +268,8 @@ export class ApplicationTrackerService {
         customMessageKn ||
         `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ವಿವರಗಳಿಗೆ ತಾಲೂಕು ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`;
       spokenEn = `Application ${record.ackNumber} has been rejected.`;
+    } else {
+      throw new Error(`Unsupported stage: ${stage}`);
     }
 
     const updatedTimeline = record.timeline.map((step) => {
@@ -232,7 +280,7 @@ export class ApplicationTrackerService {
           updatedAt: new Date().toISOString().split('T')[0],
         };
       }
-      if (stage === 'DISPATCHED') {
+      if (stage === 'DISPATCHED' && step.step <= 4) {
         return {
           ...step,
           status: 'COMPLETED' as const,
@@ -252,7 +300,13 @@ export class ApplicationTrackerService {
       spokenNotificationEn: spokenEn,
     };
 
-    this.records.set(record.ackNumber.toUpperCase(), updatedRecord);
+    const cleanedKey = ackNumber.trim().toUpperCase();
+    for (const k of this.records.keys()) {
+      if (k.trim().toUpperCase() === cleanedKey) {
+        this.records.delete(k);
+      }
+    }
+    this.records.set(cleanedKey, updatedRecord);
     return updatedRecord;
   }
 }
