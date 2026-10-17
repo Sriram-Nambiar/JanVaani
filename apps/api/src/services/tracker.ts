@@ -127,6 +127,13 @@ export class ApplicationTrackerService {
       spokenNotificationEn: `Your application ${cleaned} has been registered and is under official verification. We will notify you as soon as the status updates.`,
     };
   }
+
+  /**
+   * Register a newly submitted application record
+   */
+  registerRecord(record: ApplicationStatusRecord): void {
+    this.records.set(record.ackNumber.toUpperCase(), record);
+  }
 }
 
 export const trackerService = new ApplicationTrackerService();

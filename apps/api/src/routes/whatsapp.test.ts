@@ -240,5 +240,27 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       );
       assert.strictEqual(res.status, 403);
     });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu submits Gruha Jyothi application to Seva Sindhu', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+            consumerId: '1029384756',
+            escomName: 'BESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.ok(data.acknowledgmentNumber.startsWith('GJ-BESCOM-2026-'));
+      assert.ok(data.audioBase64.length > 0);
+      assert.ok(data.spokenNotificationKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
+    });
   });
 });

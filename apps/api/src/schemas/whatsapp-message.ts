@@ -27,6 +27,8 @@ export const whatsappMessageSchema = z.object({
     .enum([
       'gruha_lakshmi_apply',
       'caste_income_apply',
+      'gruha_jyothi_apply',
+      'gruha_jyothi_submit_agent',
       'document_check_mismatch',
       'document_check_valid',
       'status_check_rd001',

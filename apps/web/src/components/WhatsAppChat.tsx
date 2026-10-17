@@ -5,9 +5,10 @@ import { AudioPlayer } from './AudioPlayer';
 
 interface WhatsAppChatProps {
   onEngineUpdate: (data: WhatsAppApiResponse) => void;
+  onDispatchAgent?: (data: any) => void;
 }
 
-export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate }) => {
+export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate, onDispatchAgent }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -301,6 +302,46 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate }) =>
         <span style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', alignSelf: 'center' }}>
           ಡೆಮೊ ಸನ್ನಿವೇಶಗಳು:
         </span>
+        <button
+          onClick={() => triggerPreset('gruha_jyothi_apply', 'ಗೃಹ ಜ್ಯೋತಿ 200 ಯೂನಿಟ್ ಉಚಿತ ಕರೆಂಟ್ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು')}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #0284c7',
+            backgroundColor: '#ffffff',
+            color: '#0369a1',
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          ⚡ ಗೃಹ ಜ್ಯೋತಿ (ವಿದ್ಯುತ್)
+        </button>
+        <button
+          onClick={() => {
+            triggerPreset('gruha_jyothi_submit_agent', 'ಖಾತೆ ಸಂಖ್ಯೆ 1029384756, ಬೆಸ್ಕಾಂ (BESCOM) ಏಜೆಂಟ್ ಸಲ್ಲಿಕೆ');
+            if (onDispatchAgent) {
+              onDispatchAgent({
+                schemeId: 'gruha_jyothi',
+                consumerId: '1029384756',
+                applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+                escomName: 'BESCOM',
+              });
+            }
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #800000',
+            backgroundColor: '#800000',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          🤖 ಸೇವಾ ಸಿಂಧು ಏಜೆಂಟ್ ಸಲ್ಲಿಕೆ
+        </button>
         <button
           onClick={() => triggerPreset('gruha_lakshmi_apply', 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು')}
           style={{
