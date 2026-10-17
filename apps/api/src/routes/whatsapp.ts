@@ -7,9 +7,16 @@ import {
   sevaSindhuSubmissionSchema,
   SevaSindhuSubmissionInput,
 } from '../schemas/whatsapp-message.js';
+import {
+  draftPdfSchema,
+  DraftPdfInput,
+  statusPushSchema,
+  StatusPushInput,
+} from '../schemas/draft-pdf.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
 import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
+import { draftPdfService } from '../services/pdf.js';
 
 export const whatsappRouter = Router();
 
@@ -278,3 +285,97 @@ whatsappRouter.get('/webhook', (req: Request, res: Response) => {
   }
   return res.sendStatus(403);
 });
+
+/**
+ * Generate printable Application Draft HTML document
+ */
+whatsappRouter.post(
+  '/draft/generate-html',
+  validateBody(draftPdfSchema),
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = req.body as DraftPdfInput;
+      const html = draftPdfService.generateDraftHtml(input);
+
+      res.status(200).json({
+        status: 'ok',
+        ackNumber: input.ackNumber,
+        html,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Direct printable Application Draft HTML view
+ */
+whatsappRouter.get(
+  '/draft/:ackNumber/html',
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ackNumber = req.params.ackNumber;
+      const record = trackerService.lookupStatus(ackNumber);
+
+      const html = draftPdfService.generateDraftHtml({
+        ackNumber: record.ackNumber,
+        schemeId: record.ackNumber.startsWith('GJ-')
+          ? 'gruha_jyothi'
+          : record.ackNumber === 'RD002'
+          ? 'gruha_lakshmi'
+          : 'caste_income',
+        applicantName: record.applicantName,
+        auditFindings: [
+          {
+            field: 'Aadhaar Card',
+            status: 'PASSED',
+            noteKn: 'ಆಧಾರ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
+            noteEn: 'Aadhaar identity verified against state records',
+          },
+          {
+            field: 'Ration Card',
+            status: 'PASSED',
+            noteKn: 'ಪಡಿತರ ಚೀಟಿ ಸಿಂಧುವಾಗಿದೆ',
+            noteEn: 'Ration card active and matched',
+          },
+        ],
+      });
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.status(200).send(html);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Simulated Officer Push Notification Dispatcher
+ * Allows an authorized administrative simulator to advance an application's stage
+ * and triggers an unprompted, authentic Kannada voice alert delivered to the citizen.
+ */
+whatsappRouter.post(
+  '/status/simulate-push',
+  validateBody(statusPushSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = req.body as StatusPushInput;
+      const updatedRecord = trackerService.updateStage(input.ackNumber, input.stage, input.customMessageKn);
+      const ttsResult = await sarvamService.textToSpeech(updatedRecord.spokenNotificationKn);
+
+      res.status(200).json({
+        status: 'ok',
+        ackNumber: input.ackNumber,
+        stage: input.stage,
+        updatedRecord,
+        spokenNotificationKn: updatedRecord.spokenNotificationKn,
+        spokenNotificationEn: updatedRecord.spokenNotificationEn,
+        audioBase64: ttsResult.audioBase64,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);

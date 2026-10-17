@@ -165,6 +165,96 @@ export class ApplicationTrackerService {
     }
     return null;
   }
+
+  /**
+   * Update the stage of an application record (used by Officer Simulation Push)
+   */
+  updateStage(
+    ackNumber: string,
+    stage: 'APPROVED' | 'REJECTED' | 'DISPATCHED' | 'FIELD_VERIFICATION' | 'RESUBMIT_REQUIRED',
+    customMessageKn?: string
+  ): ApplicationStatusRecord {
+    const record = this.lookupStatus(ackNumber);
+
+    let currentStageKn = record.currentStageKn;
+    let currentStageEn = record.currentStageEn;
+    let isReadyForDownload = record.isReadyForDownload;
+    let spokenKn = '';
+    let spokenEn = '';
+
+    if (stage === 'APPROVED') {
+      currentStageKn = 'ತಹಸೀಲ್ದಾರ್ / ಇಲಾಖಾ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)';
+      currentStageEn = 'Approved by Officer (Ready for Download)';
+      isReadyForDownload = true;
+      spokenKn =
+        customMessageKn ||
+        `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಅನುಮೋದನೆಗೊಂಡಿದೆ. ನಿಮ್ಮ ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ.`;
+      spokenEn = `Great news! Your application ${record.ackNumber} has been approved. Your certificate is ready for download.`;
+    } else if (stage === 'DISPATCHED') {
+      currentStageKn = 'ಪ್ರಮಾಣ ಪತ್ರ ರವಾನಿಸಲಾಗಿದೆ / ಡೌನ್‌ಲೋಡ್‌ಗೆ ಲಭ್ಯವಿದೆ';
+      currentStageEn = 'Dispatched and Available for Download';
+      isReadyForDownload = true;
+      spokenKn =
+        customMessageKn ||
+        `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಯಶಸ್ವಿಯಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ಪ್ರಮಾಣ ಪತ್ರವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿಕೊಳ್ಳಬಹುದು.`;
+      spokenEn = `Your application ${record.ackNumber} is complete and dispatched.`;
+    } else if (stage === 'RESUBMIT_REQUIRED') {
+      currentStageKn = 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)';
+      currentStageEn = 'Action Required: Additional Verification Needed';
+      isReadyForDownload = false;
+      spokenKn =
+        customMessageKn ||
+        `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಸಂಬಂಧಿಸಿದಂತೆ ಹೆಚ್ಚುವರಿ ದಾಖಲೆ ಸಲ್ಲಿಸಬೇಕಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.`;
+      spokenEn = `Attention: Application ${record.ackNumber} requires additional document verification.`;
+    } else if (stage === 'FIELD_VERIFICATION') {
+      currentStageKn = 'ಸ್ಥಳ ಪರಿಶೀಲನೆ ಪ್ರಗತಿಯಲ್ಲಿದೆ (Field Verification in Progress)';
+      currentStageEn = 'Field Verification in Progress';
+      isReadyForDownload = false;
+      spokenKn =
+        customMessageKn ||
+        `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಕಂದಾಯ ನಿರೀಕ್ಷಕರಿಂದ ಸ್ಥಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ.`;
+      spokenEn = `Field verification is underway for application ${record.ackNumber}.`;
+    } else {
+      currentStageKn = 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ (Rejected)';
+      currentStageEn = 'Application Rejected';
+      isReadyForDownload = false;
+      spokenKn =
+        customMessageKn ||
+        `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ವಿವರಗಳಿಗೆ ತಾಲೂಕು ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`;
+      spokenEn = `Application ${record.ackNumber} has been rejected.`;
+    }
+
+    const updatedTimeline = record.timeline.map((step) => {
+      if (stage === 'APPROVED' && step.step <= 3) {
+        return {
+          ...step,
+          status: 'COMPLETED' as const,
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+      }
+      if (stage === 'DISPATCHED') {
+        return {
+          ...step,
+          status: 'COMPLETED' as const,
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+      }
+      return step;
+    });
+
+    const updatedRecord: ApplicationStatusRecord = {
+      ...record,
+      currentStageKn,
+      currentStageEn,
+      isReadyForDownload,
+      timeline: updatedTimeline,
+      spokenNotificationKn: spokenKn,
+      spokenNotificationEn: spokenEn,
+    };
+
+    this.records.set(record.ackNumber.toUpperCase(), updatedRecord);
+    return updatedRecord;
+  }
 }
 
 /**

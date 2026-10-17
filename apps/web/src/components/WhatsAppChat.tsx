@@ -6,9 +6,16 @@ import { AudioPlayer } from './AudioPlayer';
 interface WhatsAppChatProps {
   onEngineUpdate: (data: WhatsAppApiResponse) => void;
   onDispatchAgent?: (data: any) => void;
+  onOpenDraftModal?: (ackNumber: string) => void;
+  pushedMessage?: ChatMessage | null;
 }
 
-export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate, onDispatchAgent }) => {
+export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
+  onEngineUpdate,
+  onDispatchAgent,
+  onOpenDraftModal,
+  pushedMessage,
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
@@ -18,6 +25,16 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate, onDi
       timestamp: '10:00 AM',
     },
   ]);
+
+  useEffect(() => {
+    if (pushedMessage) {
+      setMessages((prev) => {
+        // Prevent duplicate push message addition
+        if (prev.some((m) => m.id === pushedMessage.id)) return prev;
+        return [...prev, pushedMessage];
+      });
+    }
+  }, [pushedMessage]);
 
   const [inputText, setInputText] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -453,6 +470,36 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate, onDi
                   {msg.text}
                 </p>
               )}
+
+              {(() => {
+                const ackMatch = msg.text?.match(/\b(GJ-[A-Z]+-\d{4}-[0-9A-F]{6,10}|RD\d{3})\b/i);
+                if (ackMatch && onOpenDraftModal) {
+                  return (
+                    <button
+                      onClick={() => onOpenDraftModal(ackMatch[1].toUpperCase())}
+                      style={{
+                        marginTop: '4px',
+                        padding: '5px 10px',
+                        backgroundColor: '#f0fdf4',
+                        border: '1px solid #86efac',
+                        borderRadius: '6px',
+                        color: '#166534',
+                        fontWeight: 600,
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        alignSelf: 'flex-start',
+                      }}
+                    >
+                      <span>📄</span>
+                      <span>ಅರ್ಜಿ ಕರಡು ವೀಕ್ಷಿಸಿ (View Draft PDF)</span>
+                    </button>
+                  );
+                }
+                return null;
+              })()}
 
               <span
                 style={{
