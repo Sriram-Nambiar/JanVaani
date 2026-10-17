@@ -59,15 +59,16 @@ export class ShaktiService {
       throw new Error('Shakti Scheme requires Karnataka domicile proof');
     }
 
-    const entropy = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
     const passNumber = `SHAKTI-KAR-2026-${entropy}`;
     const issuedAt = new Date().toISOString();
     const validThroughDate = new Date();
     validThroughDate.setFullYear(validThroughDate.getFullYear() + 2);
     const validThrough = validThroughDate.toISOString();
 
-    const spokenConfirmationKn = `ಶುಭ ಸುದ್ದಿ! ${input.applicantName} ಅವರಿಗೆ ಶಕ್ತಿ ಯೋಜನೆಯಡಿ ಉಚಿತ ಬಸ್ ಪ್ರಯಾಣ ಪಾಸ್ ಸಿದ್ಧವಾಗಿದೆ. ಪಾಸ್ ಸಂಖ್ಯೆ ${passNumber}. ಕರ್ನಾಟಕದ KSRTC, BMTC, NWKRTC ಹಾಗೂ KKRTC ಸಾಮಾನ್ಯ ಮತ್ತು ವೇಗದೂತ ಬಸ್‌ಗಳಲ್ಲಿ ಸಂಪೂರ್ಣ ಉಚಿತವಾಗಿ ಪ್ರಯಾಣಿಸಬಹುದು.`;
-    const spokenConfirmationEn = `Success! Shakti Scheme Free Bus Travel Pass issued for ${input.applicantName}. Pass Number: ${passNumber}. 100% free travel across RTC state buses.`;
+    const applicantNameMasked = maskApplicantName(input.applicantName);
+    const spokenConfirmationKn = `ಶುಭ ಸುದ್ದಿ! ${applicantNameMasked} ಅವರಿಗೆ ಶಕ್ತಿ ಯೋಜನೆಯಡಿ ಉಚಿತ ಬಸ್ ಪ್ರಯಾಣ ಪಾಸ್ ಸಿದ್ಧವಾಗಿದೆ. ಪಾಸ್ ಸಂಖ್ಯೆ ${passNumber}. ಕರ್ನಾಟಕದ KSRTC, BMTC, NWKRTC ಹಾಗೂ KKRTC ಸಾಮಾನ್ಯ ಮತ್ತು ವೇಗದೂತ ಬಸ್‌ಗಳಲ್ಲಿ ಸಂಪೂರ್ಣ ಉಚಿತವಾಗಿ ಪ್ರಯಾಣಿಸಬಹುದು.`;
+    const spokenConfirmationEn = `Success! Shakti Scheme Free Bus Travel Pass issued for ${applicantNameMasked}. Pass Number: ${passNumber}. 100% free travel across RTC state buses.`;
 
     let audioBase64: string | undefined;
     try {
@@ -79,8 +80,8 @@ export class ShaktiService {
 
     const passResult: ShaktiPassResult = {
       passNumber,
-      applicantNameMasked: maskApplicantName(input.applicantName),
-      gender: 'FEMALE',
+      applicantNameMasked,
+      gender: input.gender,
       isKarnatakaDomicile: true,
       aadhaarMasked: maskId(input.aadhaarNumber),
       preferredRtc: input.preferredRtc,
@@ -98,7 +99,14 @@ export class ShaktiService {
 
   public async checkRoute(input: ShaktiRouteCheckInput): Promise<ShaktiRouteResult> {
     const isFree = ['ORDINARY', 'EXPRESS', 'NAGARA_SARIGE'].includes(input.busCategory);
-    const standardFare = input.busCategory === 'EXPRESS' ? 120 : input.busCategory === 'ORDINARY' ? 45 : 350;
+    const standardFare =
+      input.busCategory === 'EXPRESS'
+        ? 120
+        : input.busCategory === 'ORDINARY'
+        ? 45
+        : input.busCategory === 'NAGARA_SARIGE'
+        ? 25
+        : 350;
     const payableFare = isFree ? 0 : standardFare;
     const subsidySavings = isFree ? standardFare : 0;
 

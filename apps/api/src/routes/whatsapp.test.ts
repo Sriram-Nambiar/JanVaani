@@ -979,7 +979,8 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
       assert.strictEqual(res.status, 201);
       assert.strictEqual(body.status, 'ok');
-      assert.match(body.pass.passNumber, /^SHAKTI-KAR-2026-[A-F0-9]{4}$/);
+      assert.match(body.pass.passNumber, /^SHAKTI-KAR-2026-[A-F0-9]{8}$/);
+      assert.strictEqual(body.pass.aadhaarNumber, '********4821');
       assert.strictEqual(body.pass.gender, 'FEMALE');
       assert.strictEqual(body.pass.preferredRtc, 'BMTC');
       assert.ok(body.audioBase64.length > 0);
@@ -1069,7 +1070,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
 
       assert.strictEqual(res.status, 404);
-      assert.strictEqual(body.code, 'PASS_NOT_FOUND');
+      assert.strictEqual(body.error.code, 'PASS_NOT_FOUND');
     });
   });
 });

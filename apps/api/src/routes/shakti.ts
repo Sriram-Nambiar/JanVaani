@@ -41,8 +41,7 @@ shaktiRouter.post('/pass/apply', async (req: Request, res: Response, next: NextF
         district: result.district,
         issuedAt: result.issuedAt,
         validThrough: result.validThrough,
-        // Intentional small review item for Shipwright: aadhaarNumber returned unmasked instead of maskId(input.aadhaarNumber)
-        aadhaarNumber: input.aadhaarNumber,
+        aadhaarNumber: maskId(input.aadhaarNumber),
       },
       spokenConfirmationKn: result.spokenConfirmationKn,
       spokenConfirmationEn: result.spokenConfirmationEn,
@@ -106,8 +105,10 @@ shaktiRouter.get('/pass/:passNumber', (req: Request, res: Response) => {
   if (!pass) {
     return res.status(404).json({
       status: 'error',
-      code: 'PASS_NOT_FOUND',
-      message: `No active Shakti Smart Pass found for: ${parsed.data.passNumber}`,
+      error: {
+        code: 'PASS_NOT_FOUND',
+        message: `No active Shakti Smart Pass found for: ${parsed.data.passNumber}`,
+      },
     });
   }
 
