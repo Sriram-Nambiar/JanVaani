@@ -5,6 +5,7 @@ import { MockSevaSindhu } from './components/MockSevaSindhu';
 import { DraftViewerModal } from './components/DraftViewerModal';
 import { OfficerPushSimulator } from './components/OfficerPushSimulator';
 import { DocumentAuditModal } from './components/DocumentAuditModal';
+import { JanaSpandanaModal } from './components/JanaSpandanaModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
   const [pushedMessage, setPushedMessage] = useState<ChatMessage | null>(null);
   const [lastAck, setLastAck] = useState<string>('RD002');
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [isGrievanceModalOpen, setIsGrievanceModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -229,6 +231,26 @@ export function App() {
             <span>🔍</span> Kagada-Check (ಕಾಗದ ಪರಿಶೀಲನೆ)
           </button>
 
+          {/* JanaSpandana Public Grievance Redressal Trigger */}
+          <button
+            onClick={() => setIsGrievanceModalOpen(true)}
+            style={{
+              backgroundColor: '#b45309',
+              color: '#fef3c7',
+              border: '1px solid #d97706',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🏛️</span> ಜನಸ್ಪಂದನ 1902 (Grievance)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -271,6 +293,7 @@ export function App() {
               onEngineUpdate={handleEngineUpdate}
               onDispatchAgent={handleDispatchAgent}
               onOpenDraftModal={(ack) => setDraftModalAck(ack)}
+              onOpenGrievanceModal={() => setIsGrievanceModalOpen(true)}
               pushedMessage={pushedMessage}
             />
           </div>
@@ -355,6 +378,13 @@ export function App() {
           }));
           setRightPanelView('sevasindhu');
         }}
+      />
+
+      {/* JanaSpandana 1902 Public Grievance Redressal Modal */}
+      <JanaSpandanaModal
+        isOpen={isGrievanceModalOpen}
+        onClose={() => setIsGrievanceModalOpen(false)}
+        prefillAckNumber={lastAck}
       />
     </div>
   );
