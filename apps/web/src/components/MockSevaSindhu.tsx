@@ -48,6 +48,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
       clearTimeout(timer2Ref.current);
       timer2Ref.current = null;
     }
+    isAutoFillingRef.current = false;
   };
 
   useEffect(() => {
@@ -60,7 +61,12 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
   useEffect(() => {
     if (agentData) {
       if (agentData.escomName) {
-        setEscom(agentData.escomName.includes('BESCOM') ? 'BESCOM' : 'HESCOM');
+        const raw = agentData.escomName.toUpperCase();
+        const validEscoms = ['BESCOM', 'HESCOM', 'GESCOM', 'MESCOM', 'CESC'] as const;
+        const matched = validEscoms.find((e) => raw.includes(e));
+        if (matched) {
+          setEscom(matched);
+        }
       }
       if (agentData.consumerId) {
         setConsumerId(agentData.consumerId);
@@ -114,18 +120,25 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
     }
   };
 
+  const executeSubmissionRef = useRef(executeSubmission);
+  useEffect(() => {
+    executeSubmissionRef.current = executeSubmission;
+  });
+
   // Handle agent auto-fill animation
   useEffect(() => {
     if (isAgentActive && !isAutoFillingRef.current && agentStep === 'idle') {
+      clearTimers();
       isAutoFillingRef.current = true;
       setAgentStep('typing');
-      clearTimers();
+
+      const raw = (agentData?.escomName || '').toUpperCase();
+      const validEscoms = ['BESCOM', 'HESCOM', 'GESCOM', 'MESCOM', 'CESC'] as const;
+      const escomVal = validEscoms.find((e) => raw.includes(e)) || 'BESCOM';
+      const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+      const consumer = agentData?.consumerId || '1029384756';
 
       timer1Ref.current = setTimeout(() => {
-        const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
-        const consumer = agentData?.consumerId || '1029384756';
-        const escomVal = agentData?.escomName?.includes('BESCOM') ? 'BESCOM' : 'BESCOM';
-
         setEscom(escomVal);
         setName(applicantName);
         setAadhaar(agentData?.aadhaarNumber || 'XXXX-XXXX-4821');
@@ -134,13 +147,17 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
         setDeclaration(true);
 
         timer2Ref.current = setTimeout(() => {
-          executeSubmission({
+          executeSubmissionRef.current({
             applicantName,
             consumerId: consumer,
             escomName: escomVal,
           });
         }, 1200);
       }, 1000);
+
+      return () => {
+        clearTimers();
+      };
     }
   }, [isAgentActive, agentStep, agentData]);
 
@@ -151,11 +168,13 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
     setAckReceipt(null);
     setAgentStep('typing');
 
-    timer1Ref.current = setTimeout(() => {
-      const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
-      const consumer = agentData?.consumerId || '1029384756';
-      const escomVal = 'BESCOM';
+    const raw = (agentData?.escomName || '').toUpperCase();
+    const validEscoms = ['BESCOM', 'HESCOM', 'GESCOM', 'MESCOM', 'CESC'] as const;
+    const escomVal = validEscoms.find((e) => raw.includes(e)) || 'BESCOM';
+    const applicantName = agentData?.applicantName || 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+    const consumer = agentData?.consumerId || '1029384756';
 
+    timer1Ref.current = setTimeout(() => {
       setEscom(escomVal);
       setName(applicantName);
       setAadhaar(agentData?.aadhaarNumber || 'XXXX-XXXX-4821');
@@ -164,7 +183,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
       setDeclaration(true);
 
       timer2Ref.current = setTimeout(() => {
-        executeSubmission({
+        executeSubmissionRef.current({
           applicantName,
           consumerId: consumer,
           escomName: escomVal,
@@ -320,6 +339,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
             </div>
             <button
               onClick={() => {
+                clearTimers();
                 setErrorMessage(null);
                 setAgentStep('idle');
               }}

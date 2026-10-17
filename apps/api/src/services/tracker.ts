@@ -145,18 +145,47 @@ export class ApplicationTrackerService {
     }
     this.records.set(key, record);
   }
+
+  /**
+   * Atomically generate and register a unique record in a single critical section
+   * Returns the registered record, or null if unique acknowledgment could not be allocated
+   */
+  registerUniqueRecord(
+    createRecord: (ackNumber: string) => ApplicationStatusRecord,
+    generateAckNumber: () => string,
+    maxAttempts = 10
+  ): ApplicationStatusRecord | null {
+    for (let i = 0; i < maxAttempts; i++) {
+      const ack = generateAckNumber().trim().toUpperCase();
+      if (!this.records.has(ack)) {
+        const record = createRecord(ack);
+        this.records.set(ack, record);
+        return record;
+      }
+    }
+    return null;
+  }
 }
 
 /**
- * Mask applicant name to preserve privacy in shared/public lookup interfaces
+ * Mask applicant name to preserve privacy in shared/public lookup interfaces.
+ * Uses Intl.Segmenter to respect Indic script (Kannada) grapheme clusters
+ * avoiding splitting combining vowel marks, viramas, or conjunct consonants.
  */
 export function maskApplicantName(name: string): string {
   if (!name) return 'ನಾಗರಿಕರು (Citizen)';
+  const segmenter = new Intl.Segmenter('kn-IN', { granularity: 'grapheme' });
   const parts = name.trim().split(/\s+/);
   return parts
-    .map((p) => {
-      if (p.length <= 2) return p;
-      return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
+    .map((word) => {
+      const graphemes = Array.from(segmenter.segment(word)).map((s) => s.segment);
+      if (graphemes.length <= 2) {
+        return word;
+      }
+      const first = graphemes[0];
+      const last = graphemes[graphemes.length - 1];
+      const maskCount = Math.max(1, graphemes.length - 2);
+      return `${first}${'*'.repeat(maskCount)}${last}`;
     })
     .join(' ');
 }

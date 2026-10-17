@@ -164,66 +164,70 @@ whatsappRouter.post(
     try {
       const { schemeId, fields } = req.body as SevaSindhuSubmissionInput;
 
-      // Generate cryptographically secure, high-entropy, unique acknowledgment number (prevents guessing/enumeration)
-      let ackNumber = '';
-      let attempts = 0;
-      do {
-        if (attempts++ > 10) {
-          throw new Error('Failed to generate unique acknowledgment number');
-        }
-        const entropy = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8 hex chars = 32-bit cryptographically secure entropy
-        ackNumber = `GJ-${fields.escomName}-2026-${entropy}`;
-      } while (trackerService.hasRecord(ackNumber));
-
       // Mask sensitive citizen PII to prevent data exposure upon public acknowledgment lookup
       const maskedName = maskApplicantName(fields.applicantName);
       const maskedConsumerId = maskId(fields.consumerId);
 
-      const statusRecord = {
-        ackNumber,
-        schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
-        schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
-        applicantName: maskedName,
-        currentStageKn: `ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ${fields.escomName} ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
-        currentStageEn: `Received at Seva Sindhu - Under ${fields.escomName} Verification`,
-        isReadyForDownload: false,
-        timeline: [
-          {
-            step: 1,
-            labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
-            labelEn: 'Application Submitted via Seva Sindhu',
-            status: 'COMPLETED' as const,
-            updatedAt: new Date().toISOString().split('T')[0],
-          },
-          {
-            step: 2,
-            labelKn: `${fields.escomName} ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ`,
-            labelEn: `${fields.escomName} Consumer Account Verification`,
-            status: 'IN_PROGRESS' as const,
-          },
-          {
-            step: 3,
-            labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್',
-            labelEn: 'Aadhaar & Meter Linking',
-            status: 'PENDING' as const,
-          },
-          {
-            step: 4,
-            labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)',
-            labelEn: 'Zero Bill Subsidy Activated',
-            status: 'PENDING' as const,
-          },
-        ],
-        spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
-        spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
-      };
+      // Atomically allocate unique acknowledgment number and register in tracker
+      const statusRecord = trackerService.registerUniqueRecord(
+        (ackNumber) => ({
+          ackNumber,
+          schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
+          schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
+          applicantName: maskedName,
+          currentStageKn: `ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ${fields.escomName} ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
+          currentStageEn: `Received at Seva Sindhu - Under ${fields.escomName} Verification`,
+          isReadyForDownload: false,
+          timeline: [
+            {
+              step: 1,
+              labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
+              labelEn: 'Application Submitted via Seva Sindhu',
+              status: 'COMPLETED' as const,
+              updatedAt: new Date().toISOString().split('T')[0],
+            },
+            {
+              step: 2,
+              labelKn: `${fields.escomName} ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ`,
+              labelEn: `${fields.escomName} Consumer Account Verification`,
+              status: 'IN_PROGRESS' as const,
+            },
+            {
+              step: 3,
+              labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್',
+              labelEn: 'Aadhaar & Meter Linking',
+              status: 'PENDING' as const,
+            },
+            {
+              step: 4,
+              labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)',
+              labelEn: 'Zero Bill Subsidy Activated',
+              status: 'PENDING' as const,
+            },
+          ],
+          spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+          spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
+        }),
+        () => {
+          const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
+          return `GJ-${fields.escomName}-2026-${entropy}`;
+        }
+      );
 
-      trackerService.registerRecord(statusRecord);
+      if (!statusRecord) {
+        return res.status(503).json({
+          error: {
+            code: 'REGISTRATION_EXHAUSTED',
+            message: 'Karnataka State Gateway is currently busy. Please try submitting again.',
+          },
+        });
+      }
+
       const ttsResult = await sarvamService.textToSpeech(statusRecord.spokenNotificationKn);
 
       res.status(200).json({
         status: 'ok',
-        acknowledgmentNumber: ackNumber,
+        acknowledgmentNumber: statusRecord.ackNumber,
         schemeId,
         applicantName: maskedName,
         consumerId: maskedConsumerId,

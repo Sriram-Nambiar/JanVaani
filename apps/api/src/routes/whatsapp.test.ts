@@ -4,7 +4,7 @@ import type { Server } from 'node:http';
 import { app } from '../app.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService } from '../services/schemes.js';
-import { trackerService } from '../services/tracker.js';
+import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
 
 describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   let server: Server;
@@ -103,6 +103,42 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const status = trackerService.lookupStatus('RD003');
       assert.strictEqual(status.ackNumber, 'RD003');
       assert.ok(status.spokenNotificationKn.includes('ವಂಶವೃಕ್ಷ'));
+    });
+
+    it('masks Indic (Kannada) applicant names preserving grapheme clusters without corrupting vowel signs', () => {
+      const masked = maskApplicantName('ಸವಿತಾ ಕುಮಾರಿ');
+      assert.ok(masked.includes('*'));
+      assert.ok(masked.startsWith('ಸ'));
+      assert.ok(masked.endsWith('ರಿ'));
+      assert.strictEqual(maskId('1029384756'), '******4756');
+    });
+
+    it('registerUniqueRecord atomically registers without collision', () => {
+      let callCount = 0;
+      const record = trackerService.registerUniqueRecord(
+        (ack) => ({
+          ackNumber: ack,
+          schemeNameKn: 'ಟೆಸ್ಟ್ ಯೋಜನೆ',
+          schemeNameEn: 'Test Scheme',
+          applicantName: 'ಟೆಸ್ಟ್',
+          currentStageKn: 'ಟೆಸ್ಟ್',
+          currentStageEn: 'Test',
+          isReadyForDownload: false,
+          timeline: [],
+          spokenNotificationKn: 'ಟೆಸ್ಟ್',
+          spokenNotificationEn: 'Test',
+        }),
+        () => {
+          callCount++;
+          // simulate collision on first attempt with seeded RD001
+          return callCount === 1 ? 'RD001' : 'TEST-UNIQUE-001';
+        }
+      );
+
+      assert.ok(record);
+      assert.strictEqual(record.ackNumber, 'TEST-UNIQUE-001');
+      assert.strictEqual(callCount, 2);
+      assert.strictEqual(trackerService.hasRecord('TEST-UNIQUE-001'), true);
     });
   });
 
