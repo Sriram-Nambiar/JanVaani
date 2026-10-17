@@ -1186,4 +1186,74 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.error.code, 'CARD_NOT_FOUND');
     });
   });
+
+  describe('Karnataka Bhoomi RTC Pahani Land Records Endpoints', () => {
+    it('POST /api/bhoomi/rtc/fetch successfully fetches RTC Pahani record', async () => {
+      const payload = {
+        district: 'Bengaluru Rural',
+        taluk: 'Devanahalli',
+        hobli: 'Kasaba',
+        village: 'Koramangala',
+        surveyNumber: '102',
+        hissaNumber: '1',
+      };
+
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.match(body.rtc.rtcNumber, /^BHOOMI-KAR-2026-[A-F0-9]{8}$/);
+      assert.strictEqual(body.rtc.surveyNumber, '102');
+      assert.strictEqual(body.rtc.mutationStatus, 'APPROVED');
+      assert.strictEqual(body.rtc.encumbranceFree, true);
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenSummaryKn.includes('ಪಹಣಿ'));
+    });
+
+    it('POST /api/bhoomi/rtc/fetch rejects invalid Aadhaar format with 400', async () => {
+      const payload = {
+        district: 'Bengaluru Rural',
+        taluk: 'Devanahalli',
+        hobli: 'Kasaba',
+        village: 'Koramangala',
+        surveyNumber: '102',
+        ownerAadhaar: '12345', // invalid length
+      };
+
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/fetch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('GET /api/bhoomi/rtc/:rtcNumber returns demo RTC for BHOOMI-BLR-DEV-2026-S102', async () => {
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/BHOOMI-BLR-DEV-2026-S102`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.rtc.rtcNumber, 'BHOOMI-BLR-DEV-2026-S102');
+      assert.strictEqual(body.rtc.taluk, 'Devanahalli');
+      assert.strictEqual(body.rtc.extentAcres, 2);
+      assert.strictEqual(body.rtc.extentGuntas, 20);
+    });
+
+    it('GET /api/bhoomi/rtc/:rtcNumber returns 404 for unknown RTC number', async () => {
+      const res = await fetch(`${baseUrl}/api/bhoomi/rtc/UNKNOWN-BHOOMI-9999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.error.code, 'RTC_NOT_FOUND');
+    });
+  });
 });
