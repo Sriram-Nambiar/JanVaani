@@ -42,8 +42,7 @@ annaBhagyaRouter.post('/calculate', async (req: Request, res: Response, next: Ne
         dbtStatus: result.dbtStatus,
         dbtStatusKn: result.dbtStatusKn,
         district: result.district,
-        // Intentional review comment target: rationCardNumber returned unmasked instead of maskId(input.rationCardNumber)
-        rationCardNumber: input.rationCardNumber,
+        rationCardNumber: maskId(input.rationCardNumber),
       },
       spokenExplanationKn: result.spokenExplanationKn,
       spokenExplanationEn: result.spokenExplanationEn,
