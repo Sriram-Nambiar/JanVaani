@@ -6,6 +6,9 @@ import {
   WhatsAppMessageInput,
   sevaSindhuSubmissionSchema,
   SevaSindhuSubmissionInput,
+  GruhaJyothiFields,
+  GruhaLakshmiFields,
+  CasteIncomeFields,
 } from '../schemas/whatsapp-message.js';
 import {
   draftPdfSchema,
@@ -15,7 +18,7 @@ import {
 } from '../schemas/draft-pdf.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
-import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
+import { trackerService, maskApplicantName, maskId, ApplicationStatusRecord } from '../services/tracker.js';
 import { draftPdfService } from '../services/pdf.js';
 
 export const whatsappRouter = Router();
@@ -169,57 +172,181 @@ whatsappRouter.post(
   validateBody(sevaSindhuSubmissionSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { schemeId, fields } = req.body as SevaSindhuSubmissionInput;
+      const submission = req.body as SevaSindhuSubmissionInput;
+      const { schemeId, fields } = submission;
 
-      // Mask sensitive citizen PII to prevent data exposure upon public acknowledgment lookup
-      const maskedName = maskApplicantName(fields.applicantName);
-      const maskedConsumerId = maskId(fields.consumerId);
+      let statusRecord: ApplicationStatusRecord | null = null;
+      let responseDetails: Record<string, any> = {};
+      let maskedApplicant = '';
 
-      // Atomically allocate unique acknowledgment number and register in tracker
-      const statusRecord = trackerService.registerUniqueRecord(
-        (ackNumber) => ({
-          ackNumber,
-          schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
-          schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
-          applicantName: maskedName,
-          currentStageKn: `ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ${fields.escomName} ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
-          currentStageEn: `Received at Seva Sindhu - Under ${fields.escomName} Verification`,
-          isReadyForDownload: false,
-          timeline: [
-            {
-              step: 1,
-              labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
-              labelEn: 'Application Submitted via Seva Sindhu',
-              status: 'COMPLETED' as const,
-              updatedAt: new Date().toISOString().split('T')[0],
-            },
-            {
-              step: 2,
-              labelKn: `${fields.escomName} ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ`,
-              labelEn: `${fields.escomName} Consumer Account Verification`,
-              status: 'IN_PROGRESS' as const,
-            },
-            {
-              step: 3,
-              labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್',
-              labelEn: 'Aadhaar & Meter Linking',
-              status: 'PENDING' as const,
-            },
-            {
-              step: 4,
-              labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)',
-              labelEn: 'Zero Bill Subsidy Activated',
-              status: 'PENDING' as const,
-            },
-          ],
-          spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
-          spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
-        }),
-        () => {
-          const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
-          return `GJ-${fields.escomName}-2026-${entropy}`;
-        }
-      );
+      if (schemeId === 'gruha_jyothi') {
+        const gjFields = fields as GruhaJyothiFields;
+        const maskedName = maskApplicantName(gjFields.applicantName);
+        const maskedConsumerId = maskId(gjFields.consumerId);
+        maskedApplicant = maskedName;
+
+        statusRecord = trackerService.registerUniqueRecord(
+          (ackNumber) => ({
+            ackNumber,
+            schemeId: 'gruha_jyothi',
+            schemeNameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
+            schemeNameEn: 'Gruha Jyothi Scheme (Free Electricity)',
+            applicantName: maskedName,
+            currentStageKn: `ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ${gjFields.escomName} ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
+            currentStageEn: `Received at Seva Sindhu - Under ${gjFields.escomName} Verification`,
+            isReadyForDownload: false,
+            timeline: [
+              {
+                step: 1,
+                labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
+                labelEn: 'Application Submitted via Seva Sindhu',
+                status: 'COMPLETED' as const,
+                updatedAt: new Date().toISOString().split('T')[0],
+              },
+              {
+                step: 2,
+                labelKn: `${gjFields.escomName} ಗ್ರಾಹಕ ಖಾತೆ ಪರಿಶೀಲನೆ`,
+                labelEn: `${gjFields.escomName} Consumer Account Verification`,
+                status: 'IN_PROGRESS' as const,
+              },
+              {
+                step: 3,
+                labelKn: 'ಆಧಾರ್ ಮತ್ತು ಮೀಟರ್ ಲಿಂಕ್',
+                labelEn: 'Aadhaar & Meter Linking',
+                status: 'PENDING' as const,
+              },
+              {
+                step: 4,
+                labelKn: 'ಶೂನ್ಯ ಬಿಲ್ ಸಕ್ರಿಯಗೊಳಿಸುವಿಕೆ (Zero Bill Active)',
+                labelEn: 'Zero Bill Subsidy Activated',
+                status: 'PENDING' as const,
+              },
+            ],
+            spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+            spokenNotificationEn: `Success! Your Gruha Jyothi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
+          }),
+          () => {
+            const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
+            return `GJ-${gjFields.escomName}-2026-${entropy}`;
+          }
+        );
+
+        responseDetails = {
+          consumerId: maskedConsumerId,
+          escomName: gjFields.escomName,
+        };
+      } else if (schemeId === 'gruha_lakshmi') {
+        const glFields = fields as GruhaLakshmiFields;
+        const maskedName = maskApplicantName(glFields.applicantName);
+        const maskedRation = maskId(glFields.rationCardNumber);
+        maskedApplicant = maskedName;
+
+        statusRecord = trackerService.registerUniqueRecord(
+          (ackNumber) => ({
+            ackNumber,
+            schemeId: 'gruha_lakshmi',
+            schemeNameKn: 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆ (ಕುಟುಂಬದ ಯಜಮಾನಿ ಮಹಿಳೆಗೆ ₹2,000)',
+            schemeNameEn: 'Gruha Lakshmi Scheme (₹2,000 Monthly Assistance)',
+            applicantName: maskedName,
+            currentStageKn: 'ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ಡಿಬಿಟಿ ಬ್ಯಾಂಕ್ ಖಾತೆ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
+            currentStageEn: 'Received at Seva Sindhu - DBT Bank Seeding in Progress',
+            isReadyForDownload: false,
+            timeline: [
+              {
+                step: 1,
+                labelKn: 'ಅರ್ಜಿ ಸಲ್ಲಿಕೆ ಪೂರ್ಣಗೊಂಡಿದೆ',
+                labelEn: 'Application Submitted',
+                status: 'COMPLETED' as const,
+                updatedAt: new Date().toISOString().split('T')[0],
+              },
+              {
+                step: 2,
+                labelKn: 'ಪಡಿತರ ಚೀಟಿ ಮತ್ತು ಆಧಾರ್ ಪರಿಶೀಲನೆ',
+                labelEn: 'Ration Card & Aadhaar Verification',
+                status: 'IN_PROGRESS' as const,
+              },
+              {
+                step: 3,
+                labelKn: 'ಡಿಬಿಟಿ ಖಾತೆ ಅನುಮೋದನೆ',
+                labelEn: 'DBT Account Approval',
+                status: 'PENDING' as const,
+              },
+              {
+                step: 4,
+                labelKn: 'ಮಾಸಿಕ ₹2,000 ಹಣ ಜಮೆ',
+                labelEn: 'Monthly ₹2,000 Benefit Dispatched',
+                status: 'PENDING' as const,
+              },
+            ],
+            spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆಯ ಅರ್ಜಿಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+            spokenNotificationEn: `Success! Your Gruha Lakshmi application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
+          }),
+          () => {
+            const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
+            return `GL-KAR-2026-${entropy}`;
+          }
+        );
+
+        responseDetails = {
+          rationCardNumber: maskedRation,
+          bankAccountNumber: maskId(glFields.bankAccountNumber),
+        };
+      } else if (schemeId === 'caste_income') {
+        const ciFields = fields as CasteIncomeFields;
+        const maskedName = maskApplicantName(ciFields.applicantName);
+        maskedApplicant = maskedName;
+
+        statusRecord = trackerService.registerUniqueRecord(
+          (ackNumber) => ({
+            ackNumber,
+            schemeId: 'caste_income',
+            schemeNameKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ',
+            schemeNameEn: 'Caste & Income Certificate',
+            applicantName: maskedName,
+            currentStageKn: `${ciFields.taluk} ತಾಲೂಕು ಕಚೇರಿಯಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ಕಂದಾಯ ನಿರೀಕ್ಷಕರ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ`,
+            currentStageEn: `Received at ${ciFields.taluk} Taluk Office - Under RI Verification`,
+            isReadyForDownload: false,
+            timeline: [
+              {
+                step: 1,
+                labelKn: 'ಗ್ರಾಮ ಒನ್ / ಸೇವಾ ಸಿಂಧು ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
+                labelEn: 'Application Submitted',
+                status: 'COMPLETED' as const,
+                updatedAt: new Date().toISOString().split('T')[0],
+              },
+              {
+                step: 2,
+                labelKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ (RI) ಸ್ಥಳ ಪರಿಶೀಲನೆ',
+                labelEn: 'Revenue Inspector Verification',
+                status: 'IN_PROGRESS' as const,
+              },
+              {
+                step: 3,
+                labelKn: 'ತಹಸೀಲ್ದಾರ್ ಡಿಜಿಟಲ್ ಸಹಿ ಮತ್ತು ಅನುಮೋದನೆ',
+                labelEn: 'Tahsildar Digital Signature & Approval',
+                status: 'PENDING' as const,
+              },
+              {
+                step: 4,
+                labelKn: 'ಪ್ರಮಾಣ ಪತ್ರ ವಿತರಣೆ / ಡೌನ್‌ಲೋಡ್',
+                labelEn: 'Certificate Dispatched / Ready for Download',
+                status: 'PENDING' as const,
+              },
+            ],
+            spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರದ ಅರ್ಜಿಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+            spokenNotificationEn: `Success! Your Caste & Income Certificate application has been submitted. Your acknowledgment number is ${ackNumber}.`,
+          }),
+          () => {
+            const entropy = crypto.randomBytes(4).toString('hex').toUpperCase();
+            return `RD-KAR-2026-${entropy}`;
+          }
+        );
+
+        responseDetails = {
+          category: ciFields.category,
+          taluk: ciFields.taluk,
+        };
+      }
 
       if (!statusRecord) {
         return res.status(503).json({
@@ -236,9 +363,8 @@ whatsappRouter.post(
         status: 'ok',
         acknowledgmentNumber: statusRecord.ackNumber,
         schemeId,
-        applicantName: maskedName,
-        consumerId: maskedConsumerId,
-        escomName: fields.escomName,
+        applicantName: maskedApplicant,
+        ...responseDetails,
         submittedAt: new Date().toISOString(),
         audioBase64: ttsResult.audioBase64,
         spokenNotificationKn: statusRecord.spokenNotificationKn,
