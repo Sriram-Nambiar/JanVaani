@@ -655,4 +655,77 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.code, 'RECEIPT_NOT_FOUND');
     });
   });
+
+  describe('Grama One Citizen Kiosk & Queue Endpoints', () => {
+    it('POST /api/kiosk/token/issue successfully issues village queue token with spoken announcement', async () => {
+      const payload = {
+        citizenName: 'ಶಿವಣ್ಣ ಗೌಡ',
+        phone: '9845012345',
+        serviceType: 'GRUHA_JYOTHI',
+        village: 'ನೆಲಮಂಗಲ',
+        counterNumber: 1,
+      };
+
+      const res = await fetch(`${baseUrl}/api/kiosk/token/issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 201);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.kiosk.includes('Grama One'));
+      assert.match(body.tokenId, /^TOKEN-2026-\d+$/);
+      assert.ok(body.citizenNameMasked.includes('*'));
+      assert.strictEqual(body.serviceType, 'GRUHA_JYOTHI');
+      assert.ok(body.audioAnnouncementBase64.length > 0);
+      assert.ok(body.announcementScriptKn.includes('ಟೋಕನ್'));
+    });
+
+    it('POST /api/kiosk/token/issue rejects invalid phone number with 400', async () => {
+      const invalidPayload = {
+        citizenName: 'ರಾಜು',
+        phone: '123', // invalid length
+        serviceType: 'GRUHA_LAKSHMI',
+      };
+
+      const res = await fetch(`${baseUrl}/api/kiosk/token/issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalidPayload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/kiosk/queue/call-next calls next waiting citizen to counter', async () => {
+      const res = await fetch(`${baseUrl}/api/kiosk/queue/call-next`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ counterNumber: 1 }),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      if (body.calledToken) {
+        assert.ok(body.calledToken.tokenNumber > 0);
+        assert.strictEqual(body.calledToken.counterNumber, 1);
+        assert.ok(body.calledToken.audioAnnouncementBase64.length > 0);
+      }
+    });
+
+    it('GET /api/kiosk/queue/status returns live village queue summary', async () => {
+      const res = await fetch(`${baseUrl}/api/kiosk/queue/status`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.queue.totalTokensIssued >= 1);
+      assert.ok(typeof body.queue.waitingCount === 'number');
+    });
+  });
 });

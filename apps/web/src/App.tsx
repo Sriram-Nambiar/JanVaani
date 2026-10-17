@@ -6,6 +6,7 @@ import { DraftViewerModal } from './components/DraftViewerModal';
 import { OfficerPushSimulator } from './components/OfficerPushSimulator';
 import { DocumentAuditModal } from './components/DocumentAuditModal';
 import { JanaSpandanaModal } from './components/JanaSpandanaModal';
+import { GramaOneKioskModal } from './components/GramaOneKioskModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
   const [lastAck, setLastAck] = useState<string>('RD002');
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isGrievanceModalOpen, setIsGrievanceModalOpen] = useState(false);
+  const [isKioskModalOpen, setIsKioskModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -251,6 +253,26 @@ export function App() {
             <span>🏛️</span> ಜನಸ್ಪಂದನ 1902 (Grievance)
           </button>
 
+          {/* Grama One Rural Citizen Kiosk */}
+          <button
+            onClick={() => setIsKioskModalOpen(true)}
+            style={{
+              backgroundColor: '#065f46',
+              color: '#d1fae5',
+              border: '1px solid #059669',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🏪</span> ಗ್ರಾಮ ಒನ್ (Grama One Kiosk)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -385,6 +407,12 @@ export function App() {
         isOpen={isGrievanceModalOpen}
         onClose={() => setIsGrievanceModalOpen(false)}
         prefillAckNumber={lastAck}
+      />
+
+      {/* Grama One Rural Citizen Service Kiosk Modal */}
+      <GramaOneKioskModal
+        isOpen={isKioskModalOpen}
+        onClose={() => setIsKioskModalOpen(false)}
       />
     </div>
   );
