@@ -90,9 +90,10 @@ export class AudioReceiptService {
     if (!trackerService.hasRecord(ackNumber)) return null;
     const record = trackerService.lookupStatus(ackNumber);
 
+    const normalizedAck = ackNumber.toUpperCase();
     let targetScheme: 'gruha_jyothi' | 'gruha_lakshmi' | 'caste_income' = 'gruha_jyothi';
-    if (ackNumber.startsWith('GL-')) targetScheme = 'gruha_lakshmi';
-    else if (ackNumber.startsWith('RD-') || ackNumber === 'RD001' || ackNumber === 'RD002' || ackNumber === 'RD003') {
+    if (normalizedAck.startsWith('GL-')) targetScheme = 'gruha_lakshmi';
+    else if (normalizedAck.startsWith('RD-') || normalizedAck === 'RD001' || normalizedAck === 'RD002' || normalizedAck === 'RD003') {
       targetScheme = 'caste_income';
     }
 

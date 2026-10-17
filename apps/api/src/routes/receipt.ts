@@ -27,8 +27,7 @@ receiptRouter.post(
         applicantNameMasked: receipt.applicantNameMasked,
         entitlementSummaryKn: receipt.entitlementSummaryKn,
         entitlementSummaryEn: receipt.entitlementSummaryEn,
-        // Intentional small review item for Shipwright: consumerId returned unmasked instead of maskId(input.consumerId)
-        consumerId: input.consumerId,
+        consumerId: input.consumerId ? maskId(input.consumerId) : undefined,
         audioBase64: receipt.audioBase64,
         mimeType: receipt.mimeType,
         generatedAt: receipt.generatedAt,

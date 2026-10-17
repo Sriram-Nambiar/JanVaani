@@ -90,7 +90,7 @@ export const MockSevaSindhu: React.FC<MockSevaSindhuProps> = ({
   const fetchAudioReceipt = async (ackNumber: string, scheme: string, applicant: string) => {
     setIsLoadingAudioReceipt(true);
     try {
-      const res = await fetch('http://localhost:3001/api/whatsapp/receipt/audio', {
+      const res = await fetch('/api/whatsapp/receipt/audio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

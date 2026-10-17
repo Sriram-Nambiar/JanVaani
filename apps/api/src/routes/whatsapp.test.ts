@@ -595,6 +595,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(body.schemeTitleKn.includes('ಗೃಹಜ್ಯೋತಿ'));
       assert.ok(body.entitlementSummaryKn.includes('200'));
       assert.ok(body.applicantNameMasked.includes('*'));
+      assert.ok(body.consumerId.includes('*'));
       assert.ok(body.audioBase64.length > 0);
     });
 
