@@ -19,6 +19,17 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    // Stop any previously playing audio or speech synthesis when audioBase64 changes
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setIsPlaying(false);
+    setProgress(0);
+
     if (audioBase64) {
       const audio = new Audio(`data:audio/wav;base64,${audioBase64}`);
       audioRef.current = audio;
@@ -29,30 +40,84 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       };
 
       audio.ontimeupdate = () => {
-        if (audio.duration && !isNaN(audio.duration)) {
+        if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
           setProgress((audio.currentTime / audio.duration) * 100);
         }
       };
 
-      return () => {
-        audio.pause();
-        audioRef.current = null;
+      audio.onerror = () => {
+        setIsPlaying(false);
+        setProgress(0);
       };
     }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, [audioBase64]);
+
+  const speakFallback = (text?: string): boolean => {
+    if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setIsPlaying(false);
+      setProgress(0);
+      return false;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'kn-IN';
+      utterance.rate = playbackSpeed;
+      utterance.onend = () => {
+        setIsPlaying(false);
+        setProgress(0);
+      };
+      utterance.onerror = () => {
+        setIsPlaying(false);
+        setProgress(0);
+      };
+      window.speechSynthesis.speak(utterance);
+      setIsPlaying(true);
+      return true;
+    } catch {
+      setIsPlaying(false);
+      setProgress(0);
+      return false;
+    }
+  };
 
   const togglePlay = () => {
     if (!isPlaying) {
       if (audioRef.current) {
         audioRef.current.playbackRate = playbackSpeed;
-        audioRef.current.play().catch(() => {
-          // If browser blocks audio or dummy WAV is empty, fallback to Web Speech
-          speakFallback(transcriptText);
-        });
+        audioRef.current
+          .play()
+          .then(() => {
+            setIsPlaying(true);
+          })
+          .catch(() => {
+            // If browser blocks audio or dummy WAV is empty, fallback to Web Speech
+            const fallbackStarted = speakFallback(transcriptText);
+            if (!fallbackStarted) {
+              setIsPlaying(false);
+              setProgress(0);
+            }
+          });
       } else if (transcriptText) {
-        speakFallback(transcriptText);
+        const fallbackStarted = speakFallback(transcriptText);
+        if (!fallbackStarted) {
+          setIsPlaying(false);
+          setProgress(0);
+        }
+      } else {
+        setIsPlaying(false);
+        setProgress(0);
       }
-      setIsPlaying(true);
     } else {
       if (audioRef.current) {
         audioRef.current.pause();
@@ -61,20 +126,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         window.speechSynthesis.cancel();
       }
       setIsPlaying(false);
-    }
-  };
-
-  const speakFallback = (text?: string) => {
-    if (!text || !('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'kn-IN';
-    utterance.rate = playbackSpeed;
-    utterance.onend = () => {
-      setIsPlaying(false);
       setProgress(0);
-    };
-    window.speechSynthesis.speak(utterance);
+    }
   };
 
   const cycleSpeed = () => {
@@ -131,7 +184,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         >
           <div
             style={{
-              width: `${isPlaying ? (progress || 60) : 0}%`,
+              width: `${isPlaying ? (progress > 0 ? progress : 10) : 0}%`,
               height: '100%',
               backgroundColor: '#128c7e',
               transition: 'width 0.2s linear',

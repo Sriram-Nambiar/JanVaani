@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, WhatsAppMessagePayload, WhatsAppApiResponse } from '../types';
 import { sendWhatsAppMessage } from '../api';
 import { AudioPlayer } from './AudioPlayer';
@@ -28,6 +28,26 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate }) =>
   const timerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearTimer();
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {
+          // Ignore if inactive on unmount
+        }
+      }
+    };
+  }, []);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -129,7 +149,21 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate }) =>
         }
       };
 
+      mediaRecorder.onerror = () => {
+        clearTimer();
+        setIsRecording(false);
+      };
+
+      stream.getTracks().forEach((track) => {
+        track.onended = () => {
+          stopRecording();
+        };
+      });
+
       mediaRecorder.onstop = async () => {
+        clearTimer();
+        setIsRecording(false);
+
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -150,21 +184,28 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({ onEngineUpdate }) =>
       };
 
       mediaRecorder.start();
+      clearTimer();
       setIsRecording(true);
       setRecordingSeconds(0);
       timerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => prev + 1);
       }, 1000);
     } catch (err) {
+      clearTimer();
+      setIsRecording(false);
       alert('ಮೈಕ್ರೊಫೋನ್ ಅನುಮತಿ ಸಿಗಲಿಲ್ಲ. ಡೆಮೊಗಾಗಿ ಕೆಳಗಿನ ಸನ್ನಿವೇಶ ಬಟನ್‌ಗಳನ್ನು ಬಳಸಬಹುದು.');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      clearInterval(timerRef.current);
+    clearTimer();
+    setIsRecording(false);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // Ignore if already inactive
+      }
     }
   };
 
