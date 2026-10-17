@@ -10,6 +10,7 @@ import { GramaOneKioskModal } from './components/GramaOneKioskModal';
 import { QRVerificationModal } from './components/QRVerificationModal';
 import { MeterSubsidyModal } from './components/MeterSubsidyModal';
 import { YuvaNidhiModal } from './components/YuvaNidhiModal';
+import { ShaktiPassModal } from './components/ShaktiPassModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -38,6 +39,7 @@ export function App() {
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
   const [isMeterModalOpen, setIsMeterModalOpen] = useState(false);
   const [isYuvaModalOpen, setIsYuvaModalOpen] = useState(false);
+  const [isShaktiModalOpen, setIsShaktiModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -339,6 +341,26 @@ export function App() {
             <span>🎓</span> ಯುವನಿಧಿ (Yuva Nidhi)
           </button>
 
+          {/* Shakti Scheme Free Bus Pass Modal Trigger */}
+          <button
+            onClick={() => setIsShaktiModalOpen(true)}
+            style={{
+              backgroundColor: '#831843',
+              color: '#fce7f3',
+              border: '1px solid #db2777',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🌸</span> ಶಕ್ತಿ ಪಾಸ್ (Shakti Pass)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -498,6 +520,12 @@ export function App() {
       <YuvaNidhiModal
         isOpen={isYuvaModalOpen}
         onClose={() => setIsYuvaModalOpen(false)}
+      />
+
+      {/* Shakti Scheme Free Bus Pass Modal */}
+      <ShaktiPassModal
+        isOpen={isShaktiModalOpen}
+        onClose={() => setIsShaktiModalOpen(false)}
       />
     </div>
   );
