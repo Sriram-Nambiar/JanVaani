@@ -7,6 +7,7 @@ interface WhatsAppChatProps {
   onEngineUpdate: (data: WhatsAppApiResponse) => void;
   onDispatchAgent?: (data: any) => void;
   onOpenDraftModal?: (ackNumber: string) => void;
+  onOpenGrievanceModal?: () => void;
   pushedMessage?: ChatMessage | null;
 }
 
@@ -14,6 +15,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
   onEngineUpdate,
   onDispatchAgent,
   onOpenDraftModal,
+  onOpenGrievanceModal,
   pushedMessage,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -418,6 +420,27 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
           }}
         >
           🔔 ಅರ್ಜಿ ಸ್ಥಿತಿ (RD001)
+        </button>
+        <button
+          onClick={() => {
+            if (onOpenGrievanceModal) {
+              onOpenGrievanceModal();
+            } else {
+              triggerPreset('grievance_appeal', 'ನನ್ನ ಅರ್ಜಿ ತಿರಸ್ಕೃತವಾಗಿದೆ, ಜನಸ್ಪಂದನದಲ್ಲಿ ದೂರು ದಾಖಲಿಸಬೇಕು');
+            }
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #b45309',
+            backgroundColor: '#fffbeb',
+            color: '#92400e',
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          🏛️ ಜನಸ್ಪಂದನ ದೂರು (1902)
         </button>
       </div>
 

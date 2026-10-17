@@ -4,6 +4,7 @@ import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 import { citizenQuestionSchema } from './schemas/citizen-question.js';
 import { serviceLookupSchema } from './schemas/service-lookup.js';
 import { whatsappRouter } from './routes/whatsapp.js';
+import { grievanceRouter } from './routes/grievance.js';
 
 export function createApp() {
   const app = express();
@@ -58,6 +59,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/whatsapp/grievance', grievanceRouter);
   app.use('/api/whatsapp', whatsappRouter);
 
   // 404 for unhandled routes

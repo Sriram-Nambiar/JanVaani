@@ -492,4 +492,84 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(data.error.code, 'VALIDATION_ERROR');
     });
   });
+
+  describe('JanaSpandana Grievance & Appeal Redressal Endpoints', () => {
+    it('POST /api/whatsapp/grievance/submit successfully lodges a citizen grievance and returns docket number', async () => {
+      const payload = {
+        applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+        phone: '9845012345',
+        district: 'Bengaluru Urban',
+        department: 'ENERGY_BESCOM',
+        grievanceCategory: 'UNJUST_REJECTION',
+        description: 'ಬೆಸ್ಕಾಂ ಗೃಹಜ್ಯೋತಿ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿದ್ದು ಯಾವುದೇ ಕಾರಣವಿಲ್ಲದೆ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ.',
+      };
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/grievance/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 201);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.portal.includes('JanaSpandana'));
+      assert.match(body.docketNumber, /^JS-2026-[0-9A-F]{6}$/);
+      assert.strictEqual(body.details.status, 'ASSIGNED');
+      assert.ok(body.details.assignedOfficer.includes('ಬೆಸ್ಕಾಂ ನೋಡಲ್ ಅಧಿಕಾರಿ'));
+      assert.strictEqual(body.details.timeline.length, 4);
+      assert.strictEqual(body.details.timeline[0].status, 'COMPLETED');
+      assert.strictEqual(body.details.timeline[1].status, 'IN_PROGRESS');
+      assert.ok(body.details.phone.includes('*'));
+    });
+
+    it('POST /api/whatsapp/grievance/submit rejects missing required fields with 400', async () => {
+      const invalidPayload = {
+        applicantName: 'A', // too short (< 2)
+        phone: '123', // invalid phone length
+        district: '',
+      };
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/grievance/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invalidPayload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('GET /api/whatsapp/grievance/:docketNumber returns docket details and inquiry timeline', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/grievance/JS-2026-B8A91C`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.docket.docketNumber, 'JS-2026-B8A91C');
+      assert.strictEqual(body.docket.ackNumber, 'RD003');
+      assert.ok(body.docket.applicantName.includes('*'));
+      assert.ok(body.docket.phone.includes('*'));
+      assert.strictEqual(body.docket.timeline.length, 4);
+    });
+
+    it('GET /api/whatsapp/grievance/:docketNumber returns 404 for unknown docket', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/grievance/JS-UNKNOWN-999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.code, 'DOCKET_NOT_FOUND');
+    });
+
+    it('GET /api/whatsapp/grievance returns list of active dockets', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/grievance`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(Array.isArray(body.dockets));
+      assert.ok(body.dockets.length >= 1);
+    });
+  });
 });
