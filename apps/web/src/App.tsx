@@ -7,6 +7,7 @@ import { OfficerPushSimulator } from './components/OfficerPushSimulator';
 import { DocumentAuditModal } from './components/DocumentAuditModal';
 import { JanaSpandanaModal } from './components/JanaSpandanaModal';
 import { GramaOneKioskModal } from './components/GramaOneKioskModal';
+import { QRVerificationModal } from './components/QRVerificationModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -32,6 +33,7 @@ export function App() {
   const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
   const [isGrievanceModalOpen, setIsGrievanceModalOpen] = useState(false);
   const [isKioskModalOpen, setIsKioskModalOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -273,6 +275,26 @@ export function App() {
             <span>🏪</span> ಗ್ರಾಮ ಒನ್ (Grama One Kiosk)
           </button>
 
+          {/* Official QR Verification Modal Trigger */}
+          <button
+            onClick={() => setIsQRModalOpen(true)}
+            style={{
+              backgroundColor: '#1e1b4b',
+              color: '#c7d2fe',
+              border: '1px solid #4338ca',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🛡️</span> QR ಪರಿಶೀಲನೆ (QR Verify)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -413,6 +435,13 @@ export function App() {
       <GramaOneKioskModal
         isOpen={isKioskModalOpen}
         onClose={() => setIsKioskModalOpen(false)}
+      />
+
+      {/* Official Certificate QR Verification Modal */}
+      <QRVerificationModal
+        isOpen={isQRModalOpen}
+        onClose={() => setIsQRModalOpen(false)}
+        prefillAckNumber={lastAck}
       />
     </div>
   );

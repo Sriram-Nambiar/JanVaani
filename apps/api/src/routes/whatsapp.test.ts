@@ -729,4 +729,37 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(typeof body.queue.waitingCount === 'number');
     });
   });
+
+  describe('Official Certificate QR Verification & Integrity Endpoints', () => {
+    it('GET /api/verify/:ackNumber returns genuine verification with cryptographic signature for RD001', async () => {
+      const res = await fetch(`${baseUrl}/api/verify/RD001`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.verification.isAuthentic, true);
+      assert.strictEqual(body.verification.verificationBadge, 'DIGITALLY_SIGNED_GENUINE');
+      assert.strictEqual(body.verification.ackNumber, 'RD001');
+      assert.strictEqual(body.verification.digitalSignatureSha256.length, 64);
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenVerificationKn.includes('ದೃಢೀಕರಣ'));
+    });
+
+    it('GET /api/verify/:ackNumber returns 404 for unknown acknowledgment number', async () => {
+      const res = await fetch(`${baseUrl}/api/verify/UNKNOWN-NONEXISTENT-999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.status, 'error');
+      assert.strictEqual(body.code, 'CERTIFICATE_NOT_FOUND');
+    });
+
+    it('GET /api/verify/:ackNumber rejects invalid acknowledgment format with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/verify/X`); // < 3 chars
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+  });
 });
