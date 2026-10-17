@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { certificateVerificationService } from '../services/verification.js';
 import { qrVerificationParamSchema } from '../schemas/verification.js';
-import { maskId } from '../services/tracker.js';
 
 export const verificationRouter = Router();
 
@@ -46,8 +45,7 @@ verificationRouter.get('/:ackNumber', async (req: Request, res: Response, next: 
         verificationBadge: result.verificationBadge,
         digitalSignatureSha256: result.digitalSignatureSha256,
         issuingAuthority: result.issuingAuthority,
-        // Intentional small review item for Shipwright: aadhaarNumber returned unmasked instead of maskId(result.aadhaarNumber)
-        aadhaarNumber: result.aadhaarNumber,
+        aadhaarMasked: result.aadhaarMasked,
         verifiedAt: result.verifiedAt,
       },
       spokenVerificationKn: result.spokenVerificationKn,

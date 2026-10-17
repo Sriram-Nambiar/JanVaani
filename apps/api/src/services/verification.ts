@@ -15,7 +15,7 @@ export interface CertificateVerificationResult {
   verifiedAt: string;
   spokenVerificationKn: string;
   audioBase64?: string;
-  aadhaarNumber?: string;
+  aadhaarMasked: string;
 }
 
 export class CertificateVerificationService {
@@ -65,7 +65,7 @@ export class CertificateVerificationService {
       verifiedAt: new Date().toISOString(),
       spokenVerificationKn,
       audioBase64,
-      aadhaarNumber: '582910492817',
+      aadhaarMasked: maskId('582910492817'),
     };
   }
 }
