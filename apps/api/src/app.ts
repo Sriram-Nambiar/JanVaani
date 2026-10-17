@@ -3,11 +3,24 @@ import { validateBody, validateQuery } from './middleware/validate.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 import { citizenQuestionSchema } from './schemas/citizen-question.js';
 import { serviceLookupSchema } from './schemas/service-lookup.js';
+import { whatsappRouter } from './routes/whatsapp.js';
 
 export function createApp() {
   const app = express();
 
-  app.use(express.json());
+  // Basic CORS support for web frontend
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
+  app.use(express.json({ limit: '10mb' }));
 
   const handleHealth = (_req: express.Request, res: express.Response) => {
     res.setHeader('Content-Type', 'application/json');
@@ -43,6 +56,9 @@ export function createApp() {
       },
     });
   });
+
+  // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/whatsapp', whatsappRouter);
 
   // 404 for unhandled routes
   app.use(notFoundHandler);
