@@ -347,27 +347,42 @@ whatsappRouter.get(
 );
 
 /**
+ * Authentication and authorization guard for simulated officer actions
+ */
+export function requireOfficerSimulatorAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void | Response {
+  const adminKey =
+    req.headers['x-admin-key'] ||
+    (typeof req.headers['authorization'] === 'string' && req.headers['authorization'].startsWith('Bearer ')
+      ? req.headers['authorization'].slice(7)
+      : undefined);
+  const expectedKey = process.env.DEMO_ADMIN_KEY || 'janvaani_demo_secret';
+
+  if (!adminKey || adminKey !== expectedKey) {
+    return res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Administrative authorization required to simulate officer status transitions.',
+      },
+    });
+  }
+
+  next();
+}
+
+/**
  * Simulated Officer Push Notification Dispatcher
- * Protected by administrative demo authorization header
+ * Protected by requireOfficerSimulatorAuth administrative authorization guard
  */
 whatsappRouter.post(
   '/status/simulate-push',
+  requireOfficerSimulatorAuth,
   validateBody(statusPushSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const adminKey = req.headers['x-admin-key'] || req.headers['authorization']?.replace(/^Bearer\s+/, '');
-      const expectedKey = process.env.DEMO_ADMIN_KEY || 'janvaani_demo_secret';
-      const role = req.headers['x-janvaani-role'];
-
-      if (adminKey !== expectedKey && role !== 'officer-simulator') {
-        return res.status(401).json({
-          error: {
-            code: 'UNAUTHORIZED',
-            message: 'Administrative authorization required to simulate officer status transitions.',
-          },
-        });
-      }
-
       const input = req.body as StatusPushInput;
       const updatedRecord = trackerService.updateStage(input.ackNumber, input.stage, input.customMessageKn);
       const ttsResult = await sarvamService.textToSpeech(updatedRecord.spokenNotificationKn);

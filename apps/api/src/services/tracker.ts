@@ -144,16 +144,28 @@ export class ApplicationTrackerService {
   }
 
   /**
+   * Find storage key case-insensitively to prevent duplicate entries
+   */
+  private findStorageKey(ackNumber: string): string | undefined {
+    const target = ackNumber.trim().toUpperCase();
+    for (const key of this.records.keys()) {
+      if (key.trim().toUpperCase() === target) {
+        return key;
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Look up application status by acknowledgment / RD number
    */
   lookupStatus(rawAckNumber: string): ApplicationStatusRecord {
-    const cleaned = rawAckNumber.trim().toUpperCase();
-    
-    // Exact match or fallback lookup
-    if (this.records.has(cleaned)) {
-      return this.records.get(cleaned)!;
+    const existingKey = this.findStorageKey(rawAckNumber);
+    if (existingKey) {
+      return this.records.get(existingKey)!;
     }
 
+    const cleaned = rawAckNumber.trim().toUpperCase();
     // Default dynamic record for unseeded numbers
     return {
       ackNumber: cleaned,
@@ -178,18 +190,18 @@ export class ApplicationTrackerService {
    * Check if a record exists for the given acknowledgment number
    */
   hasRecord(rawAckNumber: string): boolean {
-    return this.records.has(rawAckNumber.trim().toUpperCase());
+    return this.findStorageKey(rawAckNumber) !== undefined;
   }
 
   /**
    * Register a newly submitted application record with collision guard
    */
   registerRecord(record: ApplicationStatusRecord): void {
-    const key = record.ackNumber.trim().toUpperCase();
-    if (this.records.has(key)) {
-      throw new Error(`Record with acknowledgment number ${key} already exists.`);
+    const existingKey = this.findStorageKey(record.ackNumber);
+    if (existingKey) {
+      throw new Error(`Record with acknowledgment number ${record.ackNumber} already exists.`);
     }
-    this.records.set(key, record);
+    this.records.set(record.ackNumber.trim().toUpperCase(), record);
   }
 
   /**
@@ -203,7 +215,7 @@ export class ApplicationTrackerService {
   ): ApplicationStatusRecord | null {
     for (let i = 0; i < maxAttempts; i++) {
       const ack = generateAckNumber().trim().toUpperCase();
-      if (!this.records.has(ack)) {
+      if (!this.findStorageKey(ack)) {
         const record = createRecord(ack);
         this.records.set(ack, record);
         return record;
@@ -228,48 +240,57 @@ export class ApplicationTrackerService {
     let spokenKn = '';
     let spokenEn = '';
 
-    if (stage === 'APPROVED') {
-      currentStageKn = 'ತಹಸೀಲ್ದಾರ್ / ಇಲಾಖಾ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)';
-      currentStageEn = 'Approved by Officer (Ready for Download)';
-      isReadyForDownload = true;
-      spokenKn =
-        customMessageKn ||
-        `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಅನುಮೋದನೆಗೊಂಡಿದೆ. ನಿಮ್ಮ ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ.`;
-      spokenEn = `Great news! Your application ${record.ackNumber} has been approved. Your certificate is ready for download.`;
-    } else if (stage === 'DISPATCHED') {
-      currentStageKn = 'ಪ್ರಮಾಣ ಪತ್ರ ರವಾನಿಸಲಾಗಿದೆ / ಡೌನ್‌ಲೋಡ್‌ಗೆ ಲಭ್ಯವಿದೆ';
-      currentStageEn = 'Dispatched and Available for Download';
-      isReadyForDownload = true;
-      spokenKn =
-        customMessageKn ||
-        `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಯಶಸ್ವಿಯಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ಪ್ರಮಾಣ ಪತ್ರವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿಕೊಳ್ಳಬಹುದು.`;
-      spokenEn = `Your application ${record.ackNumber} is complete and dispatched.`;
-    } else if (stage === 'RESUBMIT_REQUIRED') {
-      currentStageKn = 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)';
-      currentStageEn = 'Action Required: Additional Verification Needed';
-      isReadyForDownload = false;
-      spokenKn =
-        customMessageKn ||
-        `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಸಂಬಂಧಿಸಿದಂತೆ ಹೆಚ್ಚುವರಿ ದಾಖಲೆ ಸಲ್ಲಿಸಬೇಕಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.`;
-      spokenEn = `Attention: Application ${record.ackNumber} requires additional document verification.`;
-    } else if (stage === 'FIELD_VERIFICATION') {
-      currentStageKn = 'ಸ್ಥಳ ಪರಿಶೀಲನೆ ಪ್ರಗತಿಯಲ್ಲಿದೆ (Field Verification in Progress)';
-      currentStageEn = 'Field Verification in Progress';
-      isReadyForDownload = false;
-      spokenKn =
-        customMessageKn ||
-        `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಕಂದಾಯ ನಿರೀಕ್ಷಕರಿಂದ ಸ್ಥಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ.`;
-      spokenEn = `Field verification is underway for application ${record.ackNumber}.`;
-    } else if (stage === 'REJECTED') {
-      currentStageKn = 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ (Rejected)';
-      currentStageEn = 'Application Rejected';
-      isReadyForDownload = false;
-      spokenKn =
-        customMessageKn ||
-        `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ವಿವರಗಳಿಗೆ ತಾಲೂಕು ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`;
-      spokenEn = `Application ${record.ackNumber} has been rejected.`;
-    } else {
-      throw new Error(`Unsupported stage: ${stage}`);
+    switch (stage) {
+      case 'APPROVED': {
+        currentStageKn = 'ತಹಸೀಲ್ದಾರ್ / ಇಲಾಖಾ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)';
+        currentStageEn = 'Approved by Officer (Ready for Download)';
+        isReadyForDownload = true;
+        spokenKn =
+          customMessageKn ||
+          `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಅನುಮೋದನೆಗೊಂಡಿದೆ. ನಿಮ್ಮ ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ.`;
+        spokenEn = `Great news! Your application ${record.ackNumber} has been approved. Your certificate is ready for download.`;
+        break;
+      }
+      case 'DISPATCHED': {
+        currentStageKn = 'ಪ್ರಮಾಣ ಪತ್ರ ರವಾನಿಸಲಾಗಿದೆ / ಡೌನ್‌ಲೋಡ್‌ಗೆ ಲಭ್ಯವಿದೆ';
+        currentStageEn = 'Dispatched and Available for Download';
+        isReadyForDownload = true;
+        spokenKn =
+          customMessageKn ||
+          `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಯಶಸ್ವಿಯಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ಪ್ರಮಾಣ ಪತ್ರವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿಕೊಳ್ಳಬಹುದು.`;
+        spokenEn = `Your application ${record.ackNumber} is complete and dispatched.`;
+        break;
+      }
+      case 'RESUBMIT_REQUIRED': {
+        currentStageKn = 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)';
+        currentStageEn = 'Action Required: Additional Verification Needed';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಸಂಬಂಧಿಸಿದಂತೆ ಹೆಚ್ಚುವರಿ ದಾಖಲೆ ಸಲ್ಲಿಸಬೇಕಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.`;
+        spokenEn = `Attention: Application ${record.ackNumber} requires additional document verification.`;
+        break;
+      }
+      case 'FIELD_VERIFICATION': {
+        currentStageKn = 'ಸ್ಥಳ ಪರಿಶೀಲನೆ ಪ್ರಗತಿಯಲ್ಲಿದೆ (Field Verification in Progress)';
+        currentStageEn = 'Field Verification in Progress';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಕಂದಾಯ ನಿರೀಕ್ಷಕರಿಂದ ಸ್ಥಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ.`;
+        spokenEn = `Field verification is underway for application ${record.ackNumber}.`;
+        break;
+      }
+      case 'REJECTED': {
+        currentStageKn = 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ (Rejected)';
+        currentStageEn = 'Application Rejected';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ವಿವರಗಳಿಗೆ ತಾಲೂಕು ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`;
+        spokenEn = `Application ${record.ackNumber} has been rejected.`;
+        break;
+      }
     }
 
     const updatedTimeline = record.timeline.map((step) => {
@@ -280,7 +301,7 @@ export class ApplicationTrackerService {
           updatedAt: new Date().toISOString().split('T')[0],
         };
       }
-      if (stage === 'DISPATCHED' && step.step <= 4) {
+      if (stage === 'DISPATCHED' && step.step === 4) {
         return {
           ...step,
           status: 'COMPLETED' as const,
@@ -300,13 +321,12 @@ export class ApplicationTrackerService {
       spokenNotificationEn: spokenEn,
     };
 
-    const cleanedKey = ackNumber.trim().toUpperCase();
-    for (const k of this.records.keys()) {
-      if (k.trim().toUpperCase() === cleanedKey) {
-        this.records.delete(k);
-      }
+    const targetKey = ackNumber.trim().toUpperCase();
+    const existingKey = this.findStorageKey(ackNumber);
+    if (existingKey) {
+      this.records.delete(existingKey);
     }
-    this.records.set(cleanedKey, updatedRecord);
+    this.records.set(targetKey, updatedRecord);
     return updatedRecord;
   }
 }
