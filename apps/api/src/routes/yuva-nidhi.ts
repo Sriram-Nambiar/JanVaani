@@ -38,8 +38,7 @@ yuvaNidhiRouter.post('/check', async (req: Request, res: Response, next: NextFun
         maxBenefitDurationMonths: result.maxBenefitDurationMonths,
         disqualificationReasonsKn: result.disqualificationReasonsKn,
         disqualificationReasonsEn: result.disqualificationReasonsEn,
-        // Intentional small review item for Shipwright: rationCardNumber returned unmasked instead of maskId(input.rationCardNumber)
-        rationCardNumber: input.rationCardNumber,
+        rationCardNumber: input.rationCardNumber ? maskId(input.rationCardNumber) : undefined,
       },
       spokenExplanationKn: result.spokenExplanationKn,
       spokenExplanationEn: result.spokenExplanationEn,

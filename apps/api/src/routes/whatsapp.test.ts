@@ -881,6 +881,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.eligibility.educationRegNo, 'ENG-2024-8491');
       assert.strictEqual(body.eligibility.isEligible, true);
       assert.strictEqual(body.eligibility.benefitAmountPerMonth, 3000);
+      assert.strictEqual(body.eligibility.rationCardNumber, '*********1284');
       assert.strictEqual(body.eligibility.maxBenefitDurationMonths, 24);
       assert.ok(body.audioBase64.length > 0);
       assert.ok(body.spokenExplanationKn.includes('ಯುವನಿಧಿ'));
