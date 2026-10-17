@@ -111,7 +111,9 @@ export class GramaOneKioskService {
   }
 
   public async callNext(counterNumber: number = 1): Promise<KioskToken | null> {
-    const nextToken = Array.from(this.tokens.values()).find((t) => t.status === 'WAITING');
+    const nextToken =
+      Array.from(this.tokens.values()).find((t) => t.status === 'WAITING' && t.counterNumber === counterNumber) ||
+      Array.from(this.tokens.values()).find((t) => t.status === 'WAITING');
     if (!nextToken) return null;
 
     nextToken.status = 'CALLED';

@@ -678,6 +678,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(body.kiosk.includes('Grama One'));
       assert.match(body.tokenId, /^TOKEN-2026-\d+$/);
       assert.ok(body.citizenNameMasked.includes('*'));
+      assert.ok(body.phone.includes('*'));
       assert.strictEqual(body.serviceType, 'GRUHA_JYOTHI');
       assert.ok(body.audioAnnouncementBase64.length > 0);
       assert.ok(body.announcementScriptKn.includes('ಟೋಕನ್'));

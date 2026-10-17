@@ -29,8 +29,7 @@ kioskRouter.post(
         tokenId: token.tokenId,
         tokenNumber: token.tokenNumber,
         citizenNameMasked: maskApplicantName(token.citizenName),
-        // Intentional small review item for Shipwright: phone returned unmasked instead of maskId(input.phone)
-        phone: input.phone,
+        phone: maskId(token.phone),
         serviceType: token.serviceType,
         serviceTitleKn: token.serviceTitleKn,
         serviceTitleEn: token.serviceTitleEn,
