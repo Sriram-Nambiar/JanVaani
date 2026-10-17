@@ -83,6 +83,10 @@ export class SarvamService {
 
     if (scenarioHint === 'caste_income_apply') {
       transcript = 'ನನಗೆ 2A ಪ್ರವರ್ಗದ ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ ಬೇಕು. ವಾರ್ಷಿಕ ಆದಾಯ ಒಂದು ಲಕ್ಷ ರೂಪಾಯಿ.';
+    } else if (scenarioHint === 'gruha_jyothi_apply') {
+      transcript = 'ನನಗೆ 200 ಯೂನಿಟ್ ಉಚಿತ ಕರೆಂಟ್ ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು. ನನ್ನ ಹೆಸರು ಸವಿತಾ.';
+    } else if (scenarioHint === 'gruha_jyothi_submit_agent') {
+      transcript = 'ನನ್ನ ಕರೆಂಟ್ ಬಿಲ್ ಅಕೌಂಟ್ ಐಡಿ 1029384756, ಬೆಂಗಳೂರು ಬೆಸ್ಕಾಂ (BESCOM), ಬಾಡಿಗೆದಾರ.';
     } else if (scenarioHint === 'status_check_rd001' || scenarioHint?.includes('RD001')) {
       transcript = 'ನನ್ನ ಅರ್ಜಿ ಸಂಖ್ಯೆ RD001, ಇದರ ಸ್ಥಿತಿ ಏನು?';
     } else if (scenarioHint === 'status_check_rd002' || scenarioHint?.includes('RD002')) {

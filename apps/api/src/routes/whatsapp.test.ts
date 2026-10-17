@@ -4,7 +4,7 @@ import type { Server } from 'node:http';
 import { app } from '../app.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService } from '../services/schemes.js';
-import { trackerService } from '../services/tracker.js';
+import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
 
 describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   let server: Server;
@@ -103,6 +103,42 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const status = trackerService.lookupStatus('RD003');
       assert.strictEqual(status.ackNumber, 'RD003');
       assert.ok(status.spokenNotificationKn.includes('ವಂಶವೃಕ್ಷ'));
+    });
+
+    it('masks Indic (Kannada) applicant names preserving grapheme clusters without corrupting vowel signs', () => {
+      const masked = maskApplicantName('ಸವಿತಾ ಕುಮಾರಿ');
+      assert.ok(masked.includes('*'));
+      assert.ok(masked.startsWith('ಸ'));
+      assert.ok(masked.endsWith('ರಿ'));
+      assert.strictEqual(maskId('1029384756'), '******4756');
+    });
+
+    it('registerUniqueRecord atomically registers without collision', () => {
+      let callCount = 0;
+      const record = trackerService.registerUniqueRecord(
+        (ack) => ({
+          ackNumber: ack,
+          schemeNameKn: 'ಟೆಸ್ಟ್ ಯೋಜನೆ',
+          schemeNameEn: 'Test Scheme',
+          applicantName: 'ಟೆಸ್ಟ್',
+          currentStageKn: 'ಟೆಸ್ಟ್',
+          currentStageEn: 'Test',
+          isReadyForDownload: false,
+          timeline: [],
+          spokenNotificationKn: 'ಟೆಸ್ಟ್',
+          spokenNotificationEn: 'Test',
+        }),
+        () => {
+          callCount++;
+          // simulate collision on first attempt with seeded RD001
+          return callCount === 1 ? 'RD001' : 'TEST-UNIQUE-001';
+        }
+      );
+
+      assert.ok(record);
+      assert.strictEqual(record.ackNumber, 'TEST-UNIQUE-001');
+      assert.strictEqual(callCount, 2);
+      assert.strictEqual(trackerService.hasRecord('TEST-UNIQUE-001'), true);
     });
   });
 
@@ -239,6 +275,74 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
         `${baseUrl}/api/whatsapp/webhook?hub.mode=subscribe&hub.verify_token=wrong_token&hub.challenge=test`
       );
       assert.strictEqual(res.status, 403);
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu submits Gruha Jyothi application to Seva Sindhu', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+            consumerId: '1029384756',
+            escomName: 'BESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.ok(data.acknowledgmentNumber.startsWith('GJ-BESCOM-2026-'));
+      assert.ok(data.audioBase64.length > 0);
+      assert.ok(data.spokenNotificationKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu rejects malformed payload with 400 VALIDATION_ERROR', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'A',
+            consumerId: '123',
+            escomName: 'INVALID_ESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu masks citizen PII and generates high-entropy acknowledgment', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_jyothi',
+          fields: {
+            applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+            consumerId: '1029384756',
+            escomName: 'BESCOM',
+          },
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.match(data.acknowledgmentNumber, /^GJ-BESCOM-2026-[0-9A-F]{8}$/);
+      assert.ok(data.applicantName.includes('*'));
+      assert.strictEqual(data.consumerId, '******4756');
+
+      const lookupRes = await fetch(`${baseUrl}/api/whatsapp/status/${data.acknowledgmentNumber}`);
+      assert.strictEqual(lookupRes.status, 200);
+      const lookupData = await lookupRes.json();
+      assert.strictEqual(lookupData.data.applicantName, data.applicantName);
     });
   });
 });

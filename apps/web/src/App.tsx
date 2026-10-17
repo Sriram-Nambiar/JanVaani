@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { WhatsAppChat } from './components/WhatsAppChat';
 import { InspectorPanel } from './components/InspectorPanel';
+import { MockSevaSindhu } from './components/MockSevaSindhu';
 import { WhatsAppApiResponse } from './types';
 
 export function App() {
@@ -15,7 +16,11 @@ export function App() {
     isMock: true,
   });
 
-  const [activeTab, setActiveTab] = useState<'both' | 'chat' | 'inspector'>('both');
+  const [activeTab, setActiveTab] = useState<'both' | 'chat' | 'rightPane'>('both');
+  const [rightPanelView, setRightPanelView] = useState<'inspector' | 'sevasindhu'>('inspector');
+
+  const [agentData, setAgentData] = useState<any>(null);
+  const [isAgentActive, setIsAgentActive] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -26,6 +31,28 @@ export function App() {
       statusRecord: data.statusRecord,
       isMock: data.isMock,
     });
+
+    if (data.formDraft?.schemeId === 'gruha_jyothi') {
+      setAgentData({
+        schemeId: 'gruha_jyothi',
+        applicantName: data.formDraft.extractedFields.applicantName,
+        consumerId: data.formDraft.extractedFields.consumerId,
+        escomName: data.formDraft.extractedFields.escomName,
+        aadhaarNumber: data.formDraft.extractedFields.aadhaarNumber,
+        occupancyType: data.formDraft.extractedFields.occupancyType,
+      });
+
+      if (data.formDraft.isComplete) {
+        setIsAgentActive(true);
+        setRightPanelView('sevasindhu');
+      }
+    }
+  };
+
+  const handleDispatchAgent = (data: any) => {
+    setAgentData(data);
+    setIsAgentActive(true);
+    setRightPanelView('sevasindhu');
   };
 
   return (
@@ -75,12 +102,55 @@ export function App() {
               JanVaani <span style={{ color: '#25d366', fontWeight: 500 }}>(ಜನವಾಣಿ)</span>
             </span>
             <span style={{ fontSize: '12px', color: '#94a3b8', marginLeft: '12px' }}>
-              Voice-First Civic Copilot • Karnataka Services
+              Voice-First Civic Copilot • Seva Sindhu Autonomous Agent
             </span>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* Switch Right Pane: Inspector vs Mock Seva Sindhu */}
+          <div
+            style={{
+              display: 'flex',
+              backgroundColor: '#1e293b',
+              borderRadius: '6px',
+              padding: '2px',
+              border: '1px solid #334155',
+            }}
+          >
+            <button
+              onClick={() => setRightPanelView('inspector')}
+              style={{
+                background: rightPanelView === 'inspector' ? '#0f172a' : 'transparent',
+                color: rightPanelView === 'inspector' ? '#38bdf8' : '#94a3b8',
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              📋 Copilot Inspector
+            </button>
+            <button
+              onClick={() => setRightPanelView('sevasindhu')}
+              style={{
+                background: rightPanelView === 'sevasindhu' ? '#800000' : 'transparent',
+                color: rightPanelView === 'sevasindhu' ? '#ffffff' : '#94a3b8',
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              🏛️ Mock Seva Sindhu Portal
+            </button>
+          </div>
+
+          {/* Tab View Selector (Split / Full) */}
           <div
             style={{
               display: 'flex',
@@ -120,10 +190,10 @@ export function App() {
               WhatsApp
             </button>
             <button
-              onClick={() => setActiveTab('inspector')}
+              onClick={() => setActiveTab('rightPane')}
               style={{
-                background: activeTab === 'inspector' ? '#0f172a' : 'transparent',
-                color: activeTab === 'inspector' ? '#25d366' : '#94a3b8',
+                background: activeTab === 'rightPane' ? '#0f172a' : 'transparent',
+                color: activeTab === 'rightPane' ? '#25d366' : '#94a3b8',
                 border: 'none',
                 padding: '4px 8px',
                 borderRadius: '4px',
@@ -132,7 +202,7 @@ export function App() {
                 fontWeight: 600,
               }}
             >
-              Inspector
+              {rightPanelView === 'sevasindhu' ? 'Seva Sindhu' : 'Inspector'}
             </button>
           </div>
 
@@ -149,19 +219,6 @@ export function App() {
           >
             Sarvam AI (Saaras + Bulbul)
           </span>
-
-          <span
-            style={{
-              fontSize: '11px',
-              backgroundColor: engineState.isMock ? 'rgba(234, 179, 8, 0.15)' : 'rgba(34, 197, 94, 0.15)',
-              color: engineState.isMock ? '#eab308' : '#22c55e',
-              padding: '4px 10px',
-              borderRadius: '12px',
-              fontWeight: 600,
-            }}
-          >
-            {engineState.isMock ? 'DEMO MOCK ENGINE' : 'LIVE SARVAM KEY'}
-          </span>
         </div>
       </header>
 
@@ -175,7 +232,7 @@ export function App() {
         }}
       >
         {/* Left Pane: WhatsApp Phone Frame */}
-        {activeTab !== 'inspector' && (
+        {activeTab !== 'rightPane' && (
           <div
             style={{
               width: activeTab === 'chat' ? '100%' : '460px',
@@ -187,11 +244,14 @@ export function App() {
               backgroundColor: '#ffffff',
             }}
           >
-            <WhatsAppChat onEngineUpdate={handleEngineUpdate} />
+            <WhatsAppChat
+              onEngineUpdate={handleEngineUpdate}
+              onDispatchAgent={handleDispatchAgent}
+            />
           </div>
         )}
 
-        {/* Right Pane: Live Copilot Engine Inspector */}
+        {/* Right Pane: Inspector OR Mock Seva Sindhu Portal */}
         {activeTab !== 'chat' && (
           <div
             style={{
@@ -201,14 +261,27 @@ export function App() {
               backgroundColor: '#ffffff',
             }}
           >
-            <InspectorPanel
-              activeFeature={engineState.activeFeature}
-              transcript={engineState.transcript}
-              formDraft={engineState.formDraft}
-              auditResult={engineState.auditResult}
-              statusRecord={engineState.statusRecord}
-              isMock={engineState.isMock}
-            />
+            {rightPanelView === 'sevasindhu' ? (
+              <MockSevaSindhu
+                agentData={agentData}
+                isAgentActive={isAgentActive}
+                onSubmissionComplete={(_ack, res) => {
+                  setEngineState((prev) => ({
+                    ...prev,
+                    statusRecord: res.statusRecord,
+                  }));
+                }}
+              />
+            ) : (
+              <InspectorPanel
+                activeFeature={engineState.activeFeature}
+                transcript={engineState.transcript}
+                formDraft={engineState.formDraft}
+                auditResult={engineState.auditResult}
+                statusRecord={engineState.statusRecord}
+                isMock={engineState.isMock}
+              />
+            )}
           </div>
         )}
       </main>

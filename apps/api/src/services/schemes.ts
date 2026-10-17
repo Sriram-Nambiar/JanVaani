@@ -83,6 +83,28 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: '2A, 3A, 3B ಪ್ರವರ್ಗಗಳಿಗೆ ಆದಾಯ ಮಿತಿ ವಾರ್ಷಿಕ ₹2,00,000 ಒಳಗೆ ಇರಬೇಕು.',
     },
   },
+  gruha_jyothi: {
+    id: 'gruha_jyothi',
+    nameEn: 'Gruha Jyothi Scheme (200 Units Free Power)',
+    nameKn: 'ಗೃಹ ಜ್ಯೋತಿ ಯೋಜನೆ (200 ಯೂನಿಟ್ ಉಚಿತ ವಿದ್ಯುತ್)',
+    department: 'Energy Department (ಇಂಧನ ಇಲಾಖೆ)',
+    descriptionEn: 'Provides up to 200 units of free electricity per month to all domestic households in Karnataka.',
+    descriptionKn: 'ಕರ್ನಾಟಕದ ಎಲ್ಲಾ ಗೃಹಬಳಕೆದಾರರಿಗೆ ತಿಂಗಳಿಗೆ 200 ಯೂನಿಟ್‌ವರೆಗೆ ಉಚಿತ ವಿದ್ಯುತ್ ನೀಡುವ ಯೋಜನೆ.',
+    requiredFields: [
+      { key: 'applicantName', labelKn: 'ಅರ್ಜಿದಾರರ ಹೆಸರು', labelEn: 'Applicant Name', type: 'string', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ಆಧಾರ್ ಸಂಖ್ಯೆ', labelEn: 'Aadhaar Number', type: 'string', required: true },
+      { key: 'escomName', labelKn: 'ವಿದ್ಯುತ್ ಸರಬರಾಜು ಕಂಪನಿ (ESCOM)', labelEn: 'ESCOM Name (BESCOM/MESCOM/HESCOM/GESCOM/CHESCOM)', type: 'string', required: true },
+      { key: 'consumerId', labelKn: 'ವಿದ್ಯುತ್ ಖಾತೆ ಸಂಖ್ಯೆ (Account ID / RR Number)', labelEn: 'Consumer ID / Account ID', type: 'string', required: true },
+      { key: 'occupancyType', labelKn: 'ವಸ್ತುಸ್ಥಿತಿ (ಮಾಲೀಕರು / ಬಾಡಿಗೆದಾರರು)', labelEn: 'Occupancy Type (Owner/Tenant)', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'aadhaar', titleKn: 'ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Aadhaar Card', isMandatory: true },
+      { id: 'electricity_bill', titleKn: 'ಇತ್ತೀಚಿನ ವಿದ್ಯುತ್ ಬಿಲ್ (Electricity Bill)', titleEn: 'Electricity Bill', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಗೃಹಬಳಕೆಯ ವಿದ್ಯುತ್ ಮೀಟರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ. ವಾಣಿಜ್ಯ ಬಳಕೆಗೆ ಅನ್ವಯಿಸುವುದಿಲ್ಲ.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -110,6 +132,16 @@ export class SchemesService {
    * Parse Kannada speech text and map to an official scheme form draft
    */
   extractFormDraft(transcript: string, scenarioHint?: string): FormDraftResult {
+    const isGruhaJyothi =
+      scenarioHint?.startsWith('gruha_jyothi') ||
+      transcript.includes('ಜ್ಯೋತಿ') ||
+      transcript.includes('ವಿದ್ಯುತ್') ||
+      transcript.includes('ಕರೆಂಟ್') ||
+      transcript.includes('ಬೆಸ್ಕಾಂ') ||
+      transcript.includes('BESCOM') ||
+      transcript.includes('electricity') ||
+      transcript.includes('jyothi');
+
     const isCasteIncome =
       scenarioHint === 'caste_income_apply' ||
       transcript.includes('ಜಾತಿ') ||
@@ -117,8 +149,49 @@ export class SchemesService {
       transcript.includes('caste') ||
       transcript.includes('income');
 
-    const scheme = isCasteIncome ? SUPPORTED_SCHEMES.caste_income : SUPPORTED_SCHEMES.gruha_lakshmi;
+    const scheme = isGruhaJyothi
+      ? SUPPORTED_SCHEMES.gruha_jyothi
+      : isCasteIncome
+      ? SUPPORTED_SCHEMES.caste_income
+      : SUPPORTED_SCHEMES.gruha_lakshmi;
+
     const extractedFields: Record<string, string | number> = {};
+
+    if (scheme.id === 'gruha_jyothi') {
+      extractedFields.applicantName = 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';
+      extractedFields.aadhaarNumber = 'XXXX-XXXX-4821';
+      extractedFields.escomName = 'BESCOM (Bangalore Electricity Supply Company)';
+      extractedFields.occupancyType = 'Tenant (ಬಾಡಿಗೆದಾರ)';
+
+      const accountMatch = transcript.match(/\b([0-9]{10})\b/);
+      const isSecondTurnOrSubmit =
+        scenarioHint === 'gruha_jyothi_submit_agent' ||
+        Boolean(accountMatch) ||
+        transcript.includes('1029384756');
+
+      if (isSecondTurnOrSubmit) {
+        extractedFields.consumerId = accountMatch ? accountMatch[1] : '1029384756';
+      }
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      const isComplete = missingFields.length === 0;
+      const promptForCitizenKn = isComplete
+        ? `ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ ಅರ್ಜಿಯ ಎಲ್ಲಾ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ! ಸೇವಾ ಸಿಂಧು (Seva Sindhu) ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಏಜೆಂಟ್ ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಸಲಾಗುತ್ತಿದೆ...`
+        : `ಖಂಡಿತ! ನಿಮ್ಮ ಗೃಹ ಜ್ಯೋತಿ 200 ಯೂನಿಟ್ ಉಚಿತ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಲು, ನಿಮ್ಮ ಕರೆಂಟ್ ಬಿಲ್‌ನಲ್ಲಿರುವ ವಿದ್ಯುತ್ ಖಾತೆ ಸಂಖ್ಯೆ (Account ID / RR Number) ತಿಳಿಸಿ.`;
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete,
+        promptForCitizenKn,
+      };
+    }
 
     if (scheme.id === 'gruha_lakshmi') {
       // Extract Name
