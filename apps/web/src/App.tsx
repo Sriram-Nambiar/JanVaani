@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { WhatsAppChat } from './components/WhatsAppChat';
 import { InspectorPanel } from './components/InspectorPanel';
 import { MockSevaSindhu } from './components/MockSevaSindhu';
-import { WhatsAppApiResponse } from './types';
+import { DraftViewerModal } from './components/DraftViewerModal';
+import { OfficerPushSimulator } from './components/OfficerPushSimulator';
+import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
   const [engineState, setEngineState] = useState<{
@@ -21,6 +23,9 @@ export function App() {
 
   const [agentData, setAgentData] = useState<any>(null);
   const [isAgentActive, setIsAgentActive] = useState(false);
+  const [draftModalAck, setDraftModalAck] = useState<string | null>(null);
+  const [pushedMessage, setPushedMessage] = useState<ChatMessage | null>(null);
+  const [lastAck, setLastAck] = useState<string>('RD002');
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -247,6 +252,8 @@ export function App() {
             <WhatsAppChat
               onEngineUpdate={handleEngineUpdate}
               onDispatchAgent={handleDispatchAgent}
+              onOpenDraftModal={(ack) => setDraftModalAck(ack)}
+              pushedMessage={pushedMessage}
             />
           </div>
         )}
@@ -265,7 +272,8 @@ export function App() {
               <MockSevaSindhu
                 agentData={agentData}
                 isAgentActive={isAgentActive}
-                onSubmissionComplete={(_ack, res) => {
+                onSubmissionComplete={(ack, res) => {
+                  setLastAck(ack);
                   setEngineState((prev) => ({
                     ...prev,
                     statusRecord: res.statusRecord,
@@ -273,18 +281,49 @@ export function App() {
                 }}
               />
             ) : (
-              <InspectorPanel
-                activeFeature={engineState.activeFeature}
-                transcript={engineState.transcript}
-                formDraft={engineState.formDraft}
-                auditResult={engineState.auditResult}
-                statusRecord={engineState.statusRecord}
-                isMock={engineState.isMock}
-              />
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <InspectorPanel
+                    activeFeature={engineState.activeFeature}
+                    transcript={engineState.transcript}
+                    formDraft={engineState.formDraft}
+                    auditResult={engineState.auditResult}
+                    statusRecord={engineState.statusRecord}
+                    isMock={engineState.isMock}
+                  />
+                </div>
+                <div style={{ borderTop: '1px solid #cbd5e1', backgroundColor: '#ffffff', padding: '0 16px 16px 16px' }}>
+                  <OfficerPushSimulator
+                    currentAckNumber={lastAck}
+                    onPushDispatched={(pushData) => {
+                      setEngineState((prev) => ({
+                        ...prev,
+                        statusRecord: pushData.updatedRecord,
+                        activeFeature: 'audio_status_bell',
+                      }));
+                      setPushedMessage({
+                        id: `push-${Date.now()}`,
+                        sender: 'janvaani',
+                        type: 'voice',
+                        text: `🔔 [ಅಧಿಕಾರಿ ಅಪ್‌ಡೇಟ್ - ${pushData.stage}]: ${pushData.spokenNotificationKn}`,
+                        audioBase64: pushData.audioBase64,
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                      });
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         )}
       </main>
+
+      {/* Application Draft Document Viewer Modal */}
+      <DraftViewerModal
+        ackNumber={draftModalAck || ''}
+        isOpen={Boolean(draftModalAck)}
+        onClose={() => setDraftModalAck(null)}
+      />
     </div>
   );
 }

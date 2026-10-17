@@ -7,9 +7,16 @@ import {
   sevaSindhuSubmissionSchema,
   SevaSindhuSubmissionInput,
 } from '../schemas/whatsapp-message.js';
+import {
+  draftPdfSchema,
+  DraftPdfInput,
+  statusPushSchema,
+  StatusPushInput,
+} from '../schemas/draft-pdf.js';
 import { sarvamService } from '../services/sarvam.js';
 import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
 import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
+import { draftPdfService } from '../services/pdf.js';
 
 export const whatsappRouter = Router();
 
@@ -278,3 +285,120 @@ whatsappRouter.get('/webhook', (req: Request, res: Response) => {
   }
   return res.sendStatus(403);
 });
+
+/**
+ * Generate printable Application Draft HTML document
+ */
+whatsappRouter.post(
+  '/draft/generate-html',
+  validateBody(draftPdfSchema),
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = req.body as DraftPdfInput;
+      const html = draftPdfService.generateDraftHtml(input);
+
+      res.status(200).json({
+        status: 'ok',
+        ackNumber: input.ackNumber,
+        html,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Direct printable Application Draft HTML view
+ */
+whatsappRouter.get(
+  '/draft/:ackNumber/html',
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const ackNumber = req.params.ackNumber;
+      const record = trackerService.lookupStatus(ackNumber);
+
+      const html = draftPdfService.generateDraftHtml({
+        ackNumber: record.ackNumber,
+        schemeId:
+          record.schemeId ||
+          (record.ackNumber.startsWith('GJ-')
+            ? 'gruha_jyothi'
+            : record.schemeNameKn.includes('ಗೃಹಲಕ್ಷ್ಮಿ')
+            ? 'gruha_lakshmi'
+            : 'caste_income'),
+        applicantName: record.applicantName,
+        auditFindings: record.auditFindings || [
+          {
+            field: 'Identity Verification (Aadhaar)',
+            status: 'PASSED',
+            noteKn: 'ದಾಖಲೆ ವಿವರಗಳು ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
+            noteEn: 'Identity verified against state records',
+          },
+        ],
+      });
+
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.status(200).send(html);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * Authentication and authorization guard for simulated officer actions
+ */
+export function requireOfficerSimulatorAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void | Response {
+  const adminKey =
+    req.headers['x-admin-key'] ||
+    (typeof req.headers['authorization'] === 'string' && req.headers['authorization'].startsWith('Bearer ')
+      ? req.headers['authorization'].slice(7)
+      : undefined);
+  const expectedKey = process.env.DEMO_ADMIN_KEY || 'janvaani_demo_secret';
+
+  if (!adminKey || adminKey !== expectedKey) {
+    return res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Administrative authorization required to simulate officer status transitions.',
+      },
+    });
+  }
+
+  next();
+}
+
+/**
+ * Simulated Officer Push Notification Dispatcher
+ * Protected by requireOfficerSimulatorAuth administrative authorization guard
+ */
+whatsappRouter.post(
+  '/status/simulate-push',
+  requireOfficerSimulatorAuth,
+  validateBody(statusPushSchema),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const input = req.body as StatusPushInput;
+      const updatedRecord = trackerService.updateStage(input.ackNumber, input.stage, input.customMessageKn);
+      const ttsResult = await sarvamService.textToSpeech(updatedRecord.spokenNotificationKn);
+
+      res.status(200).json({
+        status: 'ok',
+        ackNumber: input.ackNumber,
+        stage: input.stage,
+        updatedRecord,
+        spokenNotificationKn: updatedRecord.spokenNotificationKn,
+        spokenNotificationEn: updatedRecord.spokenNotificationEn,
+        audioBase64: ttsResult.audioBase64,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);

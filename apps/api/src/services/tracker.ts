@@ -14,6 +14,7 @@ export interface ApplicationTimelineStep {
 
 export interface ApplicationStatusRecord {
   ackNumber: string;
+  schemeId?: 'gruha_jyothi' | 'gruha_lakshmi' | 'caste_income';
   schemeNameKn: string;
   schemeNameEn: string;
   applicantName: string;
@@ -23,6 +24,12 @@ export interface ApplicationStatusRecord {
   spokenNotificationKn: string;
   spokenNotificationEn: string;
   isReadyForDownload: boolean;
+  auditFindings?: Array<{
+    field: string;
+    status: 'PASSED' | 'FLAGGED' | 'WARNING';
+    noteKn: string;
+    noteEn: string;
+  }>;
 }
 
 export class ApplicationTrackerService {
@@ -36,12 +43,27 @@ export class ApplicationTrackerService {
     // Seed 1: Approved and Ready (RD001)
     this.records.set('RD001', {
       ackNumber: 'RD001',
+      schemeId: 'caste_income',
       schemeNameKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ',
       schemeNameEn: 'Caste & Income Certificate',
       applicantName: 'ಸವಿತಾ (Savitha)',
       currentStageKn: 'ತಹಸೀಲ್ದಾರ್ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)',
       currentStageEn: 'Approved by Tahsildar (Ready for Download)',
       isReadyForDownload: true,
+      auditFindings: [
+        {
+          field: 'Aadhaar Card',
+          status: 'PASSED',
+          noteKn: 'ಆಧಾರ್ ವಿವರಗಳು ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ',
+          noteEn: 'Aadhaar identity verified',
+        },
+        {
+          field: 'Income Certificate Affidavit',
+          status: 'PASSED',
+          noteKn: 'ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ ಅನುಮೋದನೆಗೊಂಡಿದೆ',
+          noteEn: 'Income certificate affidavit approved',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಗ್ರಾಮ ಒನ್‌ನಲ್ಲಿ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ', labelEn: 'Application Submitted at Grama One', status: 'COMPLETED', updatedAt: '2026-10-10' },
         { step: 2, labelKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ (RI) ಸ್ಥಳ ಪರಿಶೀಲನೆ', labelEn: 'Revenue Inspector Verification', status: 'COMPLETED', updatedAt: '2026-10-12' },
@@ -57,12 +79,27 @@ export class ApplicationTrackerService {
     // Seed 2: In-Progress at Revenue Inspector (RD002)
     this.records.set('RD002', {
       ackNumber: 'RD002',
+      schemeId: 'gruha_lakshmi',
       schemeNameKn: 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆ',
       schemeNameEn: 'Gruha Lakshmi Scheme',
       applicantName: 'ಮಂಜುಳಾ (Manjula)',
       currentStageKn: 'ಕಂದಾಯ ನಿರೀಕ್ಷಕರ ಪರಿಶೀಲನೆಯ ಹಂತದಲ್ಲಿದೆ',
       currentStageEn: 'Verification by Revenue Inspector In Progress',
       isReadyForDownload: false,
+      auditFindings: [
+        {
+          field: 'Ration Card',
+          status: 'PASSED',
+          noteKn: 'ಕುಟುಂಬದ ಯಜಮಾನಿ ಮಹಿಳೆ ಎಂದು ದೃಢೀಕರಿಸಲಾಗಿದೆ',
+          noteEn: 'Head of household confirmed',
+        },
+        {
+          field: 'Bank Account Aadhaar Seeding',
+          status: 'PASSED',
+          noteKn: 'ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಆಧಾರ್ ಲಿಂಕ್ ಆಗಿದೆ',
+          noteEn: 'Bank account NPCI mapping active',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಅರ್ಜಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', labelEn: 'Application Submitted', status: 'COMPLETED', updatedAt: '2026-10-13' },
         { step: 2, labelKn: 'ಗ್ರಾಮ ಆಡಳಿತಾಧಿಕಾರಿ ಮತ್ತು RI ಪರಿಶೀಲನೆ', labelEn: 'Field Verification in Progress', status: 'IN_PROGRESS', updatedAt: '2026-10-15' },
@@ -78,12 +115,21 @@ export class ApplicationTrackerService {
     // Seed 3: Action Required / Document Issue (RD003)
     this.records.set('RD003', {
       ackNumber: 'RD003',
+      schemeId: 'caste_income',
       schemeNameKn: 'ಪಡಿತರ ಚೀಟಿ ತಿದ್ದುಪಡಿ',
       schemeNameEn: 'Ration Card Correction',
       applicantName: 'ಬಸವರಾಜ್ (Basavaraj)',
       currentStageKn: 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)',
       currentStageEn: 'Action Required: Incomplete Family Tree Document',
       isReadyForDownload: false,
+      auditFindings: [
+        {
+          field: 'Family Tree Certificate (ವಂಶವೃಕ್ಷ)',
+          status: 'FLAGGED',
+          noteKn: 'ವಂಶವೃಕ್ಷ ಪ್ರಮಾಣ ಪತ್ರ ಅಪೂರ್ಣವಾಗಿದೆ',
+          noteEn: 'Incomplete family tree affidavit requiring re-submission',
+        },
+      ],
       timeline: [
         { step: 1, labelKn: 'ಅರ್ಜಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ', labelEn: 'Application Submitted', status: 'COMPLETED', updatedAt: '2026-10-11' },
         { step: 2, labelKn: 'ದಾಖಲೆ ಪರಿಶೀಲನೆಯಲ್ಲಿ ದೋಷ', labelEn: 'Document Discrepancy Flagged', status: 'REJECTED', updatedAt: '2026-10-14' },
@@ -98,16 +144,28 @@ export class ApplicationTrackerService {
   }
 
   /**
+   * Find storage key case-insensitively to prevent duplicate entries
+   */
+  private findStorageKey(ackNumber: string): string | undefined {
+    const target = ackNumber.trim().toUpperCase();
+    for (const key of this.records.keys()) {
+      if (key.trim().toUpperCase() === target) {
+        return key;
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Look up application status by acknowledgment / RD number
    */
   lookupStatus(rawAckNumber: string): ApplicationStatusRecord {
-    const cleaned = rawAckNumber.trim().toUpperCase();
-    
-    // Exact match or fallback lookup
-    if (this.records.has(cleaned)) {
-      return this.records.get(cleaned)!;
+    const existingKey = this.findStorageKey(rawAckNumber);
+    if (existingKey) {
+      return this.records.get(existingKey)!;
     }
 
+    const cleaned = rawAckNumber.trim().toUpperCase();
     // Default dynamic record for unseeded numbers
     return {
       ackNumber: cleaned,
@@ -132,18 +190,18 @@ export class ApplicationTrackerService {
    * Check if a record exists for the given acknowledgment number
    */
   hasRecord(rawAckNumber: string): boolean {
-    return this.records.has(rawAckNumber.trim().toUpperCase());
+    return this.findStorageKey(rawAckNumber) !== undefined;
   }
 
   /**
    * Register a newly submitted application record with collision guard
    */
   registerRecord(record: ApplicationStatusRecord): void {
-    const key = record.ackNumber.trim().toUpperCase();
-    if (this.records.has(key)) {
-      throw new Error(`Record with acknowledgment number ${key} already exists.`);
+    const existingKey = this.findStorageKey(record.ackNumber);
+    if (existingKey) {
+      throw new Error(`Record with acknowledgment number ${record.ackNumber} already exists.`);
     }
-    this.records.set(key, record);
+    this.records.set(record.ackNumber.trim().toUpperCase(), record);
   }
 
   /**
@@ -157,13 +215,119 @@ export class ApplicationTrackerService {
   ): ApplicationStatusRecord | null {
     for (let i = 0; i < maxAttempts; i++) {
       const ack = generateAckNumber().trim().toUpperCase();
-      if (!this.records.has(ack)) {
+      if (!this.findStorageKey(ack)) {
         const record = createRecord(ack);
         this.records.set(ack, record);
         return record;
       }
     }
     return null;
+  }
+
+  /**
+   * Update the stage of an application record (used by Officer Simulation Push)
+   */
+  updateStage(
+    ackNumber: string,
+    stage: 'APPROVED' | 'REJECTED' | 'DISPATCHED' | 'FIELD_VERIFICATION' | 'RESUBMIT_REQUIRED',
+    customMessageKn?: string
+  ): ApplicationStatusRecord {
+    const record = this.lookupStatus(ackNumber);
+
+    let currentStageKn = record.currentStageKn;
+    let currentStageEn = record.currentStageEn;
+    let isReadyForDownload = record.isReadyForDownload;
+    let spokenKn = '';
+    let spokenEn = '';
+
+    switch (stage) {
+      case 'APPROVED': {
+        currentStageKn = 'ತಹಸೀಲ್ದಾರ್ / ಇಲಾಖಾ ಅನುಮೋದನೆ ಪೂರ್ಣಗೊಂಡಿದೆ (ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ)';
+        currentStageEn = 'Approved by Officer (Ready for Download)';
+        isReadyForDownload = true;
+        spokenKn =
+          customMessageKn ||
+          `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಅನುಮೋದನೆಗೊಂಡಿದೆ. ನಿಮ್ಮ ಪ್ರಮಾಣ ಪತ್ರ ಸಿದ್ಧವಾಗಿದೆ.`;
+        spokenEn = `Great news! Your application ${record.ackNumber} has been approved. Your certificate is ready for download.`;
+        break;
+      }
+      case 'DISPATCHED': {
+        currentStageKn = 'ಪ್ರಮಾಣ ಪತ್ರ ರವಾನಿಸಲಾಗಿದೆ / ಡೌನ್‌ಲೋಡ್‌ಗೆ ಲಭ್ಯವಿದೆ';
+        currentStageEn = 'Dispatched and Available for Download';
+        isReadyForDownload = true;
+        spokenKn =
+          customMessageKn ||
+          `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಯಶಸ್ವಿಯಾಗಿ ಮುಕ್ತಾಯಗೊಂಡಿದೆ. ಪ್ರಮಾಣ ಪತ್ರವನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿಕೊಳ್ಳಬಹುದು.`;
+        spokenEn = `Your application ${record.ackNumber} is complete and dispatched.`;
+        break;
+      }
+      case 'RESUBMIT_REQUIRED': {
+        currentStageKn = 'ದಾಖಲೆ ಮರು-ಸಲ್ಲಿಕೆ ಅಗತ್ಯವಿದೆ (Action Required)';
+        currentStageEn = 'Action Required: Additional Verification Needed';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಸಂಬಂಧಿಸಿದಂತೆ ಹೆಚ್ಚುವರಿ ದಾಖಲೆ ಸಲ್ಲಿಸಬೇಕಾಗಿದೆ. ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ.`;
+        spokenEn = `Attention: Application ${record.ackNumber} requires additional document verification.`;
+        break;
+      }
+      case 'FIELD_VERIFICATION': {
+        currentStageKn = 'ಸ್ಥಳ ಪರಿಶೀಲನೆ ಪ್ರಗತಿಯಲ್ಲಿದೆ (Field Verification in Progress)';
+        currentStageEn = 'Field Verification in Progress';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ಗೆ ಕಂದಾಯ ನಿರೀಕ್ಷಕರಿಂದ ಸ್ಥಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ.`;
+        spokenEn = `Field verification is underway for application ${record.ackNumber}.`;
+        break;
+      }
+      case 'REJECTED': {
+        currentStageKn = 'ಅರ್ಜಿ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ (Rejected)';
+        currentStageEn = 'Application Rejected';
+        isReadyForDownload = false;
+        spokenKn =
+          customMessageKn ||
+          `ಗಮನಿಸಿ: ನಿಮ್ಮ ಅರ್ಜಿ ${record.ackNumber} ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ವಿವರಗಳಿಗೆ ತಾಲೂಕು ಕಚೇರಿಯನ್ನು ಸಂಪರ್ಕಿಸಿ.`;
+        spokenEn = `Application ${record.ackNumber} has been rejected.`;
+        break;
+      }
+    }
+
+    const updatedTimeline = record.timeline.map((step) => {
+      if (stage === 'APPROVED' && step.step <= 3) {
+        return {
+          ...step,
+          status: 'COMPLETED' as const,
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+      }
+      if (stage === 'DISPATCHED' && step.step === 4) {
+        return {
+          ...step,
+          status: 'COMPLETED' as const,
+          updatedAt: new Date().toISOString().split('T')[0],
+        };
+      }
+      return step;
+    });
+
+    const updatedRecord: ApplicationStatusRecord = {
+      ...record,
+      currentStageKn,
+      currentStageEn,
+      isReadyForDownload,
+      timeline: updatedTimeline,
+      spokenNotificationKn: spokenKn,
+      spokenNotificationEn: spokenEn,
+    };
+
+    const targetKey = ackNumber.trim().toUpperCase();
+    const existingKey = this.findStorageKey(ackNumber);
+    if (existingKey) {
+      this.records.delete(existingKey);
+    }
+    this.records.set(targetKey, updatedRecord);
+    return updatedRecord;
   }
 }
 

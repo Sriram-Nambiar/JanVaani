@@ -344,5 +344,101 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const lookupData = await lookupRes.json();
       assert.strictEqual(lookupData.data.applicantName, data.applicantName);
     });
+
+    it('POST /api/whatsapp/draft/generate-html generates print-ready bilingual application draft', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/draft/generate-html`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ackNumber: 'GJ-BESCOM-2026-TEST1234',
+          schemeId: 'gruha_jyothi',
+          applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+          consumerId: '1029384756',
+          escomName: 'BESCOM',
+          auditFindings: [
+            {
+              field: 'Aadhaar Card',
+              status: 'PASSED',
+              noteKn: 'ಆಧಾರ್ ಪರಿಶೀಲನೆ ಪೂರ್ಣಗೊಂಡಿದೆ',
+              noteEn: 'Aadhaar verified',
+            },
+          ],
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.ok(data.html.includes('JANVAANI APPLICATION DRAFT'));
+      assert.ok(data.html.includes('ಸವಿತಾ ಕುಮಾರಿ'));
+      assert.ok(data.html.includes('GJ-BESCOM-2026-TEST1234'));
+    });
+
+    it('GET /api/whatsapp/draft/:ackNumber/html returns printable HTML document with record audit findings', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/draft/RD003/html`);
+      assert.strictEqual(res.status, 200);
+      const contentType = res.headers.get('content-type');
+      assert.ok(contentType?.includes('text/html'));
+      const html = await res.text();
+      assert.ok(html.includes('<!DOCTYPE html>'));
+      assert.ok(html.includes('RD003'));
+      assert.ok(html.includes('Family Tree Certificate'));
+      assert.ok(html.includes('FLAGGED'));
+    });
+
+    it('POST /api/whatsapp/status/simulate-push rejects unauthenticated request with 401 UNAUTHORIZED', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ackNumber: 'RD002',
+          stage: 'APPROVED',
+        }),
+      });
+
+      assert.strictEqual(res.status, 401);
+      const data = await res.json();
+      assert.strictEqual(data.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/whatsapp/status/simulate-push advances stage and generates synthesized voice notification with valid auth', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': 'janvaani_demo_secret',
+        },
+        body: JSON.stringify({
+          ackNumber: 'RD002',
+          stage: 'APPROVED',
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.stage, 'APPROVED');
+      assert.strictEqual(data.updatedRecord.isReadyForDownload, true);
+      assert.ok(data.audioBase64.length > 0);
+      assert.ok(data.spokenNotificationKn.includes('ಅನುಮೋದನೆಗೊಂಡಿದೆ'));
+    });
+
+    it('POST /api/whatsapp/status/simulate-push rejects invalid stage with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/status/simulate-push`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': 'janvaani_demo_secret',
+        },
+        body: JSON.stringify({
+          ackNumber: 'RD002',
+          stage: 'INVALID_STAGE_NAME',
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+      const data = await res.json();
+      assert.strictEqual(data.error.code, 'VALIDATION_ERROR');
+    });
   });
 });
