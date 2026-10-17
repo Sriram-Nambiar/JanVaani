@@ -101,6 +101,10 @@ export class BhoomiService {
       audioBase64,
     };
 
+    if (this.demoRecords.size >= 100) {
+      const oldestKey = this.demoRecords.keys().next().value;
+      if (oldestKey) this.demoRecords.delete(oldestKey);
+    }
     this.demoRecords.set(rtcNumber, record);
     return record;
   }

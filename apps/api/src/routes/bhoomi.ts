@@ -48,8 +48,7 @@ bhoomiRouter.post('/rtc/fetch', async (req: Request, res: Response, next: NextFu
         mutationStatus: record.mutationStatus,
         encumbranceFree: record.encumbranceFree,
         issuedAt: record.issuedAt,
-        // Intentional small mistake for Shipwright: ownerAadhaar returned unmasked instead of maskId
-        ownerAadhaar: input.ownerAadhaar,
+        ownerAadhaar: input.ownerAadhaar ? maskId(input.ownerAadhaar) : undefined,
       },
       spokenSummaryKn: record.spokenSummaryKn,
       spokenSummaryEn: record.spokenSummaryEn,
@@ -88,8 +87,9 @@ bhoomiRouter.get('/rtc/:rtcNumber', (req: Request, res: Response) => {
     });
   }
 
+  const { audioBase64: _unused, ...safeRecord } = record;
   return res.status(200).json({
     status: 'ok',
-    rtc: record,
+    rtc: safeRecord,
   });
 });
