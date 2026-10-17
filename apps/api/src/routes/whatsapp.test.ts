@@ -1073,4 +1073,117 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.error.code, 'PASS_NOT_FOUND');
     });
   });
+
+  describe('Karnataka Anna Bhagya Foodgrains & Cash DBT Endpoints', () => {
+    it('POST /api/annabhagya/calculate calculates 20kg free rice and ₹680 DBT cash for 4-member BPL household', async () => {
+      const payload = {
+        rationCardNumber: 'RC-KAR-BPL-9182',
+        headOfFamilyName: 'ಸವಿತಾ ಕುಮಾರಿ',
+        cardType: 'BPL',
+        memberCount: 4,
+        dbtBankLinked: true,
+        district: 'Bengaluru Urban',
+      };
+
+      const res = await fetch(`${baseUrl}/api/annabhagya/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.entitlement.isEligible, true);
+      assert.strictEqual(body.entitlement.freeRiceKg, 20);
+      assert.strictEqual(body.entitlement.dbtCashPerMonth, 680);
+      assert.strictEqual(body.entitlement.dbtStatus, 'ACTIVE');
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenExplanationKn.includes('ಅನ್ನಭಾಗ್ಯ'));
+    });
+
+    it('POST /api/annabhagya/calculate evaluates APL household as ineligible with ₹0 cash and 0kg rice', async () => {
+      const payload = {
+        rationCardNumber: 'RC-KAR-APL-1122',
+        headOfFamilyName: 'ಸುರೇಶ್ ಕುಮಾರ್',
+        cardType: 'APL',
+        memberCount: 3,
+        dbtBankLinked: true,
+      };
+
+      const res = await fetch(`${baseUrl}/api/annabhagya/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.entitlement.isEligible, false);
+      assert.strictEqual(body.entitlement.freeRiceKg, 0);
+      assert.strictEqual(body.entitlement.dbtCashPerMonth, 0);
+      assert.strictEqual(body.entitlement.dbtStatus, 'NOT_ELIGIBLE');
+    });
+
+    it('POST /api/annabhagya/calculate flags ACTION_REQUIRED when dbtBankLinked is false', async () => {
+      const payload = {
+        rationCardNumber: 'RC-KAR-BPL-7733',
+        headOfFamilyName: 'ಮಂಜುಳಾ',
+        cardType: 'BPL',
+        memberCount: 2,
+        dbtBankLinked: false,
+      };
+
+      const res = await fetch(`${baseUrl}/api/annabhagya/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.entitlement.dbtStatus, 'ACTION_REQUIRED');
+      assert.ok(body.entitlement.dbtStatusKn.includes('NPCI'));
+    });
+
+    it('POST /api/annabhagya/calculate rejects invalid memberCount with 400', async () => {
+      const payload = {
+        rationCardNumber: 'RC-KAR-BPL-7733',
+        headOfFamilyName: 'ಮಂಜುಳಾ',
+        cardType: 'BPL',
+        memberCount: 0,
+      };
+
+      const res = await fetch(`${baseUrl}/api/annabhagya/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('GET /api/annabhagya/card/:rcNumber returns demo card for RC-KAR-BPL-8821', async () => {
+      const res = await fetch(`${baseUrl}/api/annabhagya/card/RC-KAR-BPL-8821`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.card.cardType, 'BPL');
+      assert.strictEqual(body.card.freeRiceKg, 20);
+      assert.strictEqual(body.card.dbtCashPerMonth, 680);
+    });
+
+    it('GET /api/annabhagya/card/:rcNumber returns 404 for unknown ration card', async () => {
+      const res = await fetch(`${baseUrl}/api/annabhagya/card/UNKNOWN-RC-9999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.error.code, 'CARD_NOT_FOUND');
+    });
+  });
 });

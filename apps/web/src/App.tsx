@@ -11,6 +11,7 @@ import { QRVerificationModal } from './components/QRVerificationModal';
 import { MeterSubsidyModal } from './components/MeterSubsidyModal';
 import { YuvaNidhiModal } from './components/YuvaNidhiModal';
 import { ShaktiPassModal } from './components/ShaktiPassModal';
+import { AnnaBhagyaModal } from './components/AnnaBhagyaModal';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -40,6 +41,7 @@ export function App() {
   const [isMeterModalOpen, setIsMeterModalOpen] = useState(false);
   const [isYuvaModalOpen, setIsYuvaModalOpen] = useState(false);
   const [isShaktiModalOpen, setIsShaktiModalOpen] = useState(false);
+  const [isAnnaBhagyaModalOpen, setIsAnnaBhagyaModalOpen] = useState(false);
 
   const handleEngineUpdate = (data: WhatsAppApiResponse) => {
     setEngineState({
@@ -361,6 +363,26 @@ export function App() {
             <span>🌸</span> ಶಕ್ತಿ ಪಾಸ್ (Shakti Pass)
           </button>
 
+          {/* Anna Bhagya 10kg Foodgrains & Cash DBT Calculator Trigger */}
+          <button
+            onClick={() => setIsAnnaBhagyaModalOpen(true)}
+            style={{
+              backgroundColor: '#064e3b',
+              color: '#d1fae5',
+              border: '1px solid #059669',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '11px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🌾</span> ಅನ್ನಭಾಗ್ಯ (Anna Bhagya)
+          </button>
+
           <span
             style={{
               fontSize: '11px',
@@ -526,6 +548,12 @@ export function App() {
       <ShaktiPassModal
         isOpen={isShaktiModalOpen}
         onClose={() => setIsShaktiModalOpen(false)}
+      />
+
+      {/* Anna Bhagya Foodgrains & Cash DBT Calculator Modal */}
+      <AnnaBhagyaModal
+        isOpen={isAnnaBhagyaModalOpen}
+        onClose={() => setIsAnnaBhagyaModalOpen(false)}
       />
     </div>
   );

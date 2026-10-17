@@ -11,6 +11,7 @@ import { verificationRouter } from './routes/verification.js';
 import { meterRouter } from './routes/meter.js';
 import { yuvaNidhiRouter } from './routes/yuva-nidhi.js';
 import { shaktiRouter } from './routes/shakti.js';
+import { annaBhagyaRouter } from './routes/annabhagya.js';
 
 export function createApp() {
   const app = express();
@@ -65,6 +66,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/annabhagya', annaBhagyaRouter);
   app.use('/api/shakti', shaktiRouter);
   app.use('/api/yuva-nidhi', yuvaNidhiRouter);
   app.use('/api/meter', meterRouter);
