@@ -958,4 +958,118 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.code, 'CANDIDATE_NOT_FOUND');
     });
   });
+
+  describe('Karnataka Shakti Scheme Free Bus Travel Endpoints', () => {
+    it('POST /api/shakti/pass/apply successfully issues Shakti Smart Pass for eligible woman citizen', async () => {
+      const payload = {
+        applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
+        gender: 'FEMALE',
+        isKarnatakaDomicile: true,
+        aadhaarNumber: '582910494821',
+        preferredRtc: 'BMTC',
+        district: 'Bengaluru Urban',
+      };
+
+      const res = await fetch(`${baseUrl}/api/shakti/pass/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 201);
+      assert.strictEqual(body.status, 'ok');
+      assert.match(body.pass.passNumber, /^SHAKTI-KAR-2026-[A-F0-9]{4}$/);
+      assert.strictEqual(body.pass.gender, 'FEMALE');
+      assert.strictEqual(body.pass.preferredRtc, 'BMTC');
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenConfirmationKn.includes('ಶಕ್ತಿ'));
+    });
+
+    it('POST /api/shakti/pass/apply rejects non-female applicants with 400', async () => {
+      const payload = {
+        applicantName: 'ರಮೇಶ್',
+        gender: 'MALE',
+        isKarnatakaDomicile: true,
+        aadhaarNumber: '582910494821',
+        preferredRtc: 'KSRTC',
+        district: 'Mysuru',
+      };
+
+      const res = await fetch(`${baseUrl}/api/shakti/pass/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/shakti/route/check returns zero-ticket eligible for KSRTC Express route', async () => {
+      const payload = {
+        rtc: 'KSRTC',
+        busCategory: 'EXPRESS',
+        origin: 'ಬೆಂಗಳೂರು',
+        destination: 'ಮೈಸೂರು',
+      };
+
+      const res = await fetch(`${baseUrl}/api/shakti/route/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.routeCheck.isZeroTicketEligible, true);
+      assert.strictEqual(body.routeCheck.payableFare, 0);
+      assert.strictEqual(body.routeCheck.subsidySavings, 120);
+      assert.ok(body.audioBase64.length > 0);
+      assert.ok(body.spokenExplanationKn.includes('ಉಚಿತ'));
+    });
+
+    it('POST /api/shakti/route/check identifies luxury Airavat route as non-eligible', async () => {
+      const payload = {
+        rtc: 'KSRTC',
+        busCategory: 'AIRAVAT',
+        origin: 'ಬೆಂಗಳೂರು',
+        destination: 'ಮಂಗಳೂರು',
+      };
+
+      const res = await fetch(`${baseUrl}/api/shakti/route/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.routeCheck.isZeroTicketEligible, false);
+      assert.strictEqual(body.routeCheck.payableFare, 350);
+      assert.strictEqual(body.routeCheck.subsidySavings, 0);
+      assert.ok(body.audioBase64.length > 0);
+    });
+
+    it('GET /api/shakti/pass/:passNumber returns demo pass for known SHAKTI-KAR-2026-B812', async () => {
+      const res = await fetch(`${baseUrl}/api/shakti/pass/SHAKTI-KAR-2026-B812`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.pass.passNumber, 'SHAKTI-KAR-2026-B812');
+      assert.strictEqual(body.pass.preferredRtc, 'BMTC');
+    });
+
+    it('GET /api/shakti/pass/:passNumber returns 404 for unknown pass', async () => {
+      const res = await fetch(`${baseUrl}/api/shakti/pass/UNKNOWN-PASS-9999`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.code, 'PASS_NOT_FOUND');
+    });
+  });
 });
