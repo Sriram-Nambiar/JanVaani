@@ -234,8 +234,8 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
     nameEn: 'Swavalambana Self-Employment & Capital Subsidy Scheme',
     nameKn: 'ಸ್ವಾವಲಂಬನ ಸ್ವಯಂ ಉದ್ಯೋಗ ಮತ್ತು ಬಂಡವಾಳ ಸಹಾಯಧನ ಯೋಜನೆ',
     department: 'Karnataka State D. Devaraj Urs Backward Classes Development Corporation',
-    descriptionEn: 'Financial assistance and bank-linked capital subsidy (up to 50% or maximum ₹1,00,000) for establishing self-employment micro-enterprises with project cost up to ₹2,00,000.',
-    descriptionKn: 'ಹಿಂದುಳಿದ ವರ್ಗಗಳ ನಿರುದ್ಯೋಗಿ ಯುವಕರಿಗೆ ಸ್ವಯಂ ಉದ್ಯೋಗ ಕಿರು ಉದ್ಯಮ ಆರಂಭಿಸಲು ಗರಿಷ್ಠ ₹2,00,000 ಯೋಜನೆ ವೆಚ್ಚಕ್ಕೆ ಶೇಕಡ 50% (ಗರಿಷ್ಠ ₹1,00,000) ಬ್ಯಾಂಕ್ ಸಂಯೋಜಿತ ಬಂಡವಾಳ ಸಹಾಯಧನ.',
+    descriptionEn: 'Financial assistance and bank-linked capital subsidy (up to 50% or maximum ₹1,00,000) for establishing self-employment micro-enterprises with project cost up to ₹5,00,000.',
+    descriptionKn: 'ಹಿಂದುಳಿದ ವರ್ಗಗಳ ನಿರುದ್ಯೋಗಿ ಯುವಕರಿಗೆ ಸ್ವಯಂ ಉದ್ಯೋಗ ಕಿರು ಉದ್ಯಮ ಆರಂಭಿಸಲು ಗರಿಷ್ಠ ₹5,00,000 ಯೋಜನೆ ವೆಚ್ಚಕ್ಕೆ ಶೇಕಡ 50% (ಗರಿಷ್ಠ ₹1,00,000) ಬ್ಯಾಂಕ್ ಸಂಯೋಜಿತ ಬಂಡವಾಳ ಸಹಾಯಧನ.',
     requiredFields: [
       { key: 'applicantName', labelKn: 'ಅರ್ಜಿದಾರರ ಹೆಸರು', labelEn: 'Applicant Name', type: 'string', required: true },
       { key: 'enterpriseType', labelKn: 'ಉದ್ಯಮದ ಪ್ರಕಾರ', labelEn: 'Enterprise Type', type: 'string', required: true },

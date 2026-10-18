@@ -511,11 +511,18 @@ whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, re
     });
   }
 
-  if (typeof projectCostInr !== 'number' || isNaN(projectCostInr) || projectCostInr <= 0 || projectCostInr > 200000) {
+  const numericCost =
+    typeof projectCostInr === 'number'
+      ? projectCostInr
+      : typeof projectCostInr === 'string'
+      ? parseFloat(projectCostInr)
+      : NaN;
+
+  if (isNaN(numericCost) || numericCost <= 0 || numericCost > 500000) {
     return res.status(400).json({
       error: {
         code: 'INVALID_PROJECT_COST',
-        message: 'projectCostInr must be a positive number up to ₹2,00,000 for micro-enterprise subsidy.',
+        message: 'projectCostInr must be a positive number up to ₹5,00,000 for enterprise subsidy consideration.',
       },
     });
   }
@@ -532,7 +539,7 @@ whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, re
   }
 
   // Capital subsidy: 50% of project cost, capped at maximum ₹1,00,000
-  const capitalSubsidyInr = Math.min(Math.round(projectCostInr * 0.5), 100000);
+  const capitalSubsidyInr = Math.min(Math.round(numericCost * 0.5), 100000);
 
   return res.status(200).json({
     status: 'ok',
@@ -542,10 +549,10 @@ whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, re
     isEligible: true,
     enterpriseType,
     casteCategory: normalizedCaste,
-    projectCostInr,
+    projectCostInr: numericCost,
     capitalSubsidyInr,
     subsidyPercentage: 50,
-    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${projectCostInr}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} (50%) ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
+    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${numericCost}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} (50%) ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
   });
 });
 
