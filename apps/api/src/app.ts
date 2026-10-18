@@ -14,6 +14,7 @@ import { shaktiRouter } from './routes/shakti.js';
 import { annaBhagyaRouter } from './routes/annabhagya.js';
 import { bhoomiRouter } from './routes/bhoomi.js';
 import { audioCacheRouter } from './routes/audio-cache.js';
+import { arogyaRouter } from './routes/arogya.js';
 import { indicRouter } from './routes/indic.js';
 import { civicAuditLoggerMiddleware, auditRouter } from './middleware/audit-logger.js';
 import { rateLimiterMiddleware, rateLimitRouter } from './middleware/rate-limiter.js';
@@ -113,6 +114,7 @@ export function createApp() {
   app.use('/api/audit', auditRouter);
   app.use('/api/indic', indicRouter);
   app.use('/api/audio/cache', audioCacheRouter);
+  app.use('/api/arogya', arogyaRouter);
   app.use('/api/bhoomi', bhoomiRouter);
   app.use('/api/annabhagya', annaBhagyaRouter);
   app.use('/api/shakti', shaktiRouter);
