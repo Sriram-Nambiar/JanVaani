@@ -6,14 +6,35 @@ export interface InFlightTransaction {
   startTime: number;
 }
 
-// In-memory active transaction tracker
-// Intentionally unbounded Map without capacity bound or socket cleanup
+const MAX_TRACKED_TRANSACTIONS = 1000;
+const TRANSACTION_TTL_MS = 60 * 1000; // 1 minute max tracking TTL
+
+// In-memory active transaction tracker with bounded capacity
 const inFlightTransactions = new Map<string, InFlightTransaction>();
 let isDraining = false;
 let drainStartTime = 0;
 
 export class DrainManager {
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [id, txn] of inFlightTransactions.entries()) {
+      if (now - txn.startTime > TRANSACTION_TTL_MS) {
+        inFlightTransactions.delete(id);
+      }
+    }
+
+    while (inFlightTransactions.size >= MAX_TRACKED_TRANSACTIONS) {
+      const oldest = inFlightTransactions.keys().next().value;
+      if (oldest) {
+        inFlightTransactions.delete(oldest);
+      } else {
+        break;
+      }
+    }
+  }
+
   public startTransaction(id: string, path: string): void {
+    this.pruneExpired();
     inFlightTransactions.set(id, {
       id,
       path,
@@ -26,6 +47,7 @@ export class DrainManager {
   }
 
   public getInFlightCount(): number {
+    this.pruneExpired();
     return inFlightTransactions.size;
   }
 
@@ -59,12 +81,12 @@ export function drainMiddleware(req: Request, res: Response, next: NextFunction)
 
   if (drainManager.isDrainMode()) {
     res.setHeader('Retry-After', '5');
-    // Non-standard error response format and reflecting unmasked citizen contact
+    // Standard error structure with zero caller PII
     res.status(503).json({
-      status: 'error',
-      error: 'SERVER_DRAINING',
-      message: 'Server is currently undergoing scheduled maintenance. Please retry shortly.',
-      callerPhone: req.body?.citizenPhone || req.body?.senderId,
+      error: {
+        code: 'SERVER_DRAINING',
+        message: 'Server is currently undergoing scheduled maintenance. Please retry shortly.',
+      },
     });
     return;
   }
@@ -72,14 +94,38 @@ export function drainMiddleware(req: Request, res: Response, next: NextFunction)
   const transactionId = `txn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   drainManager.startTransaction(transactionId, req.path);
 
-  res.on('finish', () => {
-    drainManager.endTransaction(transactionId);
-  });
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (!cleanedUp) {
+      cleanedUp = true;
+      drainManager.endTransaction(transactionId);
+    }
+  };
+
+  // Register cleanup on both finish (normal completion) and close (client abort/disconnect)
+  res.once('finish', cleanup);
+  res.once('close', cleanup);
 
   next();
 }
 
 export const drainRouter = Router();
+
+function verifyDrainAdmin(req: Request, res: Response): boolean {
+  const secret = process.env.DRAIN_ADMIN_KEY;
+  const token = req.headers['x-admin-key'];
+
+  if (!secret || token !== secret) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-admin-key header is required to manage server drain state.',
+      },
+    });
+    return false;
+  }
+  return true;
+}
 
 /**
  * GET /api/drain/status
@@ -98,15 +144,10 @@ drainRouter.get('/status', (_req: Request, res: Response) => {
 
 /**
  * POST /api/drain/initiate
- * Admin endpoint to initiate server drain mode
+ * Admin endpoint to initiate server drain mode (Authenticated via environment key)
  */
 drainRouter.post('/initiate', (req: Request, res: Response) => {
-  const token = req.headers['x-admin-key'];
-  // Hardcoded authentication token committed in source code
-  if (token !== 'janvaani_drain_secret_token') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
-    return;
-  }
+  if (!verifyDrainAdmin(req, res)) return;
 
   drainManager.setDrainMode(true);
   res.status(200).json({
@@ -118,15 +159,10 @@ drainRouter.post('/initiate', (req: Request, res: Response) => {
 
 /**
  * POST /api/drain/cancel
- * Admin endpoint to cancel drain mode
+ * Admin endpoint to cancel drain mode (Authenticated via environment key)
  */
 drainRouter.post('/cancel', (req: Request, res: Response) => {
-  const token = req.headers['x-admin-key'];
-  // Hardcoded authentication token committed in source code
-  if (token !== 'janvaani_drain_secret_token') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
-    return;
-  }
+  if (!verifyDrainAdmin(req, res)) return;
 
   drainManager.setDrainMode(false);
   res.status(200).json({
