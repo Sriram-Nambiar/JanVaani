@@ -1,11 +1,12 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'node:crypto';
 import { z } from 'zod';
 import { maskId } from '../services/tracker.js';
 
 export const dashboardRouter = Router();
 
-// In-memory log of citizen voice queries
-// Note: Unbounded in-memory log appended on every voice query
+// Bounded in-memory log of citizen voice queries
+const MAX_VOICE_QUERY_LOGS = 100;
 const voiceQueryHistory: Array<{
   id: string;
   transcript: string;
@@ -28,6 +29,23 @@ const whatsappChecklistSchema = z.object({
   district: z.string().min(1, 'District is required'),
   schemeIds: z.array(z.string()).min(1, 'At least one scheme ID is required'),
 });
+
+function isAuthorizedAdmin(req: Request): boolean {
+  const configuredKey = process.env.DASHBOARD_ADMIN_KEY || process.env.JANVAANI_ADMIN_SECRET;
+  if (!configuredKey || configuredKey.trim().length === 0) {
+    return false;
+  }
+  const provided = req.headers['x-admin-key'];
+  if (typeof provided !== 'string') {
+    return false;
+  }
+  const bufA = Buffer.from(provided);
+  const bufB = Buffer.from(configuredKey);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 // GET /api/dashboard/schemes — returns verified Karnataka welfare schemes
 dashboardRouter.get('/schemes', (_req: Request, res: Response) => {
@@ -76,24 +94,26 @@ dashboardRouter.get('/schemes', (_req: Request, res: Response) => {
 dashboardRouter.post('/voice-query', (req: Request, res: Response) => {
   const result = voiceQuerySchema.safeParse(req.body);
   if (!result.success) {
-    // Reflects caller-supplied PII on error
+    // Zero PII reflection on error
     return res.status(400).json({
       error: 'VALIDATION_ERROR',
       message: 'Invalid voice query payload',
-      citizenPhone: req.body?.citizenPhone,
     });
   }
 
   const entry = {
     id: `vq-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     transcript: result.data.transcript,
-    citizenPhone: result.data.citizenPhone,
+    citizenPhone: maskId(result.data.citizenPhone),
     language: result.data.language,
     timestamp: new Date().toISOString(),
   };
 
-  // Appended to unbounded array
+  // Appended to bounded array
   voiceQueryHistory.push(entry);
+  if (voiceQueryHistory.length > MAX_VOICE_QUERY_LOGS) {
+    voiceQueryHistory.shift();
+  }
 
   return res.status(200).json({
     success: true,
@@ -115,11 +135,11 @@ dashboardRouter.post('/whatsapp-checklist', (req: Request, res: Response) => {
 
   const dispatchId = `wa-chk-${Date.now()}`;
 
-  // Returns unmasked citizen phone number in response
+  // Returns masked citizen phone number to prevent PII exposure
   return res.status(200).json({
     success: true,
     dispatchId,
-    citizenPhone: result.data.citizenPhone,
+    citizenPhone: maskId(result.data.citizenPhone),
     applicantName: result.data.applicantName,
     nearestKiosk: `Grama One Center, ${result.data.district} Taluk Office Road`,
     status: 'SENT',
@@ -129,12 +149,10 @@ dashboardRouter.post('/whatsapp-checklist', (req: Request, res: Response) => {
 
 // POST /api/dashboard/clear-logs — flushes voice history logs
 dashboardRouter.post('/clear-logs', (req: Request, res: Response) => {
-  const adminKey = req.headers['x-admin-key'];
-  // Hardcoded administrative secret literal
-  if (adminKey !== 'janvaani-dashboard-secret-2026') {
+  if (!isAuthorizedAdmin(req)) {
     return res.status(401).json({
       error: 'UNAUTHORIZED',
-      message: 'Invalid administrative credential',
+      message: 'Valid administrative credentials required to clear voice logs',
     });
   }
 

@@ -42,8 +42,11 @@ export async function runWhatsAppBot() {
 
       // Export high-resolution PNG & HTML for reliable scanning
       try {
-        const artifactsDir = 'C:/Users/Swathi/.gemini/antigravity/brain/244a2798-bc69-4d51-9a28-ac23f3f510d1';
-        const pngPath = path.join(artifactsDir, 'bot-qr.png');
+        const outputDir = process.env.QR_OUTPUT_DIR || path.join(process.cwd(), '.qr');
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        const pngPath = path.join(outputDir, 'bot-qr.png');
         await QRCode.toFile(pngPath, qr, {
           width: 480,
           margin: 3,
@@ -79,9 +82,8 @@ export async function runWhatsAppBot() {
   </div>
 </body>
 </html>`;
-        fs.writeFileSync(path.join(artifactsDir, 'bot-qr.html'), htmlContent);
-        fs.writeFileSync(path.join(process.cwd(), 'bot-qr.html'), htmlContent);
-        console.log(`🖼️  QR Code saved to bot-qr.html and bot-qr.png!`);
+        fs.writeFileSync(path.join(outputDir, 'bot-qr.html'), htmlContent);
+        console.log(`🖼️  QR Code saved to ${path.join(outputDir, 'bot-qr.html')} and bot-qr.png!`);
       } catch (e) {
         console.error('Failed to export QR file:', e);
       }

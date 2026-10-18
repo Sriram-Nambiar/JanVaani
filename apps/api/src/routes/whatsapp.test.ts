@@ -2543,6 +2543,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
       assert.strictEqual(body.success, true);
       assert.strictEqual(body.applicantName, 'ರಾಧಾ ದೇವಿ');
+      assert.strictEqual(body.citizenPhone, maskId('9876543210'));
       assert.strictEqual(body.status, 'SENT');
     });
 
@@ -2556,9 +2557,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
     });
 
     it('POST /api/dashboard/clear-logs flushes voice query log with admin secret', async () => {
+      const testKey = 'test-dashboard-admin-key-2026';
+      process.env.DASHBOARD_ADMIN_KEY = testKey;
       const res = await fetch(`${baseUrl}/api/dashboard/clear-logs`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani-dashboard-secret-2026' },
+        headers: { 'x-admin-key': testKey },
       });
       assert.strictEqual(res.status, 200);
       const body = await res.json();
