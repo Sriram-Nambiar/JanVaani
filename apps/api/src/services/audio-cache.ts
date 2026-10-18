@@ -30,8 +30,8 @@ export class AudioSynthesisCache {
 
   private generateKey(
     text: string,
-    speaker: string = 'meera',
-    model: string = 'bulbul:v1',
+    speaker: string = 'kavitha',
+    model: string = 'bulbul:v3',
     languageCode: string = 'kn-IN'
   ): string {
     return crypto
@@ -42,8 +42,8 @@ export class AudioSynthesisCache {
 
   public get(
     text: string,
-    speaker: string = 'meera',
-    model: string = 'bulbul:v1',
+    speaker: string = 'kavitha',
+    model: string = 'bulbul:v3',
     languageCode: string = 'kn-IN'
   ): TextToSpeechResult | null {
     const key = this.generateKey(text, speaker, model, languageCode);
@@ -62,9 +62,9 @@ export class AudioSynthesisCache {
 
   public set(
     text: string,
-    speaker: string = 'meera',
+    speaker: string = 'kavitha',
     result: TextToSpeechResult,
-    model: string = 'bulbul:v1',
+    model: string = 'bulbul:v3',
     languageCode: string = 'kn-IN'
   ): void {
     const entryLen = result.audioBase64.length;
