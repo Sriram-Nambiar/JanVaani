@@ -6,6 +6,8 @@
  * - Seamless Mock / Live Mode switching via SARVAM_API_KEY
  */
 
+import { audioCache } from './audio-cache.js';
+
 export interface SpeechToTextResult {
   transcript: string;
   languageCode: string;
@@ -107,6 +109,13 @@ export class SarvamService {
    * Synthesize Kannada speech from text using Sarvam Bulbul
    */
   async textToSpeech(text: string, speaker: string = 'meera'): Promise<TextToSpeechResult> {
+    const cached = audioCache.get(text, speaker);
+    if (cached) {
+      return cached;
+    }
+
+    let result: TextToSpeechResult;
+
     if (this.isLive && text.trim().length > 0) {
       try {
         const response = await fetch('https://api.sarvam.ai/text-to-speech', {
@@ -131,12 +140,14 @@ export class SarvamService {
         if (response.ok) {
           const json = await response.json() as { audios?: string[] };
           if (json.audios && json.audios.length > 0) {
-            return {
+            result = {
               audioBase64: json.audios[0],
               format: 'wav',
               transcriptText: text,
               isMock: false,
             };
+            audioCache.set(text, speaker, result);
+            return result;
           }
         }
       } catch (err) {
@@ -145,12 +156,17 @@ export class SarvamService {
     }
 
     // Mock / Simulated Mode:
-    return {
+    result = {
       audioBase64: SILENT_WAV_BASE64,
       format: 'wav',
       transcriptText: text,
       isMock: true,
     };
+    // Only cache if configured in mock mode, avoiding caching transient live API failures
+    if (!this.isLive) {
+      audioCache.set(text, speaker, result);
+    }
+    return result;
   }
 }
 
