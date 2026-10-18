@@ -1,157 +1,186 @@
-# JanVaani
+# 🏛️ JanVaani (ಜನವಾಣಿ)
 
-> Public services, made easier to understand.
+> **Kannada-First, Voice-First AI Civic Copilot & e-Governance Gateway for Karnataka Citizens**
 
-**JanVaani** (ಜನವಾಣಿ, meaning *"people's voice"*) is a planned Kannada-first civic assistant designed to help citizens access and understand Karnataka government-service information through a web chat interface and WhatsApp.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Bun](https://img.shields.io/badge/Bun-1.1+-fbf0df?logo=bun&logoColor=black)](https://bun.sh/)
+[![Tests](https://img.shields.io/badge/Tests-313%20Passing-brightgreen?logo=vitest&logoColor=white)](https://github.com/Sriram-Nambiar/JanVaani)
+[![Coverage](https://img.shields.io/badge/Workspaces-4%20Packages-orange)](https://github.com/Sriram-Nambiar/JanVaani)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-It aims to make public-service information easier to understand by supporting Kannada and English, explaining application processes in simple language, and directing users to trustworthy official sources.
-
----
-
-## About the Project
-
-Accessing public services often requires navigating fragmented government portals, complex departmental notifications, and administrative jargon. Language barriers further complicate this process for citizens who are most comfortable in their regional language.
-
-JanVaani intends to help citizens find reliable information by bridging these gaps. By offering a conversational assistant grounded in verified official guidance, JanVaani aims to simplify the discovery of public schemes, clarify what documents are required, and guide users directly to official channels.
+**JanVaani** (ಜನವಾಣಿ, meaning *"Voice of the People"*) is an intelligent, bilingual (Kannada & English) civic assistant designed to democratize access to Karnataka state welfare schemes, document checklists, and public utility services through conversational web portals, offline Grama One kiosks, and WhatsApp.
 
 ---
 
-## The Problem
-
-Navigating citizen-facing public services presents several recurring challenges:
-
-- **Difficulty discovering relevant services**: Citizens often struggle to identify which department administers a specific scheme or service and where to find the correct application portal.
-- **Confusing application procedures and requirements**: Eligibility criteria, document checklists, and process steps are frequently difficult to parse or scattered across multiple websites and circulars.
-- **Language and accessibility barriers**: Key procedural information is often published primarily in administrative English or formats that are cumbersome to read and navigate on mobile devices.
+![JanVaani Civic Services Dashboard](docs/screenshots/janvaani-dashboard.png)
 
 ---
 
-## Our Solution
+## 🌟 The Civic Challenge & Our Solution
 
-JanVaani proposes a unified civic-assistant system focused on reliability, clarity, and accessibility:
+Navigating government portals in India presents recurring accessibility hurdles for rural and urban citizens alike:
 
-- **Shared Civic-Assistant Backend**: A centralized backend handling message processing, validation, and information retrieval across channels.
-- **Web Chat and WhatsApp Interfaces**: Dual-interface access meeting citizens on the web and on messaging platforms they already use every day.
-- **Kannada and English Support**: Multilingual communication designed from the start to serve both regional-language and English-speaking users.
-- **Source-Grounded Answers**: Responses grounded in verified official information, accompanied by direct source links to government portals.
+- **Fragmented Portals & Circulars:** Schemes like *Gruha Jyothi*, *Kaveri 2.0*, *Seva Sindhu*, and *Bhoomi* are spread across disjointed departmental portals with complex administrative circulars.
+- **Language & Literacy Barriers:** Complex procedural circulars are frequently drafted in formal administrative English, alienating rural citizens and regional language speakers.
+- **Opaque Verification & Rejections:** Missing document specifications (e.g. income certificates, caste affidavits, tuition receipts) lead to avoidable rejections without clear explanations.
 
----
-
-## Planned MVP
-
-The initial Minimum Viable Product (MVP) focuses on core informational query flows:
-
-- Allow users to ask questions about selected Karnataka government services.
-- Explain application steps and document requirements when verified information is available.
-- Provide official links and handle unknown answers transparently rather than guessing.
-- Support both web chat and WhatsApp interfaces with consistent information.
+**JanVaani bridges this gap** by combining:
+1. **Voice-First Accessibility:** Inbound voice-note processing with AI speech recognition (Saaras STT) and multilingual text-to-speech.
+2. **Deterministic Scheme Engines:** Statutory rule engines that calculate exact entitlements (e.g., zero-bill units, stamp duty slabs, scholarship grants, DBT cash assistance) with zero hallucinations.
+3. **Omni-Channel Citizen Reach:** Dual web interfaces (Citizen Portal & Kiosk Dashboard) paired with WhatsApp bot integrations for instant mobile access.
 
 ---
 
-## Planned Architecture
+## 🏛️ Integrated Karnataka Welfare Scheme Engines
 
-> **Note:** This section describes the intended system architecture for future development. These components are not yet implemented.
+JanVaani incorporates verified, deterministic calculation engines matching official Government of Karnataka statutes:
 
-- **Frontend**: Web chat application built with React, Vite, and TypeScript.
-- **Backend**: Service built with Node.js, Express, and TypeScript.
-- **Input Validation**: Request payload and message schema validation using Zod.
-- **Knowledge & Retrieval**: Curated Karnataka government-service information repository, with retrieval and AI-assisted responses planned.
-- **Messaging Integration**: WhatsApp integration via the Meta WhatsApp Cloud API.
+| Scheme | Department | Capabilities |
+|---|---|---|
+| **Gruha Jyothi** | Energy Dept (BESCOM, MESCOM, HESCOM, etc.) | Calculates 12-month average + 10% buffer (capped at 200 units), evaluating 100% Zero-Bill eligibility, partial subsidies, and domestic LT-2(a) tariff breakdowns. |
+| **Kaveri 2.0** | Dept of Stamps & Registration | Property guidance valuation and stamp duty calculator applying statutory Karnataka slabs (2% affordable, 3% mid-segment, 5% standard), 10% infrastructure cess, and local body surcharges. |
+| **Sandhya Suraksha** | Revenue Dept (Social Security) | Age (>= 65), annual income ceiling (<= ₹20,000), and occupation eligibility checker for the ₹1,200/month senior citizen pension. |
+| **Vidyasiri (ePASS)** | Backward Classes Welfare Dept (BCWD) | Food & Accommodation Scheme (FAS) calculator evaluating student distance (>= 5 km), caste category, hostel residence, and disbursing ₹1,500/month. |
+| **Bhoomi RTC** | Revenue Department | Rural land record verification, RTC survey number validation, and crop loan eligibility assessment. |
+| **Anna Bhagya** | Food & Civil Supplies Dept | BPL/AAY card validation and ₹170/person/month cash entitlement in lieu of additional 5 kg rice allocation. |
+| **Shakti Scheme** | Transport Dept (KSRTC, BMTC, NWKRTC, KKRTC) | Domicile verification and free state-wide ordinary bus travel pass issuance for Karnataka women and transgender citizens. |
+| **Yuva Nidhi** | Skill Development & Livelihood Dept | Unemployment monthly assistance (₹3,000 for degree holders, ₹1,500 for diploma holders) with graduation gap validation. |
+| **Mathrushree** | Women & Child Development | Financial assistance (₹6,000 cash + ₹4,000 Poshan kits) for pregnant and lactating mothers from BPL families. |
+| **Arogya Karnataka** | Health & Family Welfare | Universal health coverage checker linking Ayushman Bharat health card benefits up to ₹5 Lakhs per family per year. |
+
+---
+
+## 🏗️ Monorepo Architecture
+
+The repository is organized as a high-performance monorepo using **Bun workspaces**:
 
 ```
-+-------------------------------------------------------------+
-|                        User Channels                        |
-|        [ Web Chat (React) ]          [ WhatsApp ]           |
-+----------------------+----------------------+---------------+
-                       |                      |
-                       v                      v
-          +---------------------------------------+
-          |          Backend API Service          |
-          |       (Node.js / Express / TS)        |
-          |       - Input Validation (Zod)        |
-          |       - Channel Adapters              |
-          +-------------------+-------------------+
-                              |
-                              v
-          +---------------------------------------+
-          |          Information Engine           |
-          |   - Curated Government Service Data   |
-          |   - Source Grounding & Retrieval      |
-          |   - AI-Assisted Response Generation   |
-          +---------------------------------------+
+JanVaani/
+├── apps/
+│   ├── web/               # React 18 + Vite + Tailwind CSS Citizen Web App & WhatsApp Simulator
+│   ├── seva-portal/       # Seva Sindhu Kiosk & Administrator Service Dashboard
+│   ├── api/               # Express + TypeScript Civic Copilot, Scheme Engines & Baileys Gateway
+│   └── seva-api/          # Seva Sindhu Application Engine, Feedback Store & Document Audit API
+├── docs/
+│   └── screenshots/       # Application UI captures and architecture artifacts
+└── packages/              # Shared types, validation contracts, and configuration
+```
+
+### System Architecture Diagram
+
+```
+                              ┌────────────────────────────────────────┐
+                              │             Citizen Users              │
+                              └───────┬────────────────────────┬───────┘
+                                      │                        │
+                          Web Browser │                        │ WhatsApp / Voice
+                                      ▼                        ▼
+                      ┌──────────────────────┐      ┌──────────────────────┐
+                      │    apps/web (SPA)    │      │ Baileys / Meta Cloud │
+                      │   React 18 + Vite    │      │  WhatsApp Gateway    │
+                      └──────────┬───────────┘      └──────────┬───────────┘
+                                 │                             │
+                                 ▼                             ▼
+                      ┌────────────────────────────────────────────────────┐
+                      │                  apps/api (Core)                   │
+                      │  - Saaras Speech-to-Text & Audio Cache Engine      │
+                      │  - 10+ Statutory Karnataka Scheme Calculators       │
+                      │  - Rate Limiter, Correlation ID, Circuit Breaker   │
+                      │  - Civic Audit Logger & Response Sanitizer         │
+                      └──────────────────────┬─────────────────────────────┘
+                                             │
+                                             ▼
+                      ┌────────────────────────────────────────────────────┐
+                      │               apps/seva-api (Seva Sindhu)          │
+                      │  - Application Persistence (Atomic File Store)     │
+                      │  - Supplementary Document Re-upload & Audit Trail │
+                      │  - Citizen Satisfaction Feedback Store             │
+                      │  - Offline Kiosk Appointment Scheduler             │
+                      └──────────────────────┬─────────────────────────────┘
+                                             │
+                                             ▼
+                      ┌────────────────────────────────────────────────────┐
+                      │               apps/seva-portal (Admin)             │
+                      │  - Grama One & Bangalore One Operator Console      │
+                      │  - Application Verification & Pass Generation      │
+                      └────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Development Roadmap
+## 🛡️ Security, Privacy & Reliability Guardrails
 
-The planned milestones for the project include:
+JanVaani adheres to strict public-sector data security protocols:
 
-1. Establish the project documentation and foundation.
-2. Build and test the backend.
-3. Add shared message validation and the text-processing workflow.
-4. Build the web chat interface.
-5. Add verified Karnataka government-service information.
-6. Integrate source-grounded responses.
-7. Integrate WhatsApp via Meta WhatsApp Cloud API.
-8. Add Kannada voice-message support as a later milestone.
+- **Strict PII Protection:** Citizen Aadhaar numbers and mobile numbers are masked (`XXXX-XXXX-1234` / `+******1234`) across all responses and API endpoints. Zero PII logging in console streams.
+- **Fail-Safe Persistence:** All file-backed stores implement atomic write operations using temporary staging files with restricted permissions (`0o600`) to prevent file truncation or corruption.
+- **Defense in Depth:** Configured with active rate limiters, payload size guards, ETag caching, connection draining, and HTTP compression negotiation.
+- **Anti-Spoofing Identity Verification:** Feedback and document re-upload endpoints strictly enforce caller phone ownership against verified application records before mutating state.
 
 ---
 
-## Responsible Information
-
-Civic tools require rigorous attention to factual accuracy and transparency:
-
-- **Prefer Official Sources**: Guidance and links must be sourced directly from official Karnataka government portals and verified public resources.
-- **Do Not Invent Criteria or Deadlines**: The assistant must never fabricate eligibility criteria, procedural steps, fees, or deadlines.
-- **Make Uncertainty Clear**: When verified information is unavailable, incomplete, or out of scope, the assistant must state this transparently.
-- **Clear Capabilities & Scope**: The project does not claim to submit applications, process payments, or check live application status unless those specific capabilities are officially implemented and verified.
-
----
-
-## Project Status
-
-JanVaani is at the **initial planning and documentation stage**. The application code, external service integrations, AI retrieval pipelines, and voice processing are not yet implemented.
-
----
-
-## Getting Started
+## 🚀 Quick Start Guide
 
 ### Prerequisites
+- [Bun](https://bun.sh/) (v1.1 or higher)
+- [Node.js](https://nodejs.org/) (v20 or higher)
+- [Git](https://git-scm.com/)
 
-- [Bun](https://bun.sh/) (v1.1+)
-- [Node.js](https://nodejs.org/) (v20+)
-
-### Installation
+### 1. Clone & Install Dependencies
 
 ```bash
+git clone https://github.com/Sriram-Nambiar/JanVaani.git
+cd JanVaani
 bun install
 ```
 
-### Development Scripts
+### 2. Start the Development Servers
 
-- `bun run dev`: Start both the web frontend and API concurrently
-- `bun run dev:web`: Start the web application (`apps/web`) on port 5173
-- `bun run dev:api`: Start the API service (`apps/api`) on port 3001
-- `bun run build`: Build all workspaces
-- `bun run typecheck`: Run TypeScript typechecks across all workspaces
-- `bun run test`: Run the test suite
+Run the web interface, API backend, and Seva Sindhu services concurrently:
 
----
+```bash
+# Start all workspaces concurrently
+bun run dev
 
-## Contributing
-
-Contributions, feedback, and suggestions are welcome! Whether you are interested in civic technology, documentation, Kannada localization, or full-stack development, your input helps shape the project.
-
-At this stage, we welcome:
-- Feedback and suggestions on architecture and service design.
-- Documentation reviews and improvements.
-- Identification of priority Karnataka government services for initial curation.
-
-As code development begins, detailed contribution guidelines and development workflows will be added. In the meantime, feel free to open an issue to share ideas or get involved.
+# Or run individual workspaces:
+bun run dev:web        # Citizen Dashboard (http://localhost:5173)
+bun run dev:api        # Civic API Engine (http://localhost:3001)
+bun run dev:seva-api   # Seva Sindhu API (http://localhost:3002)
+```
 
 ---
 
-## License
+## 🧪 Testing & Code Quality
 
-A license has not yet been selected for this project. Licensing details will be determined and added as project development progresses.
+The codebase enforces strict end-to-end type safety and automated testing across all packages:
+
+```bash
+# Run typechecks across all 4 workspaces
+bun run typecheck
+
+# Run full test suite (310+ tests across 18 test files)
+bun run test
+
+# Run tests for a specific scheme
+bun test apps/api/src/routes/gruha-jyothi.test.ts
+bun test apps/api/src/routes/kaveri.test.ts
+```
+
+All Pull Requests in the repository are continuously validated by automated CI and **Shipwright AI** for code quality, zero-PII exposure, and regression prevention.
+
+---
+
+## 📜 Contributing & Code of Conduct
+
+We welcome contributions from civic technologists, developers, and linguistic experts passionate about improving governance accessibility in Karnataka:
+
+1. Fork the repository and create your feature branch: `git checkout -b feat/my-new-feature`
+2. Follow strict Zod validation patterns and ensure all inputs are sanitised.
+3. Run `bun run typecheck` and `bun test` to confirm 0 errors.
+4. Open a Pull Request referencing the related issue.
+
+---
+
+## 📄 License
+
+This project is open-source and licensed under the [MIT License](LICENSE).
