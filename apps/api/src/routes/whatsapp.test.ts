@@ -498,6 +498,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('JanaSpandana Grievance & Appeal Redressal Endpoints', () => {
+    const testGrievanceKey = 'test_grievance_admin_secret_5544';
+    beforeEach(() => {
+      process.env.GRIEVANCE_ADMIN_KEY = testGrievanceKey;
+    });
+
     it('POST /api/whatsapp/grievance/submit successfully lodges a citizen grievance and returns docket number', async () => {
       const payload = {
         applicantName: 'ಸವಿತಾ ಕುಮಾರಿ',
@@ -574,6 +579,39 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
       assert.ok(Array.isArray(body.dockets));
       assert.ok(body.dockets.length >= 1);
+    });
+
+    it('GET /api/whatsapp/grievance/raw-export/:docketNumber secures export with admin auth and masked PII', async () => {
+      // First submit a grievance to persist it
+      const submitRes = await fetch(`${baseUrl}/api/whatsapp/grievance/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'ರಮೇಶ್ ಗೌಡ',
+          phone: '9845099887',
+          district: 'Mandya',
+          department: 'REVENUE_NADAKACHERI',
+          grievanceCategory: 'SERVICE_DELAY',
+          description: 'ಆದಾಯ ಪ್ರಮಾಣಪತ್ರಕ್ಕಾಗಿ ೧೫ ದಿನಗಳ ಹಿಂದೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿದ್ದು ಇನ್ನೂ ಬಂದಿಲ್ಲ.',
+        }),
+      });
+      assert.strictEqual(submitRes.status, 201);
+      const submitBody = await submitRes.json();
+      const docketNum = submitBody.docketNumber;
+
+      // Unauthorized request rejected with 401
+      const unauthRes = await fetch(`${baseUrl}/api/whatsapp/grievance/raw-export/${docketNum}`);
+      assert.strictEqual(unauthRes.status, 401);
+
+      // Authorized request succeeds with masked PII
+      const exportRes = await fetch(`${baseUrl}/api/whatsapp/grievance/raw-export/${docketNum}`, {
+        headers: { 'x-admin-key': testGrievanceKey },
+      });
+      assert.strictEqual(exportRes.status, 200);
+      const exportBody = await exportRes.json();
+      assert.strictEqual(exportBody.success, true);
+      assert.strictEqual(exportBody.docketNumber, docketNum);
+      assert.ok(exportBody.phone.includes('*'));
     });
   });
 

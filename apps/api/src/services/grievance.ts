@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { GrievanceSubmissionInput } from '../schemas/grievance.js';
 import { sarvamService } from './sarvam.js';
+import { getDbPool } from '../db/client.js';
 
 export interface GrievanceTimelineStep {
   step: number;
@@ -175,15 +176,108 @@ export class JanaSpandanaGrievanceService {
     };
 
     this.dockets.set(docketNumber, docket);
+
+    try {
+      const pool = getDbPool();
+      await pool.query(
+        `INSERT INTO grievance_dockets
+         (docket_number, ack_number, applicant_name, phone, district, department, grievance_category, description, status, assigned_officer, sla_days, timeline, resolution_text_kn, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+         ON CONFLICT (docket_number) DO NOTHING`,
+        [
+          docket.docketNumber,
+          docket.ackNumber || null,
+          docket.applicantName,
+          docket.phone,
+          docket.district,
+          docket.department,
+          docket.grievanceCategory,
+          docket.description,
+          docket.status,
+          docket.assignedOfficer,
+          docket.slaDays,
+          JSON.stringify(docket.timeline),
+          docket.resolutionTextKn || null,
+          docket.createdAt,
+        ]
+      );
+    } catch (err: any) {
+      console.warn('[JanaSpandanaGrievanceService] Failed to persist docket to PostgreSQL:', err.message);
+    }
+
     return docket;
   }
 
-  public getGrievance(docketNumber: string): GrievanceDocket | null {
+  public async getGrievance(docketNumber: string): Promise<GrievanceDocket | null> {
+    try {
+      const pool = getDbPool();
+      const res = await pool.query(
+        `SELECT docket_number, ack_number, applicant_name, phone, district, department, grievance_category, description, status, assigned_officer, sla_days, timeline, resolution_text_kn, created_at
+         FROM grievance_dockets WHERE UPPER(docket_number) = UPPER($1)`,
+        [docketNumber]
+      );
+      if (res.rows.length > 0) {
+        const row = res.rows[0];
+        return {
+          docketNumber: row.docket_number,
+          ackNumber: row.ack_number || undefined,
+          applicantName: row.applicant_name,
+          phone: row.phone,
+          district: row.district,
+          department: row.department,
+          grievanceCategory: row.grievance_category,
+          description: row.description,
+          status: row.status,
+          assignedOfficer: row.assigned_officer,
+          slaDays: row.sla_days,
+          createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+          timeline: typeof row.timeline === 'string' ? JSON.parse(row.timeline) : (row.timeline || []),
+          resolutionTextKn: row.resolution_text_kn || undefined,
+        };
+      }
+    } catch (err: any) {
+      console.warn('[JanaSpandanaGrievanceService] Failed to query PostgreSQL:', err.message);
+    }
     return this.dockets.get(docketNumber.toUpperCase()) || null;
   }
 
-  public listDockets(): GrievanceDocket[] {
-    return Array.from(this.dockets.values());
+  public async listDockets(): Promise<GrievanceDocket[]> {
+    const docketMap = new Map<string, GrievanceDocket>();
+
+    // Start with all in-memory dockets
+    for (const [key, docket] of this.dockets.entries()) {
+      docketMap.set(key.toUpperCase(), docket);
+    }
+
+    try {
+      const pool = getDbPool();
+      const res = await pool.query(
+        `SELECT docket_number, ack_number, applicant_name, phone, district, department, grievance_category, description, status, assigned_officer, sla_days, timeline, resolution_text_kn, created_at
+         FROM grievance_dockets ORDER BY created_at DESC LIMIT 50`
+      );
+      for (const row of res.rows) {
+        docketMap.set(row.docket_number.toUpperCase(), {
+          docketNumber: row.docket_number,
+          ackNumber: row.ack_number || undefined,
+          applicantName: row.applicant_name,
+          phone: row.phone,
+          district: row.district,
+          department: row.department,
+          grievanceCategory: row.grievance_category,
+          description: row.description,
+          status: row.status,
+          assignedOfficer: row.assigned_officer,
+          slaDays: row.sla_days,
+          createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+          timeline: typeof row.timeline === 'string' ? JSON.parse(row.timeline) : (row.timeline || []),
+          resolutionTextKn: row.resolution_text_kn || undefined,
+        });
+      }
+    } catch (err: any) {
+      console.warn('[JanaSpandanaGrievanceService] Failed to query PostgreSQL list:', err.message);
+    }
+
+    return Array.from(docketMap.values());
   }
 }
 
