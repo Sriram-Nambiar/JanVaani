@@ -102,7 +102,9 @@ describe('Gruha Jyothi Zero-Electricity-Bill & Tariff Engine API', () => {
     assert.strictEqual(body.entitlement.isDisqualified, false);
     assert.strictEqual(body.entitlement.entitledUnits, 88);
     assert.strictEqual(body.entitlement.excessUnits, 32);
-    assert.ok(body.entitlement.netPayableInr > 0);
+    assert.strictEqual(body.entitlement.fppcaPerUnitInr, 0.37);
+    assert.strictEqual(body.entitlement.fixedChargeInr, 220);
+    assert.ok(body.entitlement.netPayableInr >= body.entitlement.fixedChargeInr);
     assert.ok(body.entitlement.subsidyInr > 0);
     assert.match(body.messageKn, /ಭಾಗಶಃ ಸಹಾಯಧನ/);
   });

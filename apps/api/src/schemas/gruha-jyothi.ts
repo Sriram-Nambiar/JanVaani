@@ -28,7 +28,7 @@ export const gruhaJyothiCalculateSchema = z.object({
   averageAnnualConsumptionUnits: z
     .number()
     .nonnegative('Average annual consumption cannot be negative')
-    .max(2000, 'Average monthly consumption cannot exceed 2000 units'),
+    .max(2000, 'Average annual consumption cannot exceed 2000 units'),
   currentMonthUnits: z
     .number()
     .nonnegative('Current month consumption cannot be negative')

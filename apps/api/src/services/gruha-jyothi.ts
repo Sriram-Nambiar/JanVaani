@@ -61,7 +61,7 @@ export class GruhaJyothiService {
       messageKn = `ಈ ತಿಂಗಳ ವಿದ್ಯುತ್ ಬಳಕೆ (${currentUnits} ಯೂನಿಟ್‌ಗಳು) ಗೃಹಜ್ಯೋತಿ ಯೋಜನೆಯ ೨೦೦ ಯೂನಿಟ್‌ಗಳ ಗರಿಷ್ಠ ಮಿತಿಯನ್ನು ಮೀರಿದೆ. ಸಂಪೂರ್ಣ ಬಿಲ್ ಮೊತ್ತ ₹${netPayableInr.toLocaleString('en-IN')} ಪಾವತಿಸಬೇಕಾಗುತ್ತದೆ.`;
       messageEn = `Consumption of ${currentUnits} units exceeds the statutory 200-unit ceiling under Gruha Jyothi. Full electricity bill of ₹${netPayableInr.toLocaleString('en-IN')} is payable without government subsidy.`;
     } else if (currentUnits <= entitledUnits) {
-      // 100% Zero bill
+      // 100% Zero bill: government subsidizes the entire gross bill (energy + fixed + fppca + tax)
       isZeroBill = true;
       isDisqualified = false;
       netPayableInr = 0;
@@ -71,19 +71,19 @@ export class GruhaJyothiService {
       messageKn = `ಗೃಹಜ್ಯೋತಿ ಶೂನ್ಯ ಬಿಲ್! ನಿಮ್ಮ ಮಾಸಿಕ ಬಳಕೆ ${currentUnits} ಯೂನಿಟ್‌ಗಳು ನಿಮ್ಮ ಅರ್ಹ ಮಿತಿ (${entitledUnits} ಯೂನಿಟ್‌ಗಳು) ಒಳಗಿದೆ. ಸರ್ಕಾರ ಭರಿಸಿದ ಸಹಾಯಧನ: ₹${subsidyInr.toLocaleString('en-IN')}. ನೀವು ಪಾವತಿಸಬೇಕಾದ ಮೊತ್ತ: ₹0.`;
       messageEn = `Gruha Jyothi Zero Bill! Your consumption of ${currentUnits} units is within your entitled limit of ${entitledUnits} units. Total government subsidy applied: ₹${subsidyInr.toLocaleString('en-IN')}. Net payable: ₹0.`;
     } else {
-      // Partial subsidy: units up to entitledUnits are free, excess units are billed
+      // Partial subsidy: entitledUnits are subsidized, while consumer pays for excess units plus fixed charges
       excessUnits = currentUnits - entitledUnits;
-      const excessEnergy = Math.round(excessUnits * this.tariffPerUnit * 100) / 100;
-      const excessFppca = Math.round(excessUnits * this.fppcaRatePerUnit * 100) / 100;
-      const excessTax = Math.round((excessEnergy + excessFppca) * this.taxRate * 100) / 100;
+      const subsidizedEnergy = Math.round(entitledUnits * this.tariffPerUnit * 100) / 100;
+      const subsidizedFppca = Math.round(entitledUnits * this.fppcaRatePerUnit * 100) / 100;
+      const subsidizedTax = Math.round((subsidizedEnergy + subsidizedFppca) * this.taxRate * 100) / 100;
 
-      netPayableInr = Math.round(excessEnergy + excessFppca + excessTax);
-      subsidyInr = Math.max(0, grossBillInr - netPayableInr);
+      subsidyInr = Math.round(subsidizedEnergy + subsidizedFppca + subsidizedTax);
+      netPayableInr = Math.max(0, grossBillInr - subsidyInr);
       isZeroBill = false;
       isDisqualified = false;
 
-      messageKn = `ಗೃಹಜ್ಯೋತಿ ಭಾಗಶಃ ಸಹಾಯಧನ ಅನ್ವಯಿಸಿದೆ. ${entitledUnits} ಯೂನಿಟ್‌ಗಳು ಉಚಿತ (ಸಹಾಯಧನ: ₹${subsidyInr.toLocaleString('en-IN')}). ಹೆಚ್ಚುವರಿ ${excessUnits} ಯೂನಿಟ್‌ಗಳಿಗೆ ಪಾವತಿಸಬೇಕಾದ ಮೊತ್ತ: ₹${netPayableInr.toLocaleString('en-IN')}.`;
-      messageEn = `Partial Gruha Jyothi subsidy applied. ${entitledUnits} units subsidized (₹${subsidyInr.toLocaleString('en-IN')}). Net payable for ${excessUnits} excess units: ₹${netPayableInr.toLocaleString('en-IN')}.`;
+      messageKn = `ಗೃಹಜ್ಯೋತಿ ಭಾಗಶಃ ಸಹಾಯಧನ ಅನ್ವಯಿಸಿದೆ. ${entitledUnits} ಯೂನಿಟ್‌ಗಳು ಉಚಿತ (ಸಹಾಯಧನ: ₹${subsidyInr.toLocaleString('en-IN')}). ಹೆಚ್ಚುವರಿ ${excessUnits} ಯೂನಿಟ್‌ಗಳು ಮತ್ತು ಸ್ಥಿರ ಶುಲ್ಕಕ್ಕೆ ಪಾವತಿಸಬೇಕಾದ ಮೊತ್ತ: ₹${netPayableInr.toLocaleString('en-IN')}.`;
+      messageEn = `Partial Gruha Jyothi subsidy applied. ${entitledUnits} units subsidized (₹${subsidyInr.toLocaleString('en-IN')}). Net payable for ${excessUnits} excess units and fixed charges: ₹${netPayableInr.toLocaleString('en-IN')}.`;
     }
 
     return {

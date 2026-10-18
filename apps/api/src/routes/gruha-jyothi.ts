@@ -63,6 +63,7 @@ gruhaJyothiRouter.post('/calculate', async (req: Request, res: Response, next: N
         fixedChargeInr: result.fixedChargeInr,
         electricityTaxInr: result.electricityTaxInr,
         tariffPerUnitInr: result.tariffPerUnitInr,
+        fppcaPerUnitInr: result.fppcaPerUnitInr,
         maskedPhone: maskPhone(input.contactPhone),
         maskedConsumerAadhaar: maskAadhaar(input.consumerAadhaar),
       },
