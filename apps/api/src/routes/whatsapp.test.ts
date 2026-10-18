@@ -1797,6 +1797,39 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(cancelBody.status, 'ok');
     });
   });
+
+  describe('HTTP Response ETag & Conditional Cache Endpoints', () => {
+    it('GET /api/cache/etag/stats returns initial cache statistics', async () => {
+      const res = await fetch(`${baseUrl}/api/cache/etag/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('cachedEntriesCount' in body.data);
+    });
+
+    it('attaches ETag header on successful GET response', async () => {
+      const res = await fetch(`${baseUrl}/api/health`);
+      assert.strictEqual(res.status, 200);
+      assert.ok(res.headers.has('etag'));
+    });
+
+    it('POST /api/cache/etag/flush rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/cache/etag/flush`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/cache/etag/flush clears cache with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/cache/etag/flush`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_etag_admin_secret' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
