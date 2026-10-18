@@ -21,6 +21,8 @@ const MIN_TTL_MS = 100;
 const MAX_TTL_MS = 60000; // 60 seconds
 const RESOURCE_KEY_REGEX = /^[a-zA-Z0-9_\-.:]{3,128}$/;
 
+import { getRedisClient } from './redis.js';
+
 function isAuthorizedAdmin(req: Request): boolean {
   const configuredKey = process.env.LOCKS_ADMIN_KEY;
   if (!configuredKey || configuredKey.trim().length === 0) {
@@ -122,6 +124,63 @@ export class DistributedLockManager {
       activeLocksCount: this.activeLocks.size,
       totalHistoryLogged: this.lockHistory.length,
     };
+  }
+
+  public async acquireDistributed(
+    resource: string,
+    ownerId: string,
+    ttlMs: number = 10000
+  ): Promise<{ acquired: boolean; remainingTtlMs?: number; backend: 'redis' | 'memory'; error?: string }> {
+    try {
+      const redis = getRedisClient();
+      const lockKey = `janvaani:mutex:${resource}`;
+      const acquired = await redis.set(lockKey, ownerId, 'PX', ttlMs, 'NX');
+      if (acquired === 'OK') {
+        this.recordHistory(resource, ownerId, 'ACQUIRE', Date.now());
+        return { acquired: true, remainingTtlMs: ttlMs, backend: 'redis' };
+      }
+
+      const pttl = await redis.pttl(lockKey);
+      return {
+        acquired: false,
+        remainingTtlMs: pttl > 0 ? pttl : 0,
+        backend: 'redis',
+      };
+    } catch {
+      // Memory fallback
+      const local = this.acquire(resource, ownerId, ttlMs);
+      return {
+        ...local,
+        backend: 'memory',
+      };
+    }
+  }
+
+  public async releaseDistributed(
+    resource: string,
+    ownerId: string
+  ): Promise<{ released: boolean; backend: 'redis' | 'memory' }> {
+    try {
+      const redis = getRedisClient();
+      const lockKey = `janvaani:mutex:${resource}`;
+      // Atomic Lua unlock script
+      const luaScript = `
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+          return redis.call("del", KEYS[1])
+        else
+          return 0
+        end
+      `;
+      const result = await redis.eval(luaScript, 1, lockKey, ownerId);
+      const released = result === 1;
+      if (released) {
+        this.recordHistory(resource, ownerId, 'RELEASE', Date.now());
+      }
+      return { released, backend: 'redis' };
+    } catch {
+      const released = this.release(resource, ownerId);
+      return { released, backend: 'memory' };
+    }
   }
 
   public clear(): void {
@@ -241,6 +300,69 @@ distributedLockRouter.post('/release', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     data: { released },
+  });
+});
+
+/**
+ * POST /api/locks/acquire-distributed
+ */
+distributedLockRouter.post('/acquire-distributed', async (req: Request, res: Response) => {
+  const resource = req.body?.resource;
+  const ownerId = req.body?.ownerId;
+
+  if (typeof resource !== 'string' || !RESOURCE_KEY_REGEX.test(resource)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_RESOURCE', message: 'Resource must match allowed format' },
+    });
+  }
+
+  if (typeof ownerId !== 'string' || ownerId.trim().length === 0 || ownerId.length > 128) {
+    return res.status(400).json({
+      error: { code: 'INVALID_OWNER', message: 'ownerId must be non-empty and under 128 characters' },
+    });
+  }
+
+  const rawTtl = req.body?.ttlMs;
+  let ttlMs = 10000;
+  if (rawTtl !== undefined) {
+    if (typeof rawTtl !== 'number' || !Number.isInteger(rawTtl) || rawTtl < MIN_TTL_MS || rawTtl > MAX_TTL_MS) {
+      return res.status(400).json({
+        error: { code: 'INVALID_TTL', message: `ttlMs must be an integer between ${MIN_TTL_MS} and ${MAX_TTL_MS}` },
+      });
+    }
+    ttlMs = rawTtl;
+  }
+
+  const result = await distributedLock.acquireDistributed(resource, ownerId, ttlMs);
+  return res.status(result.acquired ? 200 : 409).json({
+    status: result.acquired ? 'ok' : 'conflict',
+    data: result,
+  });
+});
+
+/**
+ * POST /api/locks/release-distributed
+ */
+distributedLockRouter.post('/release-distributed', async (req: Request, res: Response) => {
+  const resource = req.body?.resource;
+  const ownerId = req.body?.ownerId;
+
+  if (typeof resource !== 'string' || !RESOURCE_KEY_REGEX.test(resource)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_RESOURCE', message: 'Resource must match allowed format' },
+    });
+  }
+
+  if (typeof ownerId !== 'string' || ownerId.trim().length === 0 || ownerId.length > 128) {
+    return res.status(400).json({
+      error: { code: 'INVALID_OWNER', message: 'ownerId must be non-empty and under 128 characters' },
+    });
+  }
+
+  const result = await distributedLock.releaseDistributed(resource, ownerId);
+  return res.status(200).json({
+    status: 'ok',
+    data: result,
   });
 });
 
