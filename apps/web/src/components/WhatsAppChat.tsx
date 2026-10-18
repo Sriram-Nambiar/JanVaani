@@ -129,7 +129,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
 
     const textToSend = inputText;
     setInputText('');
-    handleSend({ type: 'text', text: textToSend }, userMsg);
+    handleSend({ type: 'text', text: textToSend, senderId: 'citizen-demo-user' }, userMsg);
   };
 
   // 2. Preset scenario click
@@ -150,6 +150,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
         type: isImage ? 'image' : isStatus ? 'voice' : 'voice',
         presetScenario: scenario as any,
         documentType: 'aadhaar',
+        senderId: 'citizen-demo-user',
       },
       userMsg
     );
@@ -196,7 +197,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
             audioBase64: base64Audio,
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-          handleSend({ type: 'voice', audioBase64: base64Audio, mimeType: 'audio/webm' }, userVoiceMsg);
+          handleSend({ type: 'voice', audioBase64: base64Audio, mimeType: 'audio/webm', senderId: 'citizen-demo-user' }, userVoiceMsg);
         };
         reader.readAsDataURL(audioBlob);
 
@@ -245,7 +246,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
         imageUrl: reader.result as string,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      handleSend({ type: 'image', imageBase64: base64, documentType: 'aadhaar' }, userMsg);
+      handleSend({ type: 'image', imageBase64: base64, documentType: 'aadhaar', senderId: 'citizen-demo-user' }, userMsg);
     };
     reader.readAsDataURL(file);
   };
@@ -321,6 +322,58 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
         <span style={{ fontSize: '12px', fontWeight: 600, color: '#4b5563', alignSelf: 'center' }}>
           ಡೆಮೊ ಸನ್ನಿವೇಶಗಳು:
         </span>
+        <button
+          type="button"
+          aria-label="Apply for BMTC Student Concessional Pass"
+          onClick={() => {
+            const userMsg: ChatMessage = {
+              id: `usr-${Date.now()}`,
+              sender: 'citizen',
+              type: 'text',
+              text: 'i want apply for bmtc student pass',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            handleSend({ type: 'text', text: 'i want apply for bmtc student pass', senderId: 'citizen-demo-user' }, userMsg);
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #1e3a8a',
+            backgroundColor: '#1e3a8a',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          🚌 BMTC Student Pass
+        </button>
+        <button
+          type="button"
+          aria-label="Confirm BMTC Pass OTP 3344"
+          onClick={() => {
+            const userMsg: ChatMessage = {
+              id: `usr-${Date.now()}`,
+              sender: 'citizen',
+              type: 'text',
+              text: 'Confirm OTP 3344',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            handleSend({ type: 'text', text: 'Confirm OTP 3344', senderId: 'citizen-demo-user' }, userMsg);
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #047857',
+            backgroundColor: '#047857',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          ✅ Confirm BMTC Pass
+        </button>
         <button
           onClick={() => triggerPreset('gruha_jyothi_apply', 'ಗೃಹ ಜ್ಯೋತಿ 200 ಯೂನಿಟ್ ಉಚಿತ ಕರೆಂಟ್ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು')}
           style={{
