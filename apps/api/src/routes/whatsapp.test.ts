@@ -2684,6 +2684,71 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.success, true);
     });
   });
+
+  describe('Citizen Draft Sessions & Form Slots Persistence Endpoints', () => {
+    it('POST /api/drafts/save persists draft session with JSONB slots and GET /api/drafts/:id retrieves it', async () => {
+      const sessionId = 'draft_session_test_998811';
+      const saveRes = await fetch(`${baseUrl}/api/drafts/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          phone: '9845012345',
+          schemeId: 'gruha_lakshmi',
+          currentState: 'COLLECTING',
+          formSlots: {
+            applicantName: 'ಲಕ್ಷ್ಮೀದೇವಿ',
+            rationCardNumber: 'RC9988776655',
+            district: 'Mandya',
+          },
+          confidenceScores: {
+            applicantName: 0.96,
+            rationCardNumber: 0.99,
+          },
+          missingFields: ['bankAccountNumber'],
+          consentGiven: false,
+        }),
+      });
+
+      assert.strictEqual(saveRes.status, 201);
+      const saveBody = await saveRes.json();
+      assert.strictEqual(saveBody.status, 'ok');
+      assert.strictEqual(saveBody.data.sessionId, sessionId);
+      assert.strictEqual(saveBody.data.formSlots.applicantName, 'ಲಕ್ಷ್ಮೀದೇವಿ');
+
+      const getRes = await fetch(`${baseUrl}/api/drafts/${sessionId}`);
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.data.sessionId, sessionId);
+      assert.strictEqual(getBody.data.schemeId, 'gruha_lakshmi');
+      assert.strictEqual(getBody.data.formSlots.rationCardNumber, 'RC9988776655');
+
+      const rawRes = await fetch(`${baseUrl}/api/drafts/raw-inspect/${sessionId}`);
+      assert.strictEqual(rawRes.status, 200);
+      const rawBody = await rawRes.json();
+      assert.strictEqual(rawBody.success, true);
+    });
+
+    it('POST /api/drafts/save rejects missing sessionId with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/drafts/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'gruha_lakshmi',
+        }),
+      });
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.error.code, 'INVALID_SESSION_ID');
+    });
+
+    it('GET /api/drafts/:id returns 404 for unknown session', async () => {
+      const res = await fetch(`${baseUrl}/api/drafts/non-existent-session-000`);
+      assert.strictEqual(res.status, 404);
+      const body = await res.json();
+      assert.strictEqual(body.error.code, 'DRAFT_NOT_FOUND');
+    });
+  });
 });
 
 
