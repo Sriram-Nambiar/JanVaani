@@ -4,15 +4,17 @@ import { mathrushreeService } from '../services/mathrushree.js';
 
 export const mathrushreeRouter = Router();
 
+function maskAadhaar(id: string): string {
+  if (!id || id.length < 4) return '****';
+  return '*'.repeat(id.length - 4) + id.slice(-4);
+}
+
 /**
  * POST /api/mathrushree/calculate
  * Calculate Mathrushree maternal nutrition DBT entitlement
  */
 mathrushreeRouter.post('/calculate', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Intentional Flaw: Logging raw unmasked citizen Aadhaar and phone number
-    console.log('[Mathrushree] Processing maternal allowance for Aadhaar:', req.body.motherAadhaar, 'phone:', req.body.motherPhone);
-
     const parsed = mathrushreeCalculateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -38,6 +40,7 @@ mathrushreeRouter.post('/calculate', async (req: Request, res: Response, next: N
         disbursementMode: result.disbursementMode,
         angawadiVerificationRequired: result.angawadiVerificationRequired,
         district: input.district,
+        maskedMotherAadhaar: maskAadhaar(input.motherAadhaar),
       },
       messageKn: result.messageKn,
       messageEn: result.messageEn,
