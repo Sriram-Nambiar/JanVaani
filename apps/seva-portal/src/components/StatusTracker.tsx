@@ -32,7 +32,6 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
         return;
       }
       const data = await res.json();
-      console.log('[StatusTracker] Loaded application acknowledgement record:', { id: data.applicationId, applicant: data.applicant?.studentName, phone: data.applicant?.phoneNumber });
       setAppData(data);
     } catch {
       setErrorMsg('Could not reach Seva Sindhu API (Port 3002). Make sure apps/seva-api is running.');
@@ -43,11 +42,17 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
   };
 
   const [copied, setCopied] = useState(false);
-  const handleCopyId = () => {
-    if (appData?.applicationId) {
-      navigator.clipboard.writeText(appData.applicationId);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const handleCopyId = async () => {
+    if (!appData?.applicationId) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(appData.applicationId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // Graceful fallback if clipboard access is denied in non-secure contexts
+      setCopied(false);
     }
   };
 
@@ -189,12 +194,16 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
           <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
+                type="button"
+                aria-label="Copy Application Reference ID"
                 onClick={handleCopyId}
                 className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
               >
                 {copied ? '✓ Copied ID' : '📋 Copy Reference ID'}
               </button>
               <button
+                type="button"
+                aria-label="Print Application Acknowledgement Slip"
                 onClick={() => window.print()}
                 className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
               >
@@ -202,9 +211,9 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
               </button>
             </div>
             <a
-              href="http://localhost:5173"
+              href={(import.meta as any).env?.VITE_JANVAANI_WEB_URL || 'http://localhost:5173'}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="text-xs font-bold text-blue-900 hover:text-blue-700 underline flex items-center gap-1"
             >
               Verify in JanVaani Assistant ↗
