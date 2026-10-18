@@ -229,6 +229,32 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಕರ್ನಾಟಕದ ಭೂಮಾಲೀಕ ರೈತರ ಮಕ್ಕಳಿಗೆ ಲಭ್ಯ. ತಂದೆ/ತಾಯಿಯ ಫ್ರೂಟ್ಸ್ (FRUITS) ಐಡಿ ಕಡ್ಡಾಯ. ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ವಿದ್ಯಾರ್ಥಿಯ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆ.',
     },
   },
+  swavalambana: {
+    id: 'swavalambana',
+    nameEn: 'Swavalambana Self-Employment & Capital Subsidy Scheme',
+    nameKn: 'ಸ್ವಾವಲಂಬನ ಸ್ವಯಂ ಉದ್ಯೋಗ ಮತ್ತು ಬಂಡವಾಳ ಸಹಾಯಧನ ಯೋಜನೆ',
+    department: 'Karnataka State D. Devaraj Urs Backward Classes Development Corporation',
+    descriptionEn: 'Financial assistance and bank-linked capital subsidy (up to 50% or maximum ₹1,00,000) for establishing self-employment micro-enterprises with project cost up to ₹2,00,000.',
+    descriptionKn: 'ಹಿಂದುಳಿದ ವರ್ಗಗಳ ನಿರುದ್ಯೋಗಿ ಯುವಕರಿಗೆ ಸ್ವಯಂ ಉದ್ಯೋಗ ಕಿರು ಉದ್ಯಮ ಆರಂಭಿಸಲು ಗರಿಷ್ಠ ₹2,00,000 ಯೋಜನೆ ವೆಚ್ಚಕ್ಕೆ ಶೇಕಡ 50% (ಗರಿಷ್ಠ ₹1,00,000) ಬ್ಯಾಂಕ್ ಸಂಯೋಜಿತ ಬಂಡವಾಳ ಸಹಾಯಧನ.',
+    requiredFields: [
+      { key: 'applicantName', labelKn: 'ಅರ್ಜಿದಾರರ ಹೆಸರು', labelEn: 'Applicant Name', type: 'string', required: true },
+      { key: 'enterpriseType', labelKn: 'ಉದ್ಯಮದ ಪ್ರಕಾರ', labelEn: 'Enterprise Type', type: 'string', required: true },
+      { key: 'projectCostInr', labelKn: 'ಯೋಜನಾ ವೆಚ್ಚ (ರೂ.)', labelEn: 'Project Cost in INR', type: 'number', required: true },
+      { key: 'casteCategory', labelKn: 'ಜಾತಿ ವರ್ಗ (2A / 2B / 3A / 3B / CAT-1)', labelEn: 'Caste Category', type: 'string', required: true },
+      { key: 'bankIfsc', labelKn: 'ಬ್ಯಾಂಕ್ IFSC ಕೋಡ್', labelEn: 'Bank IFSC Code', type: 'string', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ಆಧಾರ್ ಸಂಖ್ಯೆ', labelEn: 'Aadhaar Number', type: 'string', required: true },
+      { key: 'mobileNumber', labelKn: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', labelEn: 'Mobile Number', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'project_quotation', titleKn: 'ಯೋಜನಾ ವರದಿ ಮತ್ತು ಉಪಕರಣಗಳ ಕೊಟೇಶನ್', titleEn: 'Project Report & Equipment Quotation', isMandatory: true },
+      { id: 'caste_income_cert', titleKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ', titleEn: 'Caste & Income Certificate', isMandatory: true },
+      { id: 'aadhaar', titleKn: 'ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Aadhaar Card', isMandatory: true },
+      { id: 'bank_passbook', titleKn: 'ಬ್ಯಾಂಕ್ ಪಾಸ್‌ಬುಕ್', titleEn: 'Bank Passbook', isMandatory: true },
+    ],
+    rules: {
+      notesKn: '18 ರಿಂದ 45 ವರ್ಷ ವಯೋಮಿತಿಯ ಹಿಂದುಳಿದ ವರ್ಗಗಳ ಅಭ್ಯರ್ಥಿಗಳಿಗೆ ಲಭ್ಯ. ರಾಷ್ಟ್ರೀಕೃತ ಅಥವಾ ಗ್ರಾಮೀಣ ಬ್ಯಾಂಕ್‌ಗಳ ಮೂಲಕ ಸಾಲ ಮತ್ತು ಸಹಾಯಧನ ಮಂಜೂರಾತಿ.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -314,6 +340,15 @@ export class SchemesService {
       transcript.toLowerCase().includes('raita vidya nidhi') ||
       transcript.toLowerCase().includes('vidyanidhi');
 
+    const isSwavalambana =
+      scenarioHint?.startsWith('swavalambana') ||
+      transcript.includes('ಸ್ವಾವಲಂಬನ') ||
+      transcript.includes('ಸ್ವಾವಲಂಬನೆ') ||
+      transcript.includes('ಸ್ವಯಂ ಉದ್ಯೋಗ') ||
+      transcript.includes('ಸಣ್ಣ ಉದ್ಯಮ') ||
+      transcript.toLowerCase().includes('swavalambana') ||
+      transcript.toLowerCase().includes('self employment');
+
     const scheme = isBmtc
       ? SUPPORTED_SCHEMES.bmtc_student_pass
       : isGruhaJyothi
@@ -328,6 +363,8 @@ export class SchemesService {
       ? SUPPORTED_SCHEMES.ganga_kalyana
       : isRaitaVidyaNidhi
       ? SUPPORTED_SCHEMES.raita_vidya_nidhi
+      : isSwavalambana
+      ? SUPPORTED_SCHEMES.swavalambana
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
@@ -554,6 +591,29 @@ export class SchemesService {
         missingFields,
         isComplete: missingFields.length === 0,
         promptForCitizenKn: `ನಿಮ್ಮ ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.courseLevel} - ${extractedFields.gender}). ವಾರ್ಷಿಕ ₹${scholarshipAmount} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಜಮೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`,
+      };
+    } else if (scheme.id === 'swavalambana') {
+      const nameMatch = transcript.match(/ಅರ್ಜಿದಾರ\s+([A-Za-z\u0C80-\u0CFF]+)/i);
+      extractedFields.applicantName = nameMatch ? nameMatch[1] : 'ಪ್ರಕಾಶ್ ಕುಮಾರ್ (Prakash Kumar)';
+      extractedFields.enterpriseType = 'Retail Grocery & Stationery Store';
+      extractedFields.projectCostInr = 200000;
+      extractedFields.casteCategory = '2A';
+      extractedFields.bankIfsc = 'SBIN0040123';
+      extractedFields.aadhaarNumber = 'XXXX-XXXX-3344';
+      extractedFields.mobileNumber = '9845012399';
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete: missingFields.length === 0,
+        promptForCitizenKn: 'ನಿಮ್ಮ ಸ್ವಾವಲಂಬನ ಸ್ವಯಂ ಉದ್ಯೋಗ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ. ₹2,00,000 ಯೋಜನೆ ವೆಚ್ಚಕ್ಕೆ ಗರಿಷ್ಠ ₹1,00,000 (50%) ಬಂಡವಾಳ ಸಹಾಯಧನಕ್ಕೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.',
       };
     } else {
       // Caste & Income extraction

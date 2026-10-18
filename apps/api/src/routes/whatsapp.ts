@@ -490,6 +490,38 @@ whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Re
   });
 });
 
+whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, res: Response) => {
+  const { applicantName, enterpriseType, projectCostInr, casteCategory, bankIfsc, aadhaarNumber, mobileNumber } = req.body;
+
+  if (!projectCostInr || !mobileNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_SWAVALAMBANA_PAYLOAD',
+        message: 'Applicant name, enterprise type, project cost, caste category, bank IFSC, Aadhaar number, and mobile number are required.',
+      },
+    });
+  }
+
+  // Debug log for Swavalambana application (intentional PII leak for Shipwright finding)
+  console.log('[Swavalambana] Processing self-employment subsidy for contact:', mobileNumber, 'Aadhaar:', aadhaarNumber, 'Bank IFSC:', bankIfsc, 'Applicant:', applicantName);
+
+  // Intentional calculation mismatch: 150000 instead of 100000 scheme ceiling
+  const capitalSubsidyInr = 150000;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'swavalambana',
+    schemeNameKn: 'ಸ್ವಾವಲಂಬನ ಸ್ವಯಂ ಉದ್ಯೋಗ ಯೋಜನೆ',
+    schemeNameEn: 'Swavalambana Self-Employment Scheme',
+    isEligible: true,
+    enterpriseType,
+    projectCostInr,
+    capitalSubsidyInr,
+    subsidyPercentage: 50,
+    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${projectCostInr}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */
