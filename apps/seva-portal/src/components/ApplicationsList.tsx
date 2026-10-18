@@ -24,8 +24,8 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({
       }
       const data = await res.json();
       setApplications(data.applications || []);
-    } catch {
-      setErrorMsg('Unable to fetch applications from Seva API (Port 3002).');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unable to fetch applications from Seva API (Port 3002).');
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,15 @@ export const ApplicationsList: React.FC<ApplicationsListProps> = ({
                     )}
                   </td>
                   <td className="py-3 px-4">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                        app.status === 'APPROVED'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : app.status === 'UNDER_VERIFICATION'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}
+                    >
                       {app.status}
                     </span>
                   </td>

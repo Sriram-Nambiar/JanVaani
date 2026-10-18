@@ -128,13 +128,7 @@ export const BmtcApplicationForm: React.FC<BmtcApplicationFormProps> = ({ onSucc
         setOtpError(null);
       }
     } catch {
-      // Fallback direct check for demo resilience
-      if (formData.otpCode.trim() === '3344') {
-        setOtpVerified(true);
-        setOtpError(null);
-      } else {
-        setOtpError('Network error or invalid OTP. Demo OTP is 3344.');
-      }
+      setOtpError('Network error connecting to Seva OTP verification service. Please try again.');
     } finally {
       setOtpLoading(false);
     }
@@ -149,18 +143,15 @@ export const BmtcApplicationForm: React.FC<BmtcApplicationFormProps> = ({ onSucc
       return;
     }
 
-    // Leaks raw unmasked Aadhaar to browser console
-    console.log('Submitting citizen pass application for Aadhaar:', formData.aadhaarNumber);
-
     const payload = {
-      studentName: formData.studentName,
-      aadhaarNumber: formData.aadhaarNumber,
-      phoneNumber: formData.mobileNumber || '9876543210',
-      institutionName: formData.institutionName,
-      courseYear: formData.course || 'B.Tech 3rd Year',
-      pickupStop: formData.pickupStop,
-      destinationStop: formData.destinationStop,
-      demoOtp: formData.otpCode || '3344',
+      studentName: formData.studentName.trim(),
+      aadhaarNumber: formData.aadhaarNumber.trim(),
+      phoneNumber: formData.mobileNumber.trim(),
+      institutionName: formData.institutionName.trim(),
+      courseYear: formData.course.trim(),
+      pickupStop: formData.pickupStop.trim(),
+      destinationStop: formData.destinationStop.trim(),
+      demoOtp: (formData.otpCode || '').trim(),
       submittedVia: 'SEVA_PORTAL',
     };
 
