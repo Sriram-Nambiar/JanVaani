@@ -33,6 +33,7 @@ import { dashboardRouter } from './routes/dashboard.js';
 import { databaseRouter } from './routes/database.js';
 import { statusTrackerRouter } from './routes/status-tracker.js';
 import { redisRouter } from './routes/redis.js';
+import { draftSessionRouter } from './services/draft-session.js';
 
 export function createApp() {
   const app = express();
@@ -126,6 +127,7 @@ export function createApp() {
   app.use('/api/database', databaseRouter);
   app.use('/api/status-tracker', statusTrackerRouter);
   app.use('/api/redis', redisRouter);
+  app.use('/api/drafts', draftSessionRouter);
 
   // 404 for unhandled routes
   app.use(notFoundHandler);
