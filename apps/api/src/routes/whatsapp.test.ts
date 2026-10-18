@@ -2000,6 +2000,92 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Deep Health Aggregator & Dependency Readiness Endpoints', () => {
+    const testReadinessKey = 'janvaani_test_readiness_secret_key';
+
+    beforeEach(() => {
+      process.env.READINESS_ADMIN_KEY = testReadinessKey;
+    });
+
+    it('GET /api/readiness returns 200 and healthy subsystems when all dependencies are ready', async () => {
+      const res = await fetch(`${baseUrl}/api/readiness`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ready');
+      assert.strictEqual(body.subsystems.drainMode, 'HEALTHY');
+      assert.ok(body.timestamp);
+    });
+
+    it('GET /api/readiness/history returns telemetry probe stats', async () => {
+      const res = await fetch(`${baseUrl}/api/readiness/history`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.data.totalProbesRecorded >= 1);
+    });
+
+    it('POST /api/readiness/simulate-outage rejects unauthorized caller with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/readiness/simulate-outage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subsystem: 'database' }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/readiness/simulate-outage rejects invalid subsystem with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/readiness/simulate-outage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testReadinessKey,
+        },
+        body: JSON.stringify({ subsystem: 'invalid_untrusted_service' }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_SUBSYSTEM');
+    });
+
+    it('POST /api/readiness/simulate-outage triggers 503 without PII reflection on subsequent probes', async () => {
+      const outageRes = await fetch(`${baseUrl}/api/readiness/simulate-outage`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testReadinessKey,
+        },
+        body: JSON.stringify({ subsystem: 'bhoomi_kiosk' }),
+      });
+      assert.strictEqual(outageRes.status, 200);
+
+      const probeRes = await fetch(`${baseUrl}/api/readiness`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const probeBody = await probeRes.json();
+      assert.strictEqual(probeRes.status, 503);
+      assert.strictEqual(probeBody.error.code, 'SYSTEM_NOT_READY');
+      assert.strictEqual(probeBody.subsystems.bhoomi_kiosk, 'FAILED');
+      assert.strictEqual('callerContact' in probeBody, false);
+      assert.strictEqual('citizenPhone' in probeBody, false);
+    });
+
+    it('POST /api/readiness/reset clears simulated outages and restores healthy status', async () => {
+      const resetRes = await fetch(`${baseUrl}/api/readiness/reset`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testReadinessKey },
+      });
+      assert.strictEqual(resetRes.status, 200);
+
+      const probeRes = await fetch(`${baseUrl}/api/readiness`);
+      const probeBody = await probeRes.json();
+      assert.strictEqual(probeRes.status, 200);
+      assert.strictEqual(probeBody.status, 'ready');
+    });
+  });
 });
 
 
