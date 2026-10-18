@@ -68,11 +68,26 @@ export async function runDatabaseMigrations(): Promise<{ success: boolean; appli
     `);
     appliedTables.push('citizen_draft_sessions');
 
+    // 4. Background Job Queue Records with JSONB payload/result
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS background_job_records (
+        id VARCHAR(64) PRIMARY KEY,
+        type VARCHAR(64) NOT NULL,
+        status VARCHAR(32) NOT NULL,
+        progress INT NOT NULL DEFAULT 0,
+        created_at BIGINT NOT NULL,
+        updated_at BIGINT NOT NULL,
+        result JSONB DEFAULT '{}'::jsonb
+      );
+    `);
+    appliedTables.push('background_job_records');
+
     // Indexes for fast lookup
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_app_status_scheme ON application_status_records (scheme_id);
       CREATE INDEX IF NOT EXISTS idx_grievance_status ON grievance_dockets (status);
       CREATE INDEX IF NOT EXISTS idx_draft_phone ON citizen_draft_sessions (phone_hash);
+      CREATE INDEX IF NOT EXISTS idx_jobs_status ON background_job_records (status);
     `);
 
     await client.query('COMMIT');

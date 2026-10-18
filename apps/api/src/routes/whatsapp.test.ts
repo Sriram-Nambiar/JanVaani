@@ -1981,6 +1981,32 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual('callerPhone' in body, false);
     });
 
+    it('POST /api/jobs/submit-persistent and GET /api/jobs/persistent/:id persist job telemetry', async () => {
+      const submitRes = await fetch(`${baseUrl}/api/jobs/submit-persistent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'document_ocr',
+          payload: { documentType: 'ration_card' },
+        }),
+      });
+      assert.strictEqual(submitRes.status, 202);
+      const submitBody = await submitRes.json();
+      assert.strictEqual(submitBody.status, 'ok');
+      const jobId = submitBody.data.id;
+
+      const getRes = await fetch(`${baseUrl}/api/jobs/persistent/${jobId}`);
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.data.id, jobId);
+      assert.strictEqual(getBody.data.type, 'document_ocr');
+
+      const rawRes = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`);
+      assert.strictEqual(rawRes.status, 200);
+      const rawBody = await rawRes.json();
+      assert.strictEqual(rawBody.success, true);
+    });
+
     it('POST /api/jobs/clear rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/jobs/clear`, {
         method: 'POST',
