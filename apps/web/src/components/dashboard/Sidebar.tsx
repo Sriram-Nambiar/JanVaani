@@ -187,7 +187,7 @@ export function Sidebar({
   return (
     <>
       {/* Desktop & Tablet Sidebar */}
-      <div className="hidden md:block w-64 lg:w-72 flex-shrink-0 h-screen sticky top-0 z-30">
+      <div className="hidden md:block w-60 lg:w-64 flex-shrink-0 h-screen sticky top-0 z-30">
         {sidebarContent}
       </div>
 

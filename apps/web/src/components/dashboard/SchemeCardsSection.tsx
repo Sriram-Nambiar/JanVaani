@@ -60,44 +60,40 @@ export function SchemeCardsSection({
   ];
 
   return (
-    <section className="mb-8" aria-labelledby="verified-schemes-title">
-      {/* Header with Title, Verification Subtitle and "View all" Action */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-6">
+    <section className="mb-6" aria-labelledby="verified-schemes-title">
+      {/* Header with Title and "View all" Action matching screenshot */}
+      <div className="flex items-end justify-between gap-3 mb-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-kannada text-xs font-bold text-[#15803D] bg-[#DCFCE7] px-2.5 py-0.5 rounded-full border border-[#BBF7D0]">
-              {isKannadaPrimary ? 'ಪರಿಶೀಲಿಸಲಾದ ಫಲಿತಾಂಶಗಳು' : 'Verified Results'}
-            </span>
-            <span className="text-xs text-[#8C827A] font-english">
-              | AI Direct Match Engine
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[#D97706] text-xs font-bold">✦</span>
+            <span className="font-kannada text-xs font-semibold text-[#8C827A]">
+              {isKannadaPrimary ? 'ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗೆ ಹೊಂದುವ ಯೋಜನೆಗಳು' : 'Schemes matching your situation'}
             </span>
           </div>
 
           <h2
             id="verified-schemes-title"
-            className="font-kannada text-xl sm:text-2xl font-bold text-[#0B3B24] tracking-tight"
+            className="font-kannada text-xl sm:text-2xl font-extrabold text-[#0B3B24] tracking-tight"
           >
-            {isKannadaPrimary
-              ? 'ನಿಮ್ಮ ಪರಿಸ್ಥಿತಿಗೆ ಹೊಂದುವ ಯೋಜನೆಗಳು'
-              : 'Schemes Matching Your Situation'}
+            {isKannadaPrimary ? 'ಪರಿಶೀಲಿಸಲಾದ ಫಲಿತಾಂಶಗಳು' : 'Verified Results'}
           </h2>
         </div>
 
         {/* View all action */}
         <button
           type="button"
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-[#0B3B24] hover:text-[#D97706] transition-colors focus:outline-none focus:underline"
+          className="inline-flex items-center gap-1 text-xs sm:text-sm font-bold text-[#0B3B24] hover:text-[#D97706] transition-colors focus:outline-none focus:underline cursor-pointer"
           aria-label="View all welfare schemes"
         >
           <span className="font-kannada">
-            {isKannadaPrimary ? 'ಎಲ್ಲವನ್ನೂ ವೀಕ್ಷಿಸಿ' : 'View all schemes'}
+            {isKannadaPrimary ? 'ಎಲ್ಲವನ್ನೂ ನೋಡಿ' : 'View all'}
           </span>
           <span className="font-english">→</span>
         </button>
       </div>
 
       {/* Grid of Two Scheme Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-5">
         {schemes.map((scheme) => {
           const isSelected = selectedScheme === scheme.id;
           return (
@@ -107,7 +103,7 @@ export function SchemeCardsSection({
                 setSelectedScheme(scheme.id);
                 if (onSelectScheme) onSelectScheme(scheme.nameKn);
               }}
-              className={`rounded-2xl sm:rounded-3xl bg-white border border-[#E5DFD3] p-5 sm:p-6 transition-all duration-200 shadow-xs flex flex-col justify-between cursor-pointer ${scheme.categoryAccent.borderHover} hover:shadow-md ${
+              className={`rounded-2xl bg-white border border-[#E5DFD3] p-4 sm:p-5 transition-all duration-200 shadow-2xs flex flex-col justify-between cursor-pointer ${scheme.categoryAccent.borderHover} hover:shadow-md ${
                 isSelected ? 'ring-2 ring-[#0B3B24] border-[#0B3B24]' : ''
               }`}
               aria-label={`${scheme.nameKn} — ${scheme.nameEn}`}
