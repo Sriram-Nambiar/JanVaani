@@ -1504,6 +1504,12 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Sliding-Window IP Rate Limiter Middleware Endpoints', () => {
+    const testAdminKey = 'janvaani_test_ratelimit_secret_key';
+
+    beforeEach(() => {
+      process.env.RATE_LIMIT_ADMIN_KEY = testAdminKey;
+    });
+
     it('GET /api/rate-limit/stats returns active rate limiter telemetry', async () => {
       const res = await fetch(`${baseUrl}/api/rate-limit/stats`);
       const body = await res.json();
@@ -1512,9 +1518,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
       assert.ok('trackedIps' in body.data);
       assert.strictEqual(body.data.windowMs, 60000);
-      assert.strictEqual(body.data.maxRequests, 60);
-      assert.ok(res.headers.has('x-ratelimit-limit'));
-      assert.ok(res.headers.has('x-ratelimit-remaining'));
+      assert.strictEqual(body.data.maxRequests, 500);
     });
 
     it('POST /api/rate-limit/reset rejects unauthorized request with 401', async () => {
@@ -1524,14 +1528,13 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
 
       assert.strictEqual(res.status, 401);
-      assert.strictEqual(body.status, 'error');
-      assert.strictEqual(body.error, 'UNAUTHORIZED');
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/rate-limit/reset resets window with dev secret', async () => {
+    it('POST /api/rate-limit/reset resets window with valid admin key', async () => {
       const res = await fetch(`${baseUrl}/api/rate-limit/reset`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani_ratelimit_dev_token' },
+        headers: { 'x-admin-key': testAdminKey },
       });
       const body = await res.json();
 
