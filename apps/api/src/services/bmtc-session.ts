@@ -27,7 +27,26 @@ interface UserSession {
 class BmtcSessionManager {
   private sessions = new Map<string, UserSession>();
 
+  private readonly SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+  private readonly MAX_SESSIONS = 500;
+
+  private pruneExpiredSessions(): void {
+    const now = Date.now();
+    for (const [key, session] of this.sessions.entries()) {
+      if (now - session.lastUpdated > this.SESSION_TTL_MS) {
+        this.sessions.delete(key);
+      }
+    }
+    if (this.sessions.size > this.MAX_SESSIONS) {
+      const oldestKeys = Array.from(this.sessions.keys()).slice(0, this.sessions.size - this.MAX_SESSIONS);
+      for (const k of oldestKeys) {
+        this.sessions.delete(k);
+      }
+    }
+  }
+
   private getOrCreateSession(senderId: string): UserSession {
+    this.pruneExpiredSessions();
     let session = this.sessions.get(senderId);
     if (!session) {
       session = {
@@ -183,8 +202,6 @@ class BmtcSessionManager {
       source: 'JANVAANI_AI' as const,
     };
 
-    console.log('[BmtcSessionManager] Submitting student pass application payload to Seva Sindhu API:', payload);
-
     let portalData: any = null;
 
     try {
@@ -192,6 +209,7 @@ class BmtcSessionManager {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(5000),
       });
 
       if (res.ok) {
