@@ -2292,6 +2292,77 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Civic Service Maintenance Window & Scheduled Downtime Endpoints', () => {
+    const testMaintenanceKey = 'janvaani_maintenance_admin_token';
+
+    it('GET /api/maintenance/status returns initial non-maintenance state', async () => {
+      const res = await fetch(`${baseUrl}/api/maintenance/status`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.isMaintenanceActive, false);
+    });
+
+    it('POST /api/maintenance/enable rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/maintenance/enable`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationSeconds: 60 }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/maintenance/enable activates maintenance window and blocks civic traffic with 503', async () => {
+      const enableRes = await fetch(`${baseUrl}/api/maintenance/enable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testMaintenanceKey,
+        },
+        body: JSON.stringify({
+          durationSeconds: 120,
+          reason: 'Scheduled Karnataka Bhoomi server database migration',
+        }),
+      });
+      const enableBody = await enableRes.json();
+      assert.strictEqual(enableRes.status, 200);
+      assert.strictEqual(enableBody.status, 'ok');
+
+      // Non-whitelisted route blocked with 503
+      const blockedRes = await fetch(`${baseUrl}/`);
+      assert.strictEqual(blockedRes.status, 503);
+      assert.ok(blockedRes.headers.get('retry-after'));
+
+      // Health probe remains accessible
+      const healthRes = await fetch(`${baseUrl}/api/health`);
+      assert.strictEqual(healthRes.status, 200);
+    });
+
+    it('POST /api/maintenance/disable restores normal traffic', async () => {
+      const disableRes = await fetch(`${baseUrl}/api/maintenance/disable`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testMaintenanceKey },
+      });
+      assert.strictEqual(disableRes.status, 200);
+
+      const restoredRes = await fetch(`${baseUrl}/`);
+      assert.strictEqual(restoredRes.status, 200);
+    });
+
+    it('POST /api/maintenance/clear flushes audit log with valid admin key', async () => {
+      const clearRes = await fetch(`${baseUrl}/api/maintenance/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testMaintenanceKey },
+      });
+      assert.strictEqual(clearRes.status, 200);
+
+      const statusRes = await fetch(`${baseUrl}/api/maintenance/status`);
+      const statusBody = await statusRes.json();
+      assert.strictEqual(statusBody.data.totalAuditEntries, 0);
+    });
+  });
 });
 
 
