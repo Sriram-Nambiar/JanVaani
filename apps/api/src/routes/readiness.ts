@@ -3,7 +3,7 @@ import { drainManager } from '../services/drain-manager.js';
 import { circuitBreaker } from '../services/circuit-breaker.js';
 import { jobQueue } from '../services/job-queue.js';
 import { getDbPool } from '../db/client.js';
-import { getRedisClient } from '../services/redis.js';
+import { getRedisClient, checkRedisHealth } from '../services/redis.js';
 
 export interface ReadinessCheckResult {
   status: 'ready' | 'not_ready';
@@ -75,12 +75,12 @@ readinessRouter.get('/', async (_req: Request, res: Response) => {
 
   let redisStatus = 'HEALTHY';
   try {
-    const redis = getRedisClient();
-    if (redis.status === 'ready' || redis.status === 'connect') {
-      redisStatus = 'HEALTHY';
-    } else {
-      redisStatus = 'DEGRADED';
-    }
+    const probePromise = checkRedisHealth();
+    const timeoutPromise = new Promise<{ connected: boolean }>((_, reject) =>
+      setTimeout(() => reject(new Error('Redis ping timeout')), 1000)
+    );
+    const health = await Promise.race([probePromise, timeoutPromise]);
+    redisStatus = health.connected ? 'HEALTHY' : 'DEGRADED';
   } catch {
     redisStatus = 'DEGRADED';
   }
