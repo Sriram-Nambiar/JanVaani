@@ -203,6 +203,32 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಸಣ್ಣ ಮತ್ತು ಅತಿ ಸಣ್ಣ ರೈತರಿಗೆ ಮಾತ್ರ (ಕನಿಷ್ಠ 1.20 ಎಕರೆಯಿಂದ ಗರಿಷ್ಠ 5 ಎಕರೆ ಖುಷ್ಕಿ ಜಮೀನು). ಕುಟುಂಬದ ವಾರ್ಷಿಕ ಆದಾಯ ಗ್ರಾಮೀಣ ಪ್ರದೇಶದಲ್ಲಿ ₹1.50 ಲಕ್ಷ ಮೀರಬಾರದು.',
     },
   },
+  raita_vidya_nidhi: {
+    id: 'raita_vidya_nidhi',
+    nameEn: 'Chief Minister Raita Vidya Nidhi Scheme (Farmer Child Scholarship)',
+    nameKn: 'ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆ (ರೈತರ ಮಕ್ಕಳ ವಿದ್ಯಾರ್ಥಿವೇತನ)',
+    department: 'Department of Agriculture, Government of Karnataka',
+    descriptionEn: 'Annual scholarship assistance for children of farmers studying in High School (girls only), PUC, ITI, Diploma, Degree, Professional and Medical courses (₹2,500 to ₹11,000/year).',
+    descriptionKn: 'ರೈತರ ಮಕ್ಕಳಿಗೆ ಉನ್ನತ ವ್ಯಾಸಂಗ ಪ್ರೋತ್ಸಾಹಿಸಲು ವಾರ್ಷಿಕ ವಿದ್ಯಾರ್ಥಿವೇತನ ಸಹಾಯಧನ (ಪಿಯುಸಿ/ಡಿಪ್ಲೊಮಾದಿಂದ ವೈದ್ಯಕೀಯ/ಸ್ನಾತಕೋತ್ತರ ವ್ಯಾಸಂಗದವರೆಗೆ ₹2,500 ರಿಂದ ₹11,000 ವರೆಗೆ ಡಿಬಿಟಿ ಜಮೆ).',
+    requiredFields: [
+      { key: 'studentName', labelKn: 'ವಿದ್ಯಾರ್ಥಿಯ ಹೆಸರು', labelEn: 'Student Name', type: 'string', required: true },
+      { key: 'gender', labelKn: 'ಲಿಂಗ (MALE / FEMALE)', labelEn: 'Gender', type: 'string', required: true },
+      { key: 'fruitsId', labelKn: 'ರೈತರ ಫ್ರೂಟ್ಸ್ ಐಡಿ (FRUITS ID)', labelEn: 'Farmer FRUITS ID', type: 'string', required: true },
+      { key: 'courseLevel', labelKn: 'ವ್ಯಾಸಂಗ ಹಂತ (PUC / DEGREE / MEDICAL)', labelEn: 'Course Level', type: 'string', required: true },
+      { key: 'collegeName', labelKn: 'ಕಾಲೇಜು ಅಥವಾ ಶಿಕ್ಷಣ ಸಂಸ್ಥೆಯ ಹೆಸರು', labelEn: 'College or Institution Name', type: 'string', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ವಿದ್ಯಾರ್ಥಿಯ ಆಧಾರ್ ಸಂಖ್ಯೆ', labelEn: 'Student Aadhaar Number', type: 'string', required: true },
+      { key: 'mobileNumber', labelKn: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', labelEn: 'Mobile Number', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'fruits_card', titleKn: 'ರೈತರ ಫ್ರೂಟ್ಸ್ ನೋಂದಣಿ ಗುರುತಿನ ಚೀಟಿ', titleEn: 'Farmer FRUITS Registration Card', isMandatory: true },
+      { id: 'college_admission_receipt', titleKn: 'ಪ್ರಸ್ತುತ ವರ್ಷದ ಕಾಲೇಜು ಪ್ರವೇಶ ರಶೀದಿ', titleEn: 'Current Year College Admission / Fee Receipt', isMandatory: true },
+      { id: 'student_aadhaar', titleKn: 'ವಿದ್ಯಾರ್ಥಿಯ ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Student Aadhaar Card', isMandatory: true },
+      { id: 'student_bank_passbook', titleKn: 'ವಿದ್ಯಾರ್ಥಿಯ ಬ್ಯಾಂಕ್ ಪಾಸ್‌ಬುಕ್ (NPCI ಲಿಂಕ್ಡ್)', titleEn: 'Student Bank Passbook (NPCI Seeded)', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಕರ್ನಾಟಕದ ಭೂಮಾಲೀಕ ರೈತರ ಮಕ್ಕಳಿಗೆ ಲಭ್ಯ. ತಂದೆ/ತಾಯಿಯ ಫ್ರೂಟ್ಸ್ (FRUITS) ಐಡಿ ಕಡ್ಡಾಯ. ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ವಿದ್ಯಾರ್ಥಿಯ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆ.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -280,6 +306,14 @@ export class SchemesService {
       transcript.toLowerCase().includes('ganga kalyana') ||
       transcript.toLowerCase().includes('borewell');
 
+    const isRaitaVidyaNidhi =
+      scenarioHint?.startsWith('raita_vidya_nidhi') ||
+      transcript.includes('ರೈತ ವಿದ್ಯಾ ನಿಧಿ') ||
+      transcript.includes('ರೈತ ವಿದ್ಯಾನಿಧಿ') ||
+      transcript.includes('ವಿದ್ಯಾರ್ಥಿವೇತನ') ||
+      transcript.toLowerCase().includes('raita vidya nidhi') ||
+      transcript.toLowerCase().includes('vidyanidhi');
+
     const scheme = isBmtc
       ? SUPPORTED_SCHEMES.bmtc_student_pass
       : isGruhaJyothi
@@ -292,6 +326,8 @@ export class SchemesService {
       ? SUPPORTED_SCHEMES.yuva_nidhi
       : isGangaKalyana
       ? SUPPORTED_SCHEMES.ganga_kalyana
+      : isRaitaVidyaNidhi
+      ? SUPPORTED_SCHEMES.raita_vidya_nidhi
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
@@ -480,6 +516,29 @@ export class SchemesService {
         missingFields,
         isComplete: missingFields.length === 0,
         promptForCitizenKn: 'ನಿಮ್ಮ ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ. 2.5 ಎಕರೆ ಖುಷ್ಕಿ ಜಮೀನಿಗೆ ಗರಿಷ್ಠ ₹3,50,000 ಮೌಲ್ಯದ ಉಚಿತ ಕೊಳವೆಬಾವಿ ಮತ್ತು ಪಂಪ್‌ಸೆಟ್ ಮಂಜೂರಾತಿಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.',
+      };
+    } else if (scheme.id === 'raita_vidya_nidhi') {
+      const nameMatch = transcript.match(/ವಿದ್ಯಾರ್ಥಿ\s+([A-Za-z\u0C80-\u0CFF]+)/i);
+      extractedFields.studentName = nameMatch ? nameMatch[1] : 'ಕಾವ್ಯ (Kavya)';
+      extractedFields.gender = 'FEMALE';
+      extractedFields.fruitsId = 'FRUITS-90218';
+      extractedFields.courseLevel = 'PUC';
+      extractedFields.collegeName = 'Government PU College, Mandya';
+      extractedFields.aadhaarNumber = 'XXXX-XXXX-9812';
+      extractedFields.mobileNumber = '9845012399';
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete: missingFields.length === 0,
+        promptForCitizenKn: 'ನಿಮ್ಮ ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (PUC - FEMALE). ವಾರ್ಷಿಕ ₹3,000 ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಜಮೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.',
       };
     } else {
       // Caste & Income extraction

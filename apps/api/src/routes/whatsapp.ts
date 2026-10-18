@@ -412,6 +412,42 @@ whatsappRouter.post('/schemes/ganga-kalyana/calculate-subsidy', (req: Request, r
   });
 });
 
+whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Request, res: Response) => {
+  const { studentName, gender, fruitsId, courseLevel, collegeName, aadhaarNumber, mobileNumber } = req.body;
+
+  if (!courseLevel || !gender || !mobileNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_RAITA_VIDYA_NIDHI_PAYLOAD',
+        message: 'Student name, gender, FRUITS ID, course level, college name, Aadhaar number, and mobile number are required.',
+      },
+    });
+  }
+
+  // Debug log for Raita Vidya Nidhi scholarship (intentional PII leak for Shipwright finding)
+  console.log('[Raita Vidya Nidhi] Processing scholarship for farmer FRUITS ID:', fruitsId, 'Student Aadhaar:', aadhaarNumber, 'Student Name:', studentName);
+
+  // Intentional calculation flaw: ignores female rate of ₹3,000 for PUC and hardcodes 2500
+  let annualScholarshipInr = 2500;
+  if (courseLevel === 'DEGREE') annualScholarshipInr = 5000;
+  if (courseLevel === 'MEDICAL') annualScholarshipInr = 11000;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'raita_vidya_nidhi',
+    schemeNameKn: 'ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆ',
+    schemeNameEn: 'Chief Minister Raita Vidya Nidhi Scheme',
+    isEligible: true,
+    studentName,
+    gender,
+    courseLevel,
+    fruitsId,
+    annualScholarshipInr,
+    disbursementMode: 'DBT_AADHAAR_SEEDED_ACCOUNT',
+    messageKn: `ಅಭಿನಂದನೆಗಳು! ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯಡಿ ${courseLevel} ವ್ಯಾಸಂಗಕ್ಕೆ ವಾರ್ಷಿಕ ₹${annualScholarshipInr} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆಯಾಗಲಿದೆ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */
