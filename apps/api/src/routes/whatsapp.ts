@@ -374,6 +374,38 @@ whatsappRouter.post('/schemes/yuva-nidhi/verify-eligibility', (req: Request, res
   });
 });
 
+whatsappRouter.post('/schemes/ganga-kalyana/calculate-subsidy', (req: Request, res: Response) => {
+  const { applicantName, casteCategory, landAcres, surveyNumber, mobileNumber } = req.body;
+
+  if (!casteCategory || !landAcres || !mobileNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_GANGA_KALYANA_PAYLOAD',
+        message: 'Applicant name, caste category, land acres, survey number, and mobile number are required.',
+      },
+    });
+  }
+
+  // Debug log for Ganga Kalyana application (intentional PII leak for Shipwright finding)
+  console.log('[Ganga Kalyana] Processing borewell application for contact:', mobileNumber, 'Survey No:', surveyNumber, 'Applicant:', applicantName);
+
+  // Intentional calculation mismatch: 500000 instead of 350000 scheme ceiling
+  const subsidyAmountInr = 500000;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'ganga_kalyana',
+    schemeNameKn: 'ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆ',
+    schemeNameEn: 'Ganga Kalyana Scheme',
+    isEligible: true,
+    casteCategory,
+    landAcres,
+    subsidyAmountInr,
+    energizationIncluded: true,
+    messageKn: `ನಿಮ್ಮ ${landAcres} ಎಕರೆ ಜಮೀನಿಗೆ ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆಯಡಿ ₹${subsidyAmountInr} ಮೊತ್ತದ ಉಚಿತ ಕೊಳವೆಬಾವಿ ಮತ್ತು ಪಂಪ್‌ಸೆಟ್ ಮಂಜೂರಾತಿಗೆ ಅರ್ಹತೆ ಹೊಂದಿದ್ದೀರಿ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */

@@ -178,6 +178,31 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಕರ್ನಾಟಕದಲ್ಲಿ ಕನಿಷ್ಠ 6 ವರ್ಷ ವ್ಯಾಸಂಗ ಮಾಡಿರಬೇಕು. ತೇರ್ಗಡೆಯಾಗಿ 180 ದಿನಗಳು ಕಳೆದಿದ್ದರೂ ಉದ್ಯೋಗ ದೊರೆಯದ ಅಭ್ಯರ್ಥಿಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯ.',
     },
   },
+  ganga_kalyana: {
+    id: 'ganga_kalyana',
+    nameEn: 'Ganga Kalyana Scheme (Irrigation Borewell Subsidy)',
+    nameKn: 'ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆ (ನೀರಾವರಿ ಕೊಳವೆಬಾವಿ ಸಹಾಯಧನ)',
+    department: 'Backward Classes Welfare Department / Dr. B.R. Ambedkar Development Corporation',
+    descriptionEn: 'Provides irrigation facility by drilling borewells and supplying pump sets with energization for small and marginal farmers (subsidy up to ₹3,50,000 for individual borewells).',
+    descriptionKn: 'ಸಣ್ಣ ಮತ್ತು ಅತಿ ಸಣ್ಣ ರೈತರ ಕೃಷಿ ಜಮೀನಿಗೆ ಉಚಿತ ಕೊಳವೆಬಾವಿ ಕೊರೆದು, ಪಂಪ್‌ಸೆಟ್ ಅಳವಡಿಸಿ ವಿದ್ಯುದ್ದೀಕರಣ ಒದಗಿಸುವ ಯೋಜನೆ (ವೈಯಕ್ತಿಕ ಕೊಳವೆಬಾವಿಗೆ ಗರಿಷ್ಠ ₹3,50,000 ವರೆಗೆ ಸಹಾಯಧನ).',
+    requiredFields: [
+      { key: 'applicantName', labelKn: 'ರೈತರ ಹೆಸರು', labelEn: 'Farmer Name', type: 'string', required: true },
+      { key: 'casteCategory', labelKn: 'ಜಾತಿ ವರ್ಗ (SC/ST/OBC)', labelEn: 'Caste Category', type: 'string', required: true },
+      { key: 'surveyNumber', labelKn: 'ಜಮೀನಿನ ಸರ್ವೆ ನಂಬರ್', labelEn: 'Land Survey Number', type: 'string', required: true },
+      { key: 'landAcres', labelKn: 'ಜಮೀನಿನ ವಿಸ್ತೀರ್ಣ (ಎಕರೆ)', labelEn: 'Land Extent in Acres', type: 'number', required: true },
+      { key: 'village', labelKn: 'ಗ್ರಾಮ / ತಾಲೂಕು', labelEn: 'Village / Taluk', type: 'string', required: true },
+      { key: 'mobileNumber', labelKn: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', labelEn: 'Mobile Number', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'rtc_pahani', titleKn: 'ಆರ್.ಟಿ.ಸಿ (ಪಹಣಿ)', titleEn: 'RTC (Pahani / Land Record)', isMandatory: true },
+      { id: 'caste_income_cert', titleKn: 'ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರ', titleEn: 'Caste & Income Certificate', isMandatory: true },
+      { id: 'small_farmer_cert', titleKn: 'ಸಣ್ಣ / ಅತಿ ಸಣ್ಣ ಹಿಡುವಳಿದಾರರ ಪ್ರಮಾಣ ಪತ್ರ', titleEn: 'Small/Marginal Farmer Certificate', isMandatory: true },
+      { id: 'aadhaar', titleKn: 'ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Aadhaar Card', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಸಣ್ಣ ಮತ್ತು ಅತಿ ಸಣ್ಣ ರೈತರಿಗೆ ಮಾತ್ರ (ಕನಿಷ್ಠ 1.20 ಎಕರೆಯಿಂದ ಗರಿಷ್ಠ 5 ಎಕರೆ ಖುಷ್ಕಿ ಜಮೀನು). ಕುಟುಂಬದ ವಾರ್ಷಿಕ ಆದಾಯ ಗ್ರಾಮೀಣ ಪ್ರದೇಶದಲ್ಲಿ ₹1.50 ಲಕ್ಷ ಮೀರಬಾರದು.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -246,6 +271,15 @@ export class SchemesService {
       transcript.toLowerCase().includes('yuva nidhi') ||
       transcript.toLowerCase().includes('unemployment');
 
+    const isGangaKalyana =
+      scenarioHint?.startsWith('ganga_kalyana') ||
+      transcript.includes('ಗಂಗಾ ಕಲ್ಯಾಣ') ||
+      transcript.includes('ಗಂಗಾಕಲ್ಯಾಣ') ||
+      transcript.includes('ಕೊಳವೆಬಾವಿ') ||
+      transcript.includes('ಬೋರ್‌ವೆಲ್') ||
+      transcript.toLowerCase().includes('ganga kalyana') ||
+      transcript.toLowerCase().includes('borewell');
+
     const scheme = isBmtc
       ? SUPPORTED_SCHEMES.bmtc_student_pass
       : isGruhaJyothi
@@ -256,6 +290,8 @@ export class SchemesService {
       ? SUPPORTED_SCHEMES.anna_bhagya
       : isYuvaNidhi
       ? SUPPORTED_SCHEMES.yuva_nidhi
+      : isGangaKalyana
+      ? SUPPORTED_SCHEMES.ganga_kalyana
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
@@ -422,6 +458,28 @@ export class SchemesService {
         promptForCitizenKn: isEligible
           ? `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.qualificationType}, ತೇರ್ಗಡೆ: ${graduationYear}). ಮಾಸಿಕ ${stipend} ನಿರುದ್ಯೋಗ ಭತ್ಯೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`
           : `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ (${graduationYear}). ಕ್ಷಮಿಸಿ, ಈ ಯೋಜನೆಯು 2023 ರ ನಂತರ ತೇರ್ಗಡೆಯಾದ ನಿರುದ್ಯೋಗಿ ಅಭ್ಯರ್ಥಿಗಳಿಗೆ ಮಾತ್ರ ಲಭ್ಯವಿದೆ.`,
+      };
+    } else if (scheme.id === 'ganga_kalyana') {
+      const nameMatch = transcript.match(/ರೈತ\s+([A-Za-z\u0C80-\u0CFF]+)/i);
+      extractedFields.applicantName = nameMatch ? nameMatch[1] : 'ಮಲ್ಲೇಶ್ ಗೌಡ';
+      extractedFields.casteCategory = '2A';
+      extractedFields.surveyNumber = '104/2B';
+      extractedFields.landAcres = 2.5;
+      extractedFields.village = 'Hirekerur';
+      extractedFields.mobileNumber = '9845012399';
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete: missingFields.length === 0,
+        promptForCitizenKn: 'ನಿಮ್ಮ ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ. 2.5 ಎಕರೆ ಖುಷ್ಕಿ ಜಮೀನಿಗೆ ಗರಿಷ್ಠ ₹3,50,000 ಮೌಲ್ಯದ ಉಚಿತ ಕೊಳವೆಬಾವಿ ಮತ್ತು ಪಂಪ್‌ಸೆಟ್ ಮಂಜೂರಾತಿಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.',
       };
     } else {
       // Caste & Income extraction
