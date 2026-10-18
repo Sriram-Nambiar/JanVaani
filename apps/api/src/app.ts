@@ -14,6 +14,7 @@ import { shaktiRouter } from './routes/shakti.js';
 import { annaBhagyaRouter } from './routes/annabhagya.js';
 import { bhoomiRouter } from './routes/bhoomi.js';
 import { audioCacheRouter } from './routes/audio-cache.js';
+import { indicRouter } from './routes/indic.js';
 
 export function createApp() {
   const app = express();
@@ -68,6 +69,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/indic', indicRouter);
   app.use('/api/audio/cache', audioCacheRouter);
   app.use('/api/bhoomi', bhoomiRouter);
   app.use('/api/annabhagya', annaBhagyaRouter);

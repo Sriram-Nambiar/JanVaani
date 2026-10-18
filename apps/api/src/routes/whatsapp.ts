@@ -21,6 +21,7 @@ import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
 import { trackerService, maskApplicantName, maskId, ApplicationStatusRecord } from '../services/tracker.js';
 import { draftPdfService } from '../services/pdf.js';
 import { idempotencyEngine } from '../services/idempotency.js';
+import { normalizeIndicText } from '../utils/indic-normalizer.js';
 
 export const whatsappRouter = Router();
 
@@ -50,6 +51,11 @@ whatsappRouter.post(
             message: 'Duplicate webhook transmission ignored by idempotency engine',
           });
         }
+      }
+
+      // Indic Unicode & Digit Normalization
+      if (input.text) {
+        input.text = normalizeIndicText(input.text);
       }
 
       // 1. Process Voice Message (Dhvani-Form / Voice Status Check)
