@@ -23,6 +23,7 @@ import { payloadGuardMiddleware, payloadGuardRouter } from './middleware/payload
 import { drainMiddleware, drainRouter } from './services/drain-manager.js';
 import { etagCacheMiddleware, etagRouter } from './middleware/etag-cache.js';
 import { requestSanitizerMiddleware, sanitizerRouter } from './middleware/request-sanitizer.js';
+import { jobQueueRouter } from './services/job-queue.js';
 
 export function createApp() {
   const app = express();
@@ -84,6 +85,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/jobs', jobQueueRouter);
   app.use('/api/security/sanitizer', sanitizerRouter);
   app.use('/api/cache/etag', etagRouter);
   app.use('/api/drain', drainRouter);
