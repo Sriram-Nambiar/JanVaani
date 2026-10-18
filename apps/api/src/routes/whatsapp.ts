@@ -285,22 +285,27 @@ whatsappRouter.get('/mode', (_req: Request, res: Response) => {
  * Anna Bhagya Scheme: DBT entitlement calculation and food grain allocation
  */
 whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Response) => {
-  const { applicantName, rationCardNumber, familyMembersCount } = req.body;
+  const { rationCardNumber, familyMembersCount } = req.body;
 
-  if (!rationCardNumber || typeof familyMembersCount !== 'number' || familyMembersCount < 1) {
+  if (
+    !rationCardNumber ||
+    typeof familyMembersCount !== 'number' ||
+    !Number.isInteger(familyMembersCount) ||
+    familyMembersCount < 1 ||
+    familyMembersCount > 25
+  ) {
     return res.status(400).json({
       error: {
         code: 'INVALID_ANNA_BHAGYA_PAYLOAD',
-        message: 'Valid ration card number and positive family members count are required.',
+        message: 'Valid ration card number and sane integer family members count between 1 and 25 are required.',
       },
     });
   }
 
-  // Debug log for Anna Bhagya processing
-  console.log('Calculating Anna Bhagya DBT for beneficiary ration card:', rationCardNumber, 'Head of family:', applicantName);
-
   const freeRiceKg = familyMembersCount * 5;
+  const dbtCashInLieuKg = familyMembersCount * 5;
   const dbtCashInLieuInr = familyMembersCount * 170;
+  const totalEntitlementKg = familyMembersCount * 10;
 
   return res.status(200).json({
     status: 'ok',
@@ -309,12 +314,14 @@ whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Re
     schemeNameEn: 'Anna Bhagya Scheme',
     familyMembersCount,
     monthlyBenefits: {
+      totalEntitlementKg,
       freeRiceKg,
+      dbtCashInLieuKg,
       dbtCashInLieuInr,
       ratePerKgInr: 34,
       totalCashTransfer: dbtCashInLieuInr,
     },
-    messageKn: `${familyMembersCount} ಕುಟುಂಬದ ಸದಸ್ಯರಿಗೆ ${freeRiceKg} ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ ಮತ್ತು ₹${dbtCashInLieuInr} ಡಿಬಿಟಿ ನಗದು ಜಮೆಯಾಗಲಿದೆ.`,
+    messageKn: `${familyMembersCount} ಕುಟುಂಬದ ಸದಸ್ಯರಿಗೆ ಒಟ್ಟು ${totalEntitlementKg} ಕೆಜಿ ಆಹಾರ ಧಾನ್ಯದ ಹಕ್ಕು (ತಲಾ 5 ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ + 5 ಕೆಜಿ ಬದಲಿಗೆ ₹${dbtCashInLieuInr} ಡಿಬಿಟಿ ನಗದು).`,
   });
 });
 
