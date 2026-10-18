@@ -1734,6 +1734,69 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Connection Drain & Active Transaction Manager Endpoints', () => {
+    const testDrainKey = 'janvaani_test_drain_key';
+
+    beforeEach(() => {
+      process.env.DRAIN_ADMIN_KEY = testDrainKey;
+    });
+
+    afterEach(async () => {
+      await fetch(`${baseUrl}/api/drain/cancel`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testDrainKey },
+      });
+    });
+
+    it('GET /api/drain/status returns active connection metrics', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/status`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.isDraining, false);
+      assert.ok(typeof body.data.inFlightCount === 'number');
+    });
+
+    it('POST /api/drain/initiate rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/initiate`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/drain/initiate enables drain mode with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/initiate`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testDrainKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+
+      // Verify standard civic route returns 503 during drain mode without PII
+      const civicRes = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'test' }),
+      });
+      const civicBody = await civicRes.json();
+      assert.strictEqual(civicRes.status, 503);
+      assert.strictEqual(civicBody.error.code, 'SERVER_DRAINING');
+      assert.strictEqual('callerPhone' in civicBody, false);
+
+      // Cancel drain mode with admin secret
+      const cancelRes = await fetch(`${baseUrl}/api/drain/cancel`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testDrainKey },
+      });
+      const cancelBody = await cancelRes.json();
+      assert.strictEqual(cancelRes.status, 200);
+      assert.strictEqual(cancelBody.status, 'ok');
+    });
+  });
 });
 
 
