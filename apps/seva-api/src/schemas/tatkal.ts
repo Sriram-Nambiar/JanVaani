@@ -25,8 +25,7 @@ export const requestTatkalSchema = z.object({
     .max(100),
   phoneNumber: z
     .string()
-    .regex(/^(\+?\d{10,15})$/, 'Phone number must be between 10 and 15 digits')
-    .optional(),
+    .regex(/^(\+?\d{10,15})$/, 'Phone number must be between 10 and 15 digits to verify applicant ownership'),
   channel: z.enum(['PORTAL', 'GRAMA_ONE_KIOSK', 'HELPLINE_1902']).default('PORTAL'),
 });
 

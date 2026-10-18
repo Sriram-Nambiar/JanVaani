@@ -6,12 +6,11 @@ import { tatkalDataStore, TatkalRequestRecord } from '../db/tatkal-store.js';
 
 export const tatkalRouter = Router();
 
-function maskPhone(phone?: string): string | undefined {
-  if (!phone) return undefined;
+function maskPhone(phone?: string): string {
+  if (!phone) return '****';
   const digitsOnly = phone.replace(/\D/g, '');
   if (digitsOnly.length < 4) return '****';
-  const prefix = phone.startsWith('+') ? '+' : '';
-  return prefix + '*'.repeat(digitsOnly.length - 4) + digitsOnly.slice(-4);
+  return '******' + digitsOnly.slice(-4);
 }
 
 /**
@@ -36,21 +35,32 @@ tatkalRouter.post('/request', (req: Request, res: Response) => {
     return res.status(404).json({
       success: false,
       error: 'APPLICATION_NOT_FOUND',
-      message: `No matching Seva Sindhu application found for reference ID: ${applicationId}`,
+      message: 'No matching Seva Sindhu application found for reference ID.',
     });
   }
 
-  // Check phone match only if provided by caller
-  if (phoneNumber) {
-    const callerDigits = phoneNumber.replace(/\D/g, '').slice(-10);
-    const recordDigits = record.phoneNumber.replace(/\D/g, '').slice(-10);
-    if (callerDigits !== recordDigits) {
-      return res.status(403).json({
-        success: false,
-        error: 'PHONE_MISMATCH',
-        message: 'Provided phone number does not match registered applicant phone number.',
-      });
-    }
+  // Prevent spoofing: strictly enforce caller phone ownership against registered record
+  const callerDigits = phoneNumber.replace(/\D/g, '').slice(-10);
+  const recordDigits = record.phoneNumber.replace(/\D/g, '').slice(-10);
+  if (callerDigits !== recordDigits) {
+    return res.status(403).json({
+      success: false,
+      error: 'PHONE_MISMATCH',
+      message: 'Provided phone number does not match registered applicant phone number.',
+    });
+  }
+
+  // Idempotency guard: prevent duplicate active Tatkal requests on the same application
+  const existing = tatkalDataStore.getByApplicationId(record.applicationId);
+  if (existing) {
+    return res.status(409).json({
+      success: false,
+      error: 'TATKAL_ALREADY_REQUESTED',
+      message: 'An emergency Tatkal expedited request is already active for this application.',
+      existingToken: existing.tatkalToken,
+      status: existing.status,
+      slaTargetTimestamp: existing.slaTargetTimestamp,
+    });
   }
 
   const slaDeadlineHours = tatkalCategory === 'MEDICAL_EMERGENCY' ? 4 : 24;
@@ -58,7 +68,7 @@ tatkalRouter.post('/request', (req: Request, res: Response) => {
   const slaTargetDate = new Date(requestedAtDate.getTime() + slaDeadlineHours * 60 * 60 * 1000);
 
   const tatkalToken = `TATKAL-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-  const maskedPhone = maskPhone(record.phoneNumber) || '****';
+  const maskedPhone = maskPhone(record.phoneNumber);
 
   const tatkalRecord: TatkalRequestRecord = {
     tatkalToken,
