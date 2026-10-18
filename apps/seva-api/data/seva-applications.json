@@ -85,5 +85,63 @@
         "verified": true
       }
     ]
+  },
+  {
+    "applicationId": "SEVA-DEMO-161433-7830B3",
+    "serviceId": "bmtc-student-pass",
+    "serviceName": "BMTC Student Bus Pass",
+    "studentName": "Priya Sharma",
+    "maskedAadhaar": "XXXX-XXXX-5028",
+    "phoneNumber": "9876543210",
+    "institutionName": "BMS College of Engineering",
+    "courseYear": "2nd Year B.E. Computer Science",
+    "pickupStop": "Majestic Bus Stand (KBS)",
+    "destinationStop": "Bull Temple Road (Basavanagudi)",
+    "status": "RECEIVED",
+    "submittedVia": "SEVA_PORTAL",
+    "createdAt": "2026-10-18T07:39:21.433Z",
+    "updatedAt": "2026-10-18T07:39:21.433Z",
+    "isDemoRecord": true,
+    "documents": [
+      {
+        "documentType": "student_id",
+        "fileName": "college_id_card.pdf",
+        "verified": true
+      },
+      {
+        "documentType": "fee_receipt",
+        "fileName": "tuition_fee_receipt.pdf",
+        "verified": true
+      }
+    ]
+  },
+  {
+    "applicationId": "SEVA-DEMO-161441-BFA9A1",
+    "serviceId": "bmtc-student-pass",
+    "serviceName": "BMTC Student Bus Pass",
+    "studentName": "Test Student",
+    "maskedAadhaar": "XXXX-XXXX-5028",
+    "phoneNumber": "9876543210",
+    "institutionName": "Bangalore University",
+    "courseYear": "1st Year",
+    "pickupStop": "Majestic Bus Stand (KBS)",
+    "destinationStop": "Jayanagar 4th Block",
+    "status": "RECEIVED",
+    "submittedVia": "SEVA_PORTAL",
+    "createdAt": "2026-10-18T07:39:21.441Z",
+    "updatedAt": "2026-10-18T07:39:21.441Z",
+    "isDemoRecord": true,
+    "documents": [
+      {
+        "documentType": "student_id",
+        "fileName": "college_id_card.pdf",
+        "verified": true
+      },
+      {
+        "documentType": "fee_receipt",
+        "fileName": "tuition_fee_receipt.pdf",
+        "verified": true
+      }
+    ]
   }
 ]
