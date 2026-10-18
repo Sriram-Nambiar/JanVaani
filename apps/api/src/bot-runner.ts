@@ -4,6 +4,9 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
 } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
+import QRCode from 'qrcode';
+import fs from 'node:fs';
+import path from 'node:path';
 import pino from 'pino';
 import { Boom } from '@hapi/boom';
 import { baileysGateway } from './services/baileys-gateway.js';
@@ -25,7 +28,7 @@ export async function runWhatsAppBot() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', (update) => {
+  sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
 
     if (qr) {
@@ -36,6 +39,54 @@ export async function runWhatsAppBot() {
       console.log('=============================================================\n');
       qrcode.generate(qr, { small: true });
       console.log('=============================================================\n');
+
+      // Export high-resolution PNG & HTML for reliable scanning
+      try {
+        const outputDir = process.env.QR_OUTPUT_DIR || path.join(process.cwd(), '.qr');
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        const pngPath = path.join(outputDir, 'bot-qr.png');
+        await QRCode.toFile(pngPath, qr, {
+          width: 480,
+          margin: 3,
+          color: { dark: '#000000', light: '#ffffff' },
+        });
+
+        const dataUrl = await QRCode.toDataURL(qr, { width: 480, margin: 3 });
+        const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <title>JanVaani WhatsApp Bot QR Code</title>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="20">
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b141a; color: #e9edef; text-align: center; }
+    .card { background: #111b21; padding: 28px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-width: 440px; }
+    h2 { color: #00a884; margin-top: 0; }
+    ol { text-align: left; line-height: 1.6; font-size: 15px; color: #aebac1; }
+    img { border: 12px solid #ffffff; border-radius: 12px; margin: 16px 0; max-width: 90%; }
+    .status { color: #25d366; font-size: 13px; font-weight: 500; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>JanVaani WhatsApp Bot</h2>
+    <ol>
+      <li>Open WhatsApp on your phone</li>
+      <li>Tap <b>Settings</b> or <b>3 dots ⋮</b> &gt; <b>Linked Devices</b></li>
+      <li>Tap <b>Link a Device</b> and point camera here:</li>
+    </ol>
+    <img src="${dataUrl}" alt="JanVaani WhatsApp QR Code" />
+    <div class="status">⚡ Auto-refreshing live session...</div>
+  </div>
+</body>
+</html>`;
+        fs.writeFileSync(path.join(outputDir, 'bot-qr.html'), htmlContent);
+        console.log(`🖼️  QR Code saved to ${path.join(outputDir, 'bot-qr.html')} and bot-qr.png!`);
+      } catch (e) {
+        console.error('Failed to export QR file:', e);
+      }
     }
 
     if (connection === 'close') {

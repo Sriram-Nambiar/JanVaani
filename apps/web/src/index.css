@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-kannada: 'Noto Sans Kannada', system-ui, sans-serif;
+    --font-english: 'DM Sans', system-ui, sans-serif;
+  }
+
+  body {
+    font-family: 'DM Sans', 'Noto Sans Kannada', system-ui, -apple-system, sans-serif;
+    background-color: #FAF8F5;
+    color: #1A2E22;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.font-kannada {
+  font-family: 'Noto Sans Kannada', system-ui, sans-serif;
+}
+
+.font-english {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+@keyframes voiceWave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-pulse-ring-delayed {
+  animation: pulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation-delay: 0.7s;
+}
+
+.animate-wave-bar {
+  animation: voiceWave 1s ease-in-out infinite;
+  transform-origin: center;
+}

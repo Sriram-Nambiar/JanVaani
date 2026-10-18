@@ -29,6 +29,7 @@ import { distributedLockRouter } from './services/distributed-lock.js';
 import { compressionNegotiatorMiddleware, compressionRouter } from './middleware/compression-negotiator.js';
 import { maintenanceGuardMiddleware, maintenanceRouter } from './middleware/maintenance-guard.js';
 import { baileysRouter } from './services/baileys-gateway.js';
+import { dashboardRouter } from './routes/dashboard.js';
 
 export function createApp() {
   const app = express();
@@ -118,6 +119,7 @@ export function createApp() {
   app.use('/api/whatsapp/receipt', receiptRouter);
   app.use('/api/whatsapp/grievance', grievanceRouter);
   app.use('/api/whatsapp', whatsappRouter);
+  app.use('/api/dashboard', dashboardRouter);
 
   // 404 for unhandled routes
   app.use(notFoundHandler);
