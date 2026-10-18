@@ -71,14 +71,14 @@ export class GruhaJyothiService {
       messageKn = `ಗೃಹಜ್ಯೋತಿ ಶೂನ್ಯ ಬಿಲ್! ನಿಮ್ಮ ಮಾಸಿಕ ಬಳಕೆ ${currentUnits} ಯೂನಿಟ್‌ಗಳು ನಿಮ್ಮ ಅರ್ಹ ಮಿತಿ (${entitledUnits} ಯೂನಿಟ್‌ಗಳು) ಒಳಗಿದೆ. ಸರ್ಕಾರ ಭರಿಸಿದ ಸಹಾಯಧನ: ₹${subsidyInr.toLocaleString('en-IN')}. ನೀವು ಪಾವತಿಸಬೇಕಾದ ಮೊತ್ತ: ₹0.`;
       messageEn = `Gruha Jyothi Zero Bill! Your consumption of ${currentUnits} units is within your entitled limit of ${entitledUnits} units. Total government subsidy applied: ₹${subsidyInr.toLocaleString('en-IN')}. Net payable: ₹0.`;
     } else {
-      // Partial subsidy: entitledUnits are subsidized, while consumer pays for excess units plus fixed charges
+      // Partial subsidy: entitledUnits are subsidized, while consumer pays for excess units and fixed charges
       excessUnits = currentUnits - entitledUnits;
-      const subsidizedEnergy = Math.round(entitledUnits * this.tariffPerUnit * 100) / 100;
-      const subsidizedFppca = Math.round(entitledUnits * this.fppcaRatePerUnit * 100) / 100;
-      const subsidizedTax = Math.round((subsidizedEnergy + subsidizedFppca) * this.taxRate * 100) / 100;
+      const excessEnergy = Math.round(excessUnits * this.tariffPerUnit * 100) / 100;
+      const excessFppca = Math.round(excessUnits * this.fppcaRatePerUnit * 100) / 100;
+      const excessTax = Math.round((excessEnergy + excessFppca) * this.taxRate * 100) / 100;
 
-      subsidyInr = Math.round(subsidizedEnergy + subsidizedFppca + subsidizedTax);
-      netPayableInr = Math.max(0, grossBillInr - subsidyInr);
+      netPayableInr = Math.round(excessEnergy + excessFppca + excessTax + fixedChargeInr);
+      subsidyInr = Math.max(0, grossBillInr - netPayableInr);
       isZeroBill = false;
       isDisqualified = false;
 
