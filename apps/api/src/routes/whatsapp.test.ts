@@ -1928,6 +1928,49 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Async Background Job Queue & Task Telemetry Endpoints', () => {
+    it('GET /api/jobs/stats returns initial job queue telemetry', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('totalJobs' in body.data);
+    });
+
+    it('POST /api/jobs/submit queues a new background processing task', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'sarvam_voice_synthesis',
+          metadata: { scheme: 'gruha_jyothi' },
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 202);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(body.data.id.startsWith('job_'));
+      assert.strictEqual(body.data.type, 'sarvam_voice_synthesis');
+    });
+
+    it('POST /api/jobs/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/clear`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/jobs/clear flushes queue with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_jobs_admin_secret' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
