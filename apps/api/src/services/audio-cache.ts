@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { TextToSpeechResult } from './sarvam.js';
+import { getRedisClient } from './redis.js';
 
 export interface AudioCacheStats {
   hits: number;
@@ -100,6 +101,52 @@ export class AudioSynthesisCache {
 
     this.cache.set(key, result);
     this.totalBytes += entryLen;
+  }
+
+  public async getWithRedis(
+    text: string,
+    speaker: string = 'meera',
+    model: string = 'bulbul:v1',
+    languageCode: string = 'kn-IN'
+  ): Promise<TextToSpeechResult | null> {
+    const memoryHit = this.get(text, speaker, model, languageCode);
+    if (memoryHit) {
+      return memoryHit;
+    }
+
+    try {
+      const redis = getRedisClient();
+      const key = this.generateKey(text, speaker, model, languageCode);
+      const cached = await redis.get(`audio_tts:${key}`);
+      if (cached) {
+        const parsed = JSON.parse(cached) as TextToSpeechResult;
+        this.set(text, speaker, parsed, model, languageCode);
+        return parsed;
+      }
+    } catch (err: any) {
+      console.warn('[AudioSynthesisCache] Redis cache read failed:', err.message);
+    }
+
+    return null;
+  }
+
+  public async setWithRedis(
+    text: string,
+    speaker: string = 'meera',
+    result: TextToSpeechResult,
+    model: string = 'bulbul:v1',
+    languageCode: string = 'kn-IN',
+    ttlSeconds: number = 3600
+  ): Promise<void> {
+    this.set(text, speaker, result, model, languageCode);
+
+    try {
+      const redis = getRedisClient();
+      const key = this.generateKey(text, speaker, model, languageCode);
+      await redis.set(`audio_tts:${key}`, JSON.stringify(result), 'EX', ttlSeconds);
+    } catch (err: any) {
+      console.warn('[AudioSynthesisCache] Redis cache write failed:', err.message);
+    }
   }
 
   public getStats(): AudioCacheStats {

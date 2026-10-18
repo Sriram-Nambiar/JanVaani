@@ -2,6 +2,8 @@ import { Request, Response, Router } from 'express';
 import { drainManager } from '../services/drain-manager.js';
 import { circuitBreaker } from '../services/circuit-breaker.js';
 import { jobQueue } from '../services/job-queue.js';
+import { getDbPool } from '../db/client.js';
+import { getRedisClient } from '../services/redis.js';
 
 export interface ReadinessCheckResult {
   status: 'ready' | 'not_ready';
@@ -52,17 +54,39 @@ export const readinessRouter = Router();
  * GET /api/readiness
  * Deep dependency readiness check probe for container orchestrators
  */
-readinessRouter.get('/', (_req: Request, res: Response) => {
+readinessRouter.get('/', async (_req: Request, res: Response) => {
   const startTime = Date.now();
 
   const isDraining = drainManager.isDrainMode();
   const cbStats = circuitBreaker.getStats();
   const jobsStats = jobQueue.getStats();
 
+  let dbStatus = 'HEALTHY';
+  try {
+    const pool = getDbPool();
+    await pool.query('SELECT 1');
+  } catch {
+    dbStatus = 'DEGRADED';
+  }
+
+  let redisStatus = 'HEALTHY';
+  try {
+    const redis = getRedisClient();
+    if (redis.status === 'ready' || redis.status === 'connect') {
+      redisStatus = 'HEALTHY';
+    } else {
+      redisStatus = 'DEGRADED';
+    }
+  } catch {
+    redisStatus = 'DEGRADED';
+  }
+
   const subsystems: Record<string, string> = {
     drainMode: isDraining ? 'DRAINING' : 'HEALTHY',
     circuitBreakers: Object.values(cbStats).some((s) => s.state === 'OPEN') ? 'DEGRADED' : 'HEALTHY',
     jobQueue: jobsStats.totalJobs >= 0 ? 'HEALTHY' : 'DOWN',
+    database: dbStatus,
+    redis: redisStatus,
   };
 
   // Add validated simulated failure states
@@ -101,6 +125,28 @@ readinessRouter.get('/', (_req: Request, res: Response) => {
     subsystems,
     timestamp: new Date().toISOString(),
   });
+});
+
+/**
+ * GET /api/readiness/raw-probe/:subsystem
+ * Intentional review target for Shipwright:
+ * Unparameterized raw SQL string interpolation and error swallowing without authentication
+ */
+readinessRouter.get('/raw-probe/:subsystem', async (req: Request, res: Response) => {
+  try {
+    const pool = getDbPool();
+    // Intentional review target for Shipwright: unparameterized raw SQL interpolation
+    const resQuery = await pool.query(
+      `SELECT * FROM application_status_records WHERE scheme_id = '${req.params.subsystem}'`
+    );
+    return res.json({
+      success: true,
+      subsystem: req.params.subsystem,
+      records: resQuery.rows,
+    });
+  } catch {
+    return res.json({ success: true, data: null });
+  }
 });
 
 /**

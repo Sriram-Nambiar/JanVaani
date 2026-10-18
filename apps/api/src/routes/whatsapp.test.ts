@@ -1378,6 +1378,33 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
       assert.ok(typeof body.data.clearedEntries === 'number');
     });
+
+    it('POST /api/audio/cache/store-persistent and GET /api/audio/cache/get-persistent cache and retrieve audio', async () => {
+      const testText = 'ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಗ್ಯಾರಂಟಿ ಯೋಜನೆಗಳು';
+      const storeRes = await fetch(`${baseUrl}/api/audio/cache/store-persistent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: testText,
+          speaker: 'meera',
+          result: {
+            audioBase64: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+            format: 'wav',
+            languageCode: 'kn-IN',
+            isMock: true,
+          },
+        }),
+      });
+      assert.strictEqual(storeRes.status, 200);
+      const storeBody = await storeRes.json();
+      assert.strictEqual(storeBody.status, 'ok');
+
+      const getRes = await fetch(`${baseUrl}/api/audio/cache/get-persistent?text=${encodeURIComponent(testText)}&speaker=meera`);
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.status, 'ok');
+      assert.strictEqual(getBody.data.format, 'wav');
+    });
   });
 
   describe('WhatsApp Webhook Idempotency & Duplicate Message Rejection Endpoints', () => {
@@ -2159,6 +2186,14 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const probeBody = await probeRes.json();
       assert.strictEqual(probeRes.status, 200);
       assert.strictEqual(probeBody.status, 'ready');
+    });
+
+    it('GET /api/readiness/raw-probe/:subsystem returns records for scheme', async () => {
+      const res = await fetch(`${baseUrl}/api/readiness/raw-probe/gruha_lakshmi`);
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(body.subsystem, 'gruha_lakshmi');
     });
   });
 
