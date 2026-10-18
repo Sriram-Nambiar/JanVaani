@@ -20,6 +20,7 @@ import { grievanceEscalationRouter } from './routes/grievance-escalation.js';
 import { sandhyaSurakshaRouter } from './routes/sandhya-suraksha.js';
 import { vidyasiriRouter } from './routes/vidyasiri.js';
 import { kaveriRouter } from './routes/kaveri.js';
+import { gruhaJyothiRouter } from './routes/gruha-jyothi.js';
 import { indicRouter } from './routes/indic.js';
 import { civicAuditLoggerMiddleware, auditRouter } from './middleware/audit-logger.js';
 import { rateLimiterMiddleware, rateLimitRouter } from './middleware/rate-limiter.js';
@@ -125,6 +126,7 @@ export function createApp() {
   app.use('/api/schemes/sandhya-suraksha', sandhyaSurakshaRouter);
   app.use('/api/schemes/vidyasiri', vidyasiriRouter);
   app.use('/api/schemes/kaveri', kaveriRouter);
+  app.use('/api/schemes/gruha-jyothi', gruhaJyothiRouter);
   app.use('/api/bhoomi', bhoomiRouter);
   app.use('/api/annabhagya', annaBhagyaRouter);
   app.use('/api/shakti', shaktiRouter);
