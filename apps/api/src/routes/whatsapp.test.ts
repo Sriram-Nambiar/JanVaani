@@ -1384,6 +1384,65 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body2.senderPhone, '9845012345');
     });
   });
+
+  describe('Indic Unicode Grapheme Normalization & Kanglish Cleaning Endpoints', () => {
+    it('GET /api/indic/health returns status ok', async () => {
+      const res = await fetch(`${baseUrl}/api/indic/health`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.service, 'indic-normalizer');
+    });
+
+    it('POST /api/indic/normalize transliterates Kannada numerals and strips zero-width characters', async () => {
+      // String with Kannada numerals (೦೦೧), zero-width space (\u200B), and extra whitespace
+      const input = 'ಅರ್ಜಿ\u200B   ಸಂಖ್ಯೆ   RD೦೦೧   ';
+      const res = await fetch(`${baseUrl}/api/indic/normalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input }),
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.normalized, 'ಅರ್ಜಿ ಸಂಖ್ಯೆ RD001');
+      assert.strictEqual(body.data.containsKannadaScript, true);
+      assert.strictEqual(body.data.containsKannadaDigits, true);
+    });
+
+    it('POST /api/indic/normalize rejects missing or non-string text with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/indic/normalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 12345 }),
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.status, 'error');
+      assert.strictEqual(body.error, 'MISSING_TEXT');
+    });
+
+    it('POST /api/whatsapp/message with Kannada numerals RD೦೦೧ resolves to status check for RD001', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'text',
+          text: 'ನನ್ನ ಅರ್ಜಿ ಸಂಖ್ಯೆ RD೦೦೧ ರ ಸ್ಥಿತಿ ತಿಳಿಸಿ',
+        }),
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.feature, 'audio_status_bell');
+      assert.strictEqual(body.statusRecord.ackNumber, 'RD001');
+    });
+  });
 });
+
 
 
