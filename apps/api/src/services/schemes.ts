@@ -154,6 +154,30 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಅಂತ್ಯೋದಯ (AAY) ಮತ್ತು ಬಿಪಿಎಲ್ ಪಡಿತರ ಚೀಟಿದಾರರಿಗೆ ಮಾತ್ರ ಲಭ್ಯ. ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಆಧಾರ್ NPCI ಮ್ಯಾಪಿಂಗ್ ಕಡ್ಡಾಯ.',
     },
   },
+  yuva_nidhi: {
+    id: 'yuva_nidhi',
+    nameEn: 'Yuva Nidhi Scheme (Unemployment Financial Assistance)',
+    nameKn: 'ಯುವನಿಧಿ ಯೋಜನೆ (ನಿರುದ್ಯೋಗ ಭತ್ಯೆ)',
+    department: 'Skill Development, Entrepreneurship and Livelihood Department',
+    descriptionEn: 'Monthly financial allowance for unemployed degree holders (₹3,000/month) and diploma holders (₹1,500/month) in Karnataka for up to 2 years.',
+    descriptionKn: 'ಕರ್ನಾಟಕದ ನಿರುದ್ಯೋಗಿ ಪದವೀಧರರಿಗೆ ಮಾಸಿಕ ₹3,000 ಮತ್ತು ಡಿಪ್ಲೊಮಾ ಪೂರೈಸಿದವರಿಗೆ ಮಾಸಿಕ ₹1,500 ನಿರುದ್ಯೋಗ ಭತ್ಯೆ (ಗರಿಷ್ಠ 2 ವರ್ಷಗಳ ಅವಧಿಗೆ).',
+    requiredFields: [
+      { key: 'applicantName', labelKn: 'ಅರ್ಜಿದಾರರ ಹೆಸರು', labelEn: 'Applicant Name', type: 'string', required: true },
+      { key: 'qualificationType', labelKn: 'ವಿದ್ಯಾರ್ಹತೆ (DEGREE / DIPLOMA)', labelEn: 'Qualification Type', type: 'string', required: true },
+      { key: 'degreeOrDiplomaName', labelKn: 'ಪದವಿ / ಡಿಪ್ಲೊಮಾ ಹೆಸರು', labelEn: 'Degree or Diploma Name', type: 'string', required: true },
+      { key: 'graduationYear', labelKn: 'ತೇರ್ಗಡೆಯಾದ ವರ್ಷ', labelEn: 'Graduation Year', type: 'number', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ಆಧಾರ್ ಸಂಖ್ಯೆ', labelEn: 'Aadhaar Number', type: 'string', required: true },
+      { key: 'mobileNumber', labelKn: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', labelEn: 'Mobile Number', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'degree_certificate', titleKn: 'ಪದವಿ / ಡಿಪ್ಲೊಮಾ ಅಂಕಪಟ್ಟಿ ಅಥವಾ ಕಾನ್ವೊಕೇಷನ್', titleEn: 'Degree/Diploma Marksheet or Convocation', isMandatory: true },
+      { id: 'aadhaar', titleKn: 'ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Aadhaar Card', isMandatory: true },
+      { id: 'domicile_certificate', titleKn: 'ಕರ್ನಾಟಕ ವಾಸಸ್ಥಳ ಪ್ರಮಾಣ ಪತ್ರ (6+ ವರ್ಷಗಳ ವ್ಯಾಸಂಗ)', titleEn: 'Karnataka Domicile / Study Certificate (6+ Years)', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಕರ್ನಾಟಕದಲ್ಲಿ ಕನಿಷ್ಠ 6 ವರ್ಷ ವ್ಯಾಸಂಗ ಮಾಡಿರಬೇಕು. ತೇರ್ಗಡೆಯಾಗಿ 180 ದಿನಗಳು ಕಳೆದಿದ್ದರೂ ಉದ್ಯೋಗ ದೊರೆಯದ ಅಭ್ಯರ್ಥಿಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯ.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -214,6 +238,14 @@ export class SchemesService {
       transcript.includes('ಉಚಿತ ಅಕ್ಕಿ') ||
       transcript.toLowerCase().includes('anna bhagya');
 
+    const isYuvaNidhi =
+      scenarioHint?.startsWith('yuva_nidhi') ||
+      transcript.includes('ಯುವನಿಧಿ') ||
+      transcript.includes('ಯುವ ನಿಧಿ') ||
+      transcript.includes('ನಿರುದ್ಯೋಗ') ||
+      transcript.toLowerCase().includes('yuva nidhi') ||
+      transcript.toLowerCase().includes('unemployment');
+
     const scheme = isBmtc
       ? SUPPORTED_SCHEMES.bmtc_student_pass
       : isGruhaJyothi
@@ -222,6 +254,8 @@ export class SchemesService {
       ? SUPPORTED_SCHEMES.caste_income
       : isAnnaBhagya
       ? SUPPORTED_SCHEMES.anna_bhagya
+      : isYuvaNidhi
+      ? SUPPORTED_SCHEMES.yuva_nidhi
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
@@ -358,6 +392,30 @@ export class SchemesService {
         missingFields,
         isComplete: true,
         promptForCitizenKn: 'ನಿಮ್ಮ ಅನ್ನಭಾಗ್ಯ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ. 4 ಸದಸ್ಯರಿಗೆ ತಲಾ 5 ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ ಮತ್ತು ಹೆಚ್ಚುವರಿ 5 ಕೆಜಿಗೆ ಒಟ್ಟು ₹680 ಡಿಬಿಟಿ ನಗದು ಜಮೆಯಾಗಲಿದೆ.',
+      };
+    } else if (scheme.id === 'yuva_nidhi') {
+      const nameMatch = transcript.match(/ಹೆಸರು\s+([A-Za-z\u0C80-\u0CFF]+)/i);
+      extractedFields.applicantName = nameMatch ? nameMatch[1] : 'ಸುರೇಶ್ (Suresh)';
+      extractedFields.qualificationType = transcript.includes('ಡಿಪ್ಲೊಮಾ') || transcript.toLowerCase().includes('diploma') ? 'DIPLOMA' : 'DEGREE';
+      extractedFields.degreeOrDiplomaName = extractedFields.qualificationType === 'DIPLOMA' ? 'Diploma in Mechanical Engineering' : 'B.Sc Computer Science';
+      extractedFields.graduationYear = 2024;
+      extractedFields.aadhaarNumber = 'XXXX-XXXX-7123';
+      extractedFields.mobileNumber = '9876543210';
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      const stipend = extractedFields.qualificationType === 'DEGREE' ? '₹3,000' : '₹1,500';
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete: true,
+        promptForCitizenKn: `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.qualificationType}). ಮಾಸಿಕ ${stipend} ನಿರುದ್ಯೋಗ ಭತ್ಯೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`,
       };
     } else {
       // Caste & Income extraction

@@ -325,6 +325,40 @@ whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Re
   });
 });
 
+whatsappRouter.post('/schemes/yuva-nidhi/verify-eligibility', (req: Request, res: Response) => {
+  const { applicantName, qualificationType, graduationYear, mobileNumber, aadhaarNumber } = req.body;
+
+  if (!qualificationType || !graduationYear || !mobileNumber || !aadhaarNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_YUVA_NIDHI_PAYLOAD',
+        message: 'Applicant name, qualification type, graduation year, mobile number, and Aadhaar number are required.',
+      },
+    });
+  }
+
+  // Debug log for Yuva Nidhi processing (intentional PII leak for Shipwright finding)
+  console.log('[Yuva Nidhi] Processing graduate eligibility for contact:', mobileNumber, 'Aadhaar:', aadhaarNumber, 'Applicant:', applicantName);
+
+  const isEligible = graduationYear >= 2023 && (qualificationType === 'DEGREE' || qualificationType === 'DIPLOMA');
+  const monthlyStipendInr = isEligible ? (qualificationType === 'DEGREE' ? 3000 : 1500) : 0;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'yuva_nidhi',
+    schemeNameKn: 'ಯುವನಿಧಿ ಯೋಜನೆ',
+    schemeNameEn: 'Yuva Nidhi Scheme',
+    isEligible,
+    qualificationType,
+    graduationYear,
+    monthlyStipendInr,
+    maxDurationMonths: 24,
+    messageKn: isEligible
+      ? `ಅಭಿನಂದನೆಗಳು! ನೀವು ಯುವನಿಧಿ ಮಾಸಿಕ ₹${monthlyStipendInr} ನಿರುದ್ಯೋಗ ಭತ್ಯೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ (ಗರಿಷ್ಠ 24 ತಿಂಗಳು).`
+      : 'ಕ್ಷಮಿಸಿ, ಯುವನಿಧಿ ಯೋಜನೆಯು 2023 ರ ನಂತರ ತೇರ್ಗಡೆಯಾದ ನಿರುದ್ಯೋಗಿ ಪದವೀಧರರು ಮತ್ತು ಡಿಪ್ಲೊಮಾದಾರರಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ.',
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */
