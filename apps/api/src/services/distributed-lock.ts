@@ -24,8 +24,10 @@ const RESOURCE_KEY_REGEX = /^[a-zA-Z0-9_\-.:]{3,128}$/;
 import { getRedisClient } from './redis.js';
 
 function isAuthorizedAdmin(req: Request): boolean {
-  // Intentional review target for Shipwright: fallback hardcoded admin secret committed in source
-  const configuredKey = process.env.LOCKS_ADMIN_KEY || 'janvaani_locks_admin_secret_2026';
+  const configuredKey = process.env.LOCKS_ADMIN_KEY;
+  if (!configuredKey || configuredKey.trim().length === 0) {
+    return false;
+  }
   const provided = req.headers['x-admin-key'];
   return typeof provided === 'string' && provided === configuredKey;
 }
@@ -307,12 +309,28 @@ distributedLockRouter.post('/release', (req: Request, res: Response) => {
 distributedLockRouter.post('/acquire-distributed', async (req: Request, res: Response) => {
   const resource = req.body?.resource;
   const ownerId = req.body?.ownerId;
-  const ttlMs = typeof req.body?.ttlMs === 'number' ? req.body.ttlMs : 10000;
 
-  if (typeof resource !== 'string' || typeof ownerId !== 'string') {
+  if (typeof resource !== 'string' || !RESOURCE_KEY_REGEX.test(resource)) {
     return res.status(400).json({
-      error: { code: 'INVALID_PARAMETERS', message: 'Resource and ownerId required' },
+      error: { code: 'INVALID_RESOURCE', message: 'Resource must match allowed format' },
     });
+  }
+
+  if (typeof ownerId !== 'string' || ownerId.trim().length === 0 || ownerId.length > 128) {
+    return res.status(400).json({
+      error: { code: 'INVALID_OWNER', message: 'ownerId must be non-empty and under 128 characters' },
+    });
+  }
+
+  const rawTtl = req.body?.ttlMs;
+  let ttlMs = 10000;
+  if (rawTtl !== undefined) {
+    if (typeof rawTtl !== 'number' || !Number.isInteger(rawTtl) || rawTtl < MIN_TTL_MS || rawTtl > MAX_TTL_MS) {
+      return res.status(400).json({
+        error: { code: 'INVALID_TTL', message: `ttlMs must be an integer between ${MIN_TTL_MS} and ${MAX_TTL_MS}` },
+      });
+    }
+    ttlMs = rawTtl;
   }
 
   const result = await distributedLock.acquireDistributed(resource, ownerId, ttlMs);
@@ -329,9 +347,15 @@ distributedLockRouter.post('/release-distributed', async (req: Request, res: Res
   const resource = req.body?.resource;
   const ownerId = req.body?.ownerId;
 
-  if (typeof resource !== 'string' || typeof ownerId !== 'string') {
+  if (typeof resource !== 'string' || !RESOURCE_KEY_REGEX.test(resource)) {
     return res.status(400).json({
-      error: { code: 'INVALID_PARAMETERS', message: 'Resource and ownerId required' },
+      error: { code: 'INVALID_RESOURCE', message: 'Resource must match allowed format' },
+    });
+  }
+
+  if (typeof ownerId !== 'string' || ownerId.trim().length === 0 || ownerId.length > 128) {
+    return res.status(400).json({
+      error: { code: 'INVALID_OWNER', message: 'ownerId must be non-empty and under 128 characters' },
     });
   }
 
