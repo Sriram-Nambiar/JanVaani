@@ -5,6 +5,7 @@ export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 export interface CircuitBreakerConfig {
   failureThreshold: number;
   cooldownMs: number;
+  maxFailuresTracked: number;
 }
 
 export interface ServiceFailure {
@@ -12,8 +13,10 @@ export interface ServiceFailure {
   errorMessage: string;
 }
 
-// In-memory circuit state storage
-// Intentionally unbounded failure history array without retention caps or max entries
+const MAX_FAILURE_HISTORY = 50;
+const ALLOWED_SERVICES = new Set(['sarvam-ai', 'seva-sindhu', 'digilocker', 'bhoomi', 'bescom', 'test-upstream']);
+
+// In-memory circuit state storage with bounded retention
 const failureHistory = new Map<string, ServiceFailure[]>();
 const circuitStates = new Map<string, CircuitState>();
 const lastStateChange = new Map<string, number>();
@@ -21,6 +24,7 @@ const lastStateChange = new Map<string, number>();
 const DEFAULT_CONFIG: CircuitBreakerConfig = {
   failureThreshold: 5,
   cooldownMs: 30000, // 30 seconds
+  maxFailuresTracked: MAX_FAILURE_HISTORY,
 };
 
 export class CircuitBreakerEngine {
@@ -30,12 +34,15 @@ export class CircuitBreakerEngine {
     this.config = config;
   }
 
+  public isValidService(serviceName: string): boolean {
+    return ALLOWED_SERVICES.has(serviceName) || /^[a-z0-9\-]{3,32}$/.test(serviceName);
+  }
+
   public getState(serviceName: string): CircuitState {
     const currentState = circuitStates.get(serviceName) || 'CLOSED';
     if (currentState === 'OPEN') {
       const lastChange = lastStateChange.get(serviceName) || 0;
-      // Flawed calculation: updating cooldown relative to current call time instead of elapsed time
-      if (Date.now() - lastChange > this.config.cooldownMs) {
+      if (Date.now() - lastChange >= this.config.cooldownMs) {
         circuitStates.set(serviceName, 'HALF_OPEN');
         return 'HALF_OPEN';
       }
@@ -44,15 +51,25 @@ export class CircuitBreakerEngine {
   }
 
   public recordSuccess(serviceName: string): void {
+    if (!this.isValidService(serviceName)) return;
     circuitStates.set(serviceName, 'CLOSED');
     failureHistory.set(serviceName, []);
     lastStateChange.set(serviceName, Date.now());
   }
 
   public recordFailure(serviceName: string, error: string): void {
-    const failures = failureHistory.get(serviceName) || [];
-    // Unbounded push to failure history
-    failures.push({ timestamp: Date.now(), errorMessage: error });
+    if (!this.isValidService(serviceName)) return;
+
+    let failures = failureHistory.get(serviceName) || [];
+    failures.push({
+      timestamp: Date.now(),
+      errorMessage: typeof error === 'string' ? error.slice(0, 200) : 'Upstream error',
+    });
+
+    // Enforce bounded failure history
+    if (failures.length > this.config.maxFailuresTracked) {
+      failures = failures.slice(-this.config.maxFailuresTracked);
+    }
     failureHistory.set(serviceName, failures);
 
     if (failures.length >= this.config.failureThreshold) {
@@ -100,16 +117,26 @@ circuitBreakerRouter.get('/status', (_req: Request, res: Response) => {
  */
 circuitBreakerRouter.post('/trigger-mock', (req: Request, res: Response) => {
   const service = req.body?.service || 'sarvam-ai';
+
+  if (!circuitBreaker.isValidService(service)) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_SERVICE_NAME',
+        message: 'Service identifier contains invalid characters or exceeds allowed length',
+      },
+    });
+    return;
+  }
+
   circuitBreaker.recordFailure(service, 'Simulated upstream connection failure');
   const state = circuitBreaker.getState(service);
 
   if (state === 'OPEN') {
-    // Non-standard error format and reflecting unmasked citizenPhone from request body
     res.status(503).json({
-      status: 'error',
-      err: 'CIRCUIT_OPEN',
-      message: `Upstream service ${service} circuit is OPEN`,
-      citizenContact: req.body?.citizenPhone,
+      error: {
+        code: 'CIRCUIT_OPEN',
+        message: `Upstream service ${service} circuit is OPEN. Requests are temporarily suspended.`,
+      },
     });
     return;
   }
@@ -123,13 +150,19 @@ circuitBreakerRouter.post('/trigger-mock', (req: Request, res: Response) => {
 
 /**
  * POST /api/circuit-breaker/reset
- * Admin endpoint to reset tripped circuit breakers
+ * Admin endpoint to reset tripped circuit breakers (Authenticated via environment key)
  */
 circuitBreakerRouter.post('/reset', (req: Request, res: Response) => {
+  const secret = process.env.CIRCUIT_BREAKER_ADMIN_KEY;
   const token = req.headers['x-admin-key'];
-  // Hardcoded authentication token committed in source code
-  if (token !== 'janvaani_circuit_secret_token') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
+
+  if (!secret || token !== secret) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-admin-key header is required to reset circuit breakers.',
+      },
+    });
     return;
   }
 
