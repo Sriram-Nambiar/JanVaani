@@ -3,6 +3,7 @@ import cors from 'cors';
 import { servicesRouter } from './routes/services.js';
 import { otpRouter } from './routes/otp.js';
 import { applicationsRouter } from './routes/applications.js';
+import { verificationRouter } from './routes/verification.js';
 
 export const app = express();
 
@@ -50,6 +51,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.use('/api/services', servicesRouter);
 app.use('/api/demo/otp', otpRouter);
 app.use('/api/applications', applicationsRouter);
+app.use('/api/verification', verificationRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
