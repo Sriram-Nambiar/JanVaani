@@ -122,3 +122,45 @@ test('GET /api/services/bmtc/stops lists and filters Bangalore transit stops', a
   }
 });
 
+test('POST /api/demo/otp/send sends mock Aadhaar OTP', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/demo/otp/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadhaarNumber: '443350105028' }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.equal(data.demoOtp, '3344');
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /api/demo/otp/verify validates demo OTP 3344', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const resValid = await fetch(`${baseUrl}/api/demo/otp/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp: '3344' }),
+    });
+    assert.equal(resValid.status, 200);
+    const dataValid = await resValid.json();
+    assert.equal(dataValid.verified, true);
+  } finally {
+    server.close();
+  }
+});
+
+

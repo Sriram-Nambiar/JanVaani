@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import { servicesRouter } from './routes/services.js';
+import { otpRouter } from './routes/otp.js';
 
 export const app = express();
 
@@ -46,6 +47,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // Mount Routes
 app.use('/api/services', servicesRouter);
+app.use('/api/demo/otp', otpRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
