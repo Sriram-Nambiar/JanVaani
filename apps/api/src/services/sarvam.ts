@@ -26,12 +26,28 @@ export interface TextToSpeechResult {
 const SILENT_WAV_BASE64 =
   'UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
 
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatCompletionResult {
+  reply: string;
+  isMock: boolean;
+}
+
 export class SarvamService {
   private apiKey: string | undefined;
   private isLive: boolean;
 
   constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.SARVAM_API_KEY;
+    if (apiKey !== undefined) {
+      this.apiKey = apiKey;
+    } else if (process.env.NODE_ENV === 'test') {
+      this.apiKey = undefined;
+    } else {
+      this.apiKey = process.env.SARVAM_API_KEY;
+    }
     this.isLive = Boolean(this.apiKey && this.apiKey.trim().length > 0 && !this.apiKey.includes('placeholder'));
   }
 
@@ -40,7 +56,7 @@ export class SarvamService {
   }
 
   /**
-   * Transcribe Kannada speech to text using Sarvam Saaras
+   * Transcribe Kannada speech to text using Sarvam Saaras (saaras:v3)
    */
   async speechToText(
     audioData: { base64?: string; buffer?: Buffer; mimeType?: string },
@@ -52,7 +68,7 @@ export class SarvamService {
         const formData = new FormData();
         const blob = new Blob([buffer as unknown as BlobPart], { type: audioData.mimeType || 'audio/wav' });
         formData.append('file', blob, 'recording.wav');
-        formData.append('model', 'saaras:v1');
+        formData.append('model', 'saaras:v3');
         formData.append('language_code', 'kn-IN');
 
         const response = await fetch('https://api.sarvam.ai/speech-to-text', {
@@ -73,10 +89,12 @@ export class SarvamService {
               isMock: false,
             };
           }
+        } else {
+          console.warn('Sarvam API STT error response status:', response.status);
         }
-      } catch (err) {
-        // Fallback to mock on network or API failure during hackathon testing
-        console.warn('Sarvam API STT failed, falling back to simulated engine:', err);
+      } catch {
+        // Fallback to mock on network or API failure during testing
+        console.warn('Sarvam API STT failed, falling back to simulated engine');
       }
     }
 
@@ -106,10 +124,10 @@ export class SarvamService {
   }
 
   /**
-   * Synthesize Kannada speech from text using Sarvam Bulbul
+   * Synthesize Kannada speech from text using Sarvam Bulbul (bulbul:v3)
    */
-  async textToSpeech(text: string, speaker: string = 'meera'): Promise<TextToSpeechResult> {
-    const cached = audioCache.get(text, speaker);
+  async textToSpeech(text: string, speaker: string = 'kavitha'): Promise<TextToSpeechResult> {
+    const cached = audioCache.get(text, speaker, 'bulbul:v3');
     if (cached) {
       return cached;
     }
@@ -133,7 +151,7 @@ export class SarvamService {
             loudness: 1.5,
             speech_sample_rate: 8000,
             enable_preprocessing: true,
-            model: 'bulbul:v1',
+            model: 'bulbul:v3',
           }),
         });
 
@@ -146,12 +164,14 @@ export class SarvamService {
               transcriptText: text,
               isMock: false,
             };
-            audioCache.set(text, speaker, result);
+            audioCache.set(text, speaker, result, 'bulbul:v3');
             return result;
           }
+        } else {
+          console.warn('Sarvam API TTS error response status:', response.status);
         }
-      } catch (err) {
-        console.warn('Sarvam API TTS failed, falling back to simulated audio:', err);
+      } catch {
+        console.warn('Sarvam API TTS failed, falling back to simulated audio');
       }
     }
 
@@ -164,9 +184,61 @@ export class SarvamService {
     };
     // Only cache if configured in mock mode, avoiding caching transient live API failures
     if (!this.isLive) {
-      audioCache.set(text, speaker, result);
+      audioCache.set(text, speaker, result, 'bulbul:v3');
     }
     return result;
+  }
+
+  /**
+   * Conversational Chat Completion using Sarvam-105B (sarvam-105b-conversations)
+   */
+  async chatCompletion(
+    messages: ChatMessage[],
+    systemPrompt?: string
+  ): Promise<ChatCompletionResult> {
+    if (this.isLive) {
+      try {
+        const fullMessages: ChatMessage[] = [];
+        if (systemPrompt) {
+          fullMessages.push({ role: 'system', content: systemPrompt });
+        }
+        fullMessages.push(...messages);
+
+        const response = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'api-subscription-key': this.apiKey!,
+          },
+          body: JSON.stringify({
+            model: 'sarvam-105b-conversations',
+            messages: fullMessages,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json() as {
+            choices?: Array<{ message?: { content?: string } }>;
+          };
+          const reply = json.choices?.[0]?.message?.content;
+          if (reply) {
+            return {
+              reply,
+              isMock: false,
+            };
+          }
+        } else {
+          console.warn('Sarvam Chat Completion error status:', response.status);
+        }
+      } catch {
+        console.warn('Sarvam Chat Completion request failed');
+      }
+    }
+
+    return {
+      reply: 'ನಮಸ್ಕಾರ! ಜನವಾಣಿ ನಾಗರಿಕ ಸೇವಾ ಕೇಂದ್ರಕ್ಕೆ ಸ್ವಾಗತ. ಗೃಹಲಕ್ಷ್ಮಿ, ಗೃಹಜ್ಯೋತಿ, ಅನ್ನಭಾಗ್ಯ, ಶಕ್ತಿ ಅಥವಾ ಜಾತಿ ಮತ್ತು ಆದಾಯ ಪ್ರಮಾಣ ಪತ್ರಗಳ ಕುರಿತು ಮಾಹಿತಿ ಪಡೆಯಬಹುದು.',
+      isMock: true,
+    };
   }
 }
 

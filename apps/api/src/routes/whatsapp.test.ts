@@ -2,7 +2,7 @@ import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { app } from '../app.js';
-import { sarvamService } from '../services/sarvam.js';
+import { sarvamService, SarvamService } from '../services/sarvam.js';
 import { schemesService } from '../services/schemes.js';
 import { trackerService, maskApplicantName, maskId } from '../services/tracker.js';
 
@@ -33,22 +33,33 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Sarvam AI Service Unit Tests', () => {
-    it('operates in mock mode when no live API key is present', () => {
-      assert.strictEqual(sarvamService.isMockMode(), true);
+    it('operates in mock mode when no live API key is provided', () => {
+      const mockService = new SarvamService('');
+      assert.strictEqual(mockService.isMockMode(), true);
     });
 
-    it('transcribes Kannada voice input in mock mode', async () => {
-      const result = await sarvamService.speechToText({}, 'gruha_lakshmi_apply');
+    it('transcribes Kannada voice input in simulated/mock mode', async () => {
+      const mockService = new SarvamService('');
+      const result = await mockService.speechToText({}, 'gruha_lakshmi_apply');
       assert.strictEqual(result.languageCode, 'kn-IN');
       assert.ok(result.transcript.includes('ಗೃಹಲಕ್ಷ್ಮಿ'));
       assert.strictEqual(result.isMock, true);
     });
 
-    it('synthesizes Kannada speech to valid audio base64', async () => {
-      const result = await sarvamService.textToSpeech('ನಮಸ್ಕಾರ, ಜನವಾಣಿಗೆ ಸ್ವಾಗತ');
+    it('synthesizes Kannada speech to valid audio base64 in simulated/mock mode', async () => {
+      const mockService = new SarvamService('');
+      const result = await mockService.textToSpeech('ನಮಸ್ಕಾರ, ಜನವಾಣಿಗೆ ಸ್ವಾಗತ');
       assert.ok(result.audioBase64.length > 0);
       assert.strictEqual(result.format, 'wav');
       assert.strictEqual(result.isMock, true);
+    });
+
+    it('supports conversational chat completions', async () => {
+      const res = await sarvamService.chatCompletion([
+        { role: 'user', content: 'ನಮಸ್ಕಾರ' }
+      ]);
+      assert.ok(res.reply.length > 0);
+      assert.strictEqual(typeof res.isMock, 'boolean');
     });
   });
 
