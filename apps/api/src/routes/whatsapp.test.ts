@@ -1849,20 +1849,29 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Civic Request Schema Sanitization & Threat Defense Endpoints', () => {
+    const testSanitizerKey = 'janvaani_test_sanitizer_key';
+
+    beforeEach(() => {
+      process.env.SANITIZER_ADMIN_KEY = testSanitizerKey;
+    });
+
     it('GET /api/security/sanitizer/stats returns initial telemetry', async () => {
       const res = await fetch(`${baseUrl}/api/security/sanitizer/stats`);
       const body = await res.json();
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.ok('totalInspectedRequests' in body.data);
+      assert.strictEqual(body.data.maxLogCapacity, 100);
     });
 
-    it('POST /api/security/sanitizer/test strips prototype pollution keys from body', async () => {
+    it('POST /api/security/sanitizer/test strips multiple prototype pollution keys without stateful regex skipping', async () => {
       const payload = {
         name: 'Basavaraj',
         __proto__: { admin: true },
+        constructor: 'malicious',
+        prototype: 'injection',
         nested: {
-          constructor: 'malicious',
+          constructor: 'nested-pollute',
           valid: 'Bangalore',
         },
       };
@@ -1875,22 +1884,44 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(body.sanitizedBody, 'constructor'), false);
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(body.sanitizedBody, 'prototype'), false);
       assert.strictEqual(Object.prototype.hasOwnProperty.call(body.sanitizedBody.nested, 'constructor'), false);
       assert.strictEqual(body.sanitizedBody.nested.valid, 'Bangalore');
       assert.strictEqual(body.sanitizedBody.name, 'Basavaraj');
+    });
+
+    it('rejects malicious payload in strict mode with 400 and zero PII', async () => {
+      const res = await fetch(`${baseUrl}/api/security/sanitizer/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-strict-sanitization': 'true',
+        },
+        body: JSON.stringify({
+          constructor: 'pollute',
+          citizenPhone: '9845012345',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'MALICIOUS_INPUT_DETECTED');
+      assert.strictEqual('citizenContact' in body, false);
     });
 
     it('POST /api/security/sanitizer/clear rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/security/sanitizer/clear`, {
         method: 'POST',
       });
+      const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/security/sanitizer/clear flushes audit log with admin secret', async () => {
+    it('POST /api/security/sanitizer/clear flushes audit log with valid admin secret', async () => {
       const res = await fetch(`${baseUrl}/api/security/sanitizer/clear`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani_sanitize_admin_token' },
+        headers: { 'x-admin-key': testSanitizerKey },
       });
       const body = await res.json();
       assert.strictEqual(res.status, 200);
