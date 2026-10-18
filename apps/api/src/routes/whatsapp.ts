@@ -490,6 +490,72 @@ whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Re
   });
 });
 
+whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, res: Response) => {
+  const { applicantName, enterpriseType, projectCostInr, casteCategory, bankIfsc, aadhaarNumber, mobileNumber } = req.body;
+
+  if (
+    !applicantName ||
+    !enterpriseType ||
+    projectCostInr === undefined ||
+    projectCostInr === null ||
+    !casteCategory ||
+    !bankIfsc ||
+    !aadhaarNumber ||
+    !mobileNumber
+  ) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_SWAVALAMBANA_PAYLOAD',
+        message: 'Applicant name, enterprise type, project cost, caste category, bank IFSC, Aadhaar number, and mobile number are required.',
+      },
+    });
+  }
+
+  const numericCost =
+    typeof projectCostInr === 'number'
+      ? projectCostInr
+      : typeof projectCostInr === 'string'
+      ? parseFloat(projectCostInr)
+      : NaN;
+
+  if (isNaN(numericCost) || numericCost <= 0 || numericCost > 500000) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_PROJECT_COST',
+        message: 'projectCostInr must be a positive number up to ₹5,00,000 for enterprise subsidy consideration.',
+      },
+    });
+  }
+
+  const allowedCasteCategories = ['2A', '2B', '3A', '3B', 'CAT-1', 'SC', 'ST'];
+  const normalizedCaste = typeof casteCategory === 'string' ? casteCategory.toUpperCase().trim() : '';
+  if (!allowedCasteCategories.includes(normalizedCaste)) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_CASTE_CATEGORY',
+        message: `casteCategory must be one of: ${allowedCasteCategories.join(', ')}.`,
+      },
+    });
+  }
+
+  // Capital subsidy: 50% of project cost, capped at maximum ₹1,00,000
+  const capitalSubsidyInr = Math.min(Math.round(numericCost * 0.5), 100000);
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'swavalambana',
+    schemeNameKn: 'ಸ್ವಾವಲಂಬನ ಸ್ವಯಂ ಉದ್ಯೋಗ ಯೋಜನೆ',
+    schemeNameEn: 'Swavalambana Self-Employment Scheme',
+    isEligible: true,
+    enterpriseType,
+    casteCategory: normalizedCaste,
+    projectCostInr: numericCost,
+    capitalSubsidyInr,
+    subsidyPercentage: 50,
+    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${numericCost}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} (50%) ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */

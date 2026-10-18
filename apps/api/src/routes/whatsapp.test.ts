@@ -554,6 +554,109 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(resCourse.status, 400);
     });
 
+    it('POST /api/whatsapp/schemes/swavalambana/calculate-subsidy calculates micro-enterprise capital subsidy', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'ಪ್ರಕಾಶ್ ಕುಮಾರ್ (Prakash Kumar)',
+          enterpriseType: 'Retail Grocery Store',
+          projectCostInr: 200000,
+          casteCategory: '2A',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'swavalambana');
+      assert.strictEqual(data.isEligible, true);
+      assert.strictEqual(data.capitalSubsidyInr, 100000);
+
+      // Calculates 50% for smaller project below cap (e.g. 100,000 cost yields 50,000 subsidy)
+      const resPartial = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Tailoring Unit',
+          projectCostInr: 100000,
+          casteCategory: '2A',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resPartial.status, 200);
+      const dataPartial = await resPartial.json();
+      assert.strictEqual(dataPartial.capitalSubsidyInr, 50000);
+
+      // Supports string-coerced numeric projectCostInr
+      const resString = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Carpentry Workshop',
+          projectCostInr: '200000',
+          casteCategory: 'CAT-1',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resString.status, 200);
+      const dataString = await resString.json();
+      assert.strictEqual(dataString.capitalSubsidyInr, 100000);
+    });
+
+    it('POST /api/whatsapp/schemes/swavalambana/calculate-subsidy rejects missing fields or invalid costs with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enterpriseType: 'Retail Grocery Store',
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+
+      // Rejects project cost > 500000
+      const resCost = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Large Factory',
+          projectCostInr: 10000000,
+          casteCategory: '2A',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resCost.status, 400);
+
+      // Rejects invalid caste category
+      const resCaste = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Retail Grocery Store',
+          projectCostInr: 100000,
+          casteCategory: 'INVALID_CATEGORY',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resCaste.status, 400);
+    });
+
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/RD001`);
       assert.strictEqual(res.status, 200);
