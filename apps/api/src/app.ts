@@ -28,6 +28,7 @@ import { readinessRouter } from './routes/readiness.js';
 import { distributedLockRouter } from './services/distributed-lock.js';
 import { compressionNegotiatorMiddleware, compressionRouter } from './middleware/compression-negotiator.js';
 import { maintenanceGuardMiddleware, maintenanceRouter } from './middleware/maintenance-guard.js';
+import { baileysRouter } from './services/baileys-gateway.js';
 
 export function createApp() {
   const app = express();
@@ -91,6 +92,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/baileys', baileysRouter);
   app.use('/api/maintenance', maintenanceRouter);
   app.use('/api/compression', compressionRouter);
   app.use('/api/locks', distributedLockRouter);

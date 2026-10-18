@@ -2390,6 +2390,99 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(statusBody.data.totalAuditEntries, 0);
     });
   });
+
+  describe('Baileys WhatsApp Gateway & QR Client Endpoints', () => {
+    const testBaileysKey = 'janvaani_test_baileys_secret_key';
+
+    beforeEach(() => {
+      process.env.BAILEYS_ADMIN_KEY = testBaileysKey;
+    });
+
+    it('GET /api/baileys/status returns initial gateway connection status', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/status`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(typeof body.data.isConnected, 'boolean');
+      assert.strictEqual(typeof body.data.totalMessagesProcessed, 'number');
+    });
+
+    it('GET /api/baileys/qr returns pairing QR data status', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/qr`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(typeof body.data.hasQr, 'boolean');
+    });
+
+    it('POST /api/baileys/simulate-inbound rejects empty message text with 400 and zero PII', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/simulate-inbound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '919845012345@s.whatsapp.net',
+          text: '   ',
+          senderPhone: '9845012345',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'EMPTY_MESSAGE_TEXT');
+      assert.strictEqual('senderPhone' in body, false);
+      assert.strictEqual('citizenPhone' in body, false);
+    });
+
+    it('POST /api/baileys/simulate-inbound processes civic scheme inquiry and generates reply', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/simulate-inbound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '919845012345@s.whatsapp.net',
+          text: 'ನನಗೆ ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆಯ ಅರ್ಜಿ ಬೇಕು',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.feature, 'dhvani_form');
+      assert.ok(body.data.replyText.includes('ಗೃಹಲಕ್ಷ್ಮಿ'));
+    });
+
+    it('POST /api/baileys/simulate-inbound processes acknowledgment status lookup', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/simulate-inbound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '919845012345@s.whatsapp.net',
+          text: 'Check status for RD001',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.feature, 'audio_status_bell');
+      assert.ok(body.data.replyText.includes('RD001'));
+    });
+
+    it('POST /api/baileys/clear-session rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/clear-session`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/baileys/clear-session clears session with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/clear-session`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testBaileysKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
