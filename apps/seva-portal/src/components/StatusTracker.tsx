@@ -41,6 +41,21 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
     }
   };
 
+  const [copied, setCopied] = useState(false);
+  const handleCopyId = async () => {
+    if (!appData?.applicationId) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(appData.applicationId);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    } catch {
+      // Graceful fallback if clipboard access is denied in non-secure contexts
+      setCopied(false);
+    }
+  };
+
   useEffect(() => {
     if (initialAppId) {
       setAppId(initialAppId);
@@ -173,6 +188,36 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
               <span className="text-slate-500 text-xs block font-semibold">Official Remarks</span>
               <p className="text-slate-700 text-xs italic mt-0.5">{appData.acknowledgement}</p>
             </div>
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Copy Application Reference ID"
+                onClick={handleCopyId}
+                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
+              >
+                {copied ? '✓ Copied ID' : '📋 Copy Reference ID'}
+              </button>
+              <button
+                type="button"
+                aria-label="Print Application Acknowledgement Slip"
+                onClick={() => window.print()}
+                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
+              >
+                🖨️ Print Acknowledgement Slip
+              </button>
+            </div>
+            <a
+              href={(import.meta as any).env?.VITE_JANVAANI_WEB_URL || 'http://localhost:5173'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs font-bold text-blue-900 hover:text-blue-700 underline flex items-center gap-1"
+            >
+              Verify in JanVaani Assistant ↗
+            </a>
           </div>
         </div>
       )}
