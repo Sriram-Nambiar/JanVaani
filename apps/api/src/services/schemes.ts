@@ -520,16 +520,31 @@ export class SchemesService {
     } else if (scheme.id === 'raita_vidya_nidhi') {
       const nameMatch = transcript.match(/ವಿದ್ಯಾರ್ಥಿ\s+([A-Za-z\u0C80-\u0CFF]+)/i);
       extractedFields.studentName = nameMatch ? nameMatch[1] : 'ಕಾವ್ಯ (Kavya)';
-      extractedFields.gender = 'FEMALE';
-      extractedFields.fruitsId = 'FRUITS-90218';
-      extractedFields.courseLevel = 'PUC';
-      extractedFields.collegeName = 'Government PU College, Mandya';
+
+      const isMale = transcript.includes('ಗಂಡು') || transcript.toLowerCase().includes('male') || transcript.toLowerCase().includes('boy');
+      extractedFields.gender = isMale ? 'MALE' : 'FEMALE';
+
+      const fruitsMatch = transcript.match(/\b(FRUITS[-\s]?\d+)\b/i);
+      extractedFields.fruitsId = fruitsMatch ? fruitsMatch[1].toUpperCase() : 'FRUITS-90218';
+
+      const isMedical = transcript.includes('ವೈದ್ಯಕೀಯ') || transcript.toLowerCase().includes('medical');
+      const isDegree = transcript.includes('ಪದವಿ') || transcript.toLowerCase().includes('degree');
+      extractedFields.courseLevel = isMedical ? 'MEDICAL' : isDegree ? 'DEGREE' : 'PUC';
+
+      extractedFields.collegeName = extractedFields.courseLevel === 'DEGREE' ? 'Government First Grade College, Mandya' : 'Government PU College, Mandya';
       extractedFields.aadhaarNumber = 'XXXX-XXXX-9812';
       extractedFields.mobileNumber = '9845012399';
 
       const missingFields = scheme.requiredFields
         .filter((field) => field.required && !extractedFields[field.key])
         .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      const scholarshipAmount =
+        extractedFields.courseLevel === 'MEDICAL'
+          ? (extractedFields.gender === 'FEMALE' ? 11000 : 10000)
+          : extractedFields.courseLevel === 'DEGREE'
+          ? (extractedFields.gender === 'FEMALE' ? 5500 : 5000)
+          : (extractedFields.gender === 'FEMALE' ? 3000 : 2500);
 
       return {
         schemeId: scheme.id,
@@ -538,7 +553,7 @@ export class SchemesService {
         extractedFields,
         missingFields,
         isComplete: missingFields.length === 0,
-        promptForCitizenKn: 'ನಿಮ್ಮ ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (PUC - FEMALE). ವಾರ್ಷಿಕ ₹3,000 ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಜಮೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.',
+        promptForCitizenKn: `ನಿಮ್ಮ ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.courseLevel} - ${extractedFields.gender}). ವಾರ್ಷಿಕ ₹${scholarshipAmount} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಜಮೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`,
       };
     } else {
       // Caste & Income extraction

@@ -415,7 +415,7 @@ whatsappRouter.post('/schemes/ganga-kalyana/calculate-subsidy', (req: Request, r
 whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Request, res: Response) => {
   const { studentName, gender, fruitsId, courseLevel, collegeName, aadhaarNumber, mobileNumber } = req.body;
 
-  if (!courseLevel || !gender || !mobileNumber) {
+  if (!studentName || !gender || !fruitsId || !courseLevel || !collegeName || !aadhaarNumber || !mobileNumber) {
     return res.status(400).json({
       error: {
         code: 'INVALID_RAITA_VIDYA_NIDHI_PAYLOAD',
@@ -424,13 +424,55 @@ whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Re
     });
   }
 
-  // Debug log for Raita Vidya Nidhi scholarship (intentional PII leak for Shipwright finding)
-  console.log('[Raita Vidya Nidhi] Processing scholarship for farmer FRUITS ID:', fruitsId, 'Student Aadhaar:', aadhaarNumber, 'Student Name:', studentName);
+  const normalizedGender = typeof gender === 'string' ? gender.toUpperCase() : '';
+  if (normalizedGender !== 'MALE' && normalizedGender !== 'FEMALE') {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_GENDER',
+        message: 'gender must be either MALE or FEMALE.',
+      },
+    });
+  }
 
-  // Intentional calculation flaw: ignores female rate of ₹3,000 for PUC and hardcodes 2500
+  const allowedCourses = ['HIGH_SCHOOL', 'PUC', 'ITI', 'DIPLOMA', 'DEGREE', 'MEDICAL'];
+  const normalizedCourse = typeof courseLevel === 'string' ? courseLevel.toUpperCase() : '';
+  if (!allowedCourses.includes(normalizedCourse)) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_COURSE_LEVEL',
+        message: `courseLevel must be one of: ${allowedCourses.join(', ')}.`,
+      },
+    });
+  }
+
+  if (typeof fruitsId !== 'string' || !fruitsId.trim() || fruitsId.trim().length < 4) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_FRUITS_ID',
+        message: 'fruitsId must be a valid Karnataka farmer registration ID.',
+      },
+    });
+  }
+
+  // Calculate annual scholarship based on gender & course level
   let annualScholarshipInr = 2500;
-  if (courseLevel === 'DEGREE') annualScholarshipInr = 5000;
-  if (courseLevel === 'MEDICAL') annualScholarshipInr = 11000;
+  if (normalizedCourse === 'PUC' || normalizedCourse === 'ITI' || normalizedCourse === 'DIPLOMA') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 3000 : 2500;
+  } else if (normalizedCourse === 'DEGREE') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 5500 : 5000;
+  } else if (normalizedCourse === 'MEDICAL') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 11000 : 10000;
+  } else if (normalizedCourse === 'HIGH_SCHOOL') {
+    if (normalizedGender !== 'FEMALE') {
+      return res.status(400).json({
+        error: {
+          code: 'INELIGIBLE_COURSE_GENDER',
+          message: 'High school scholarship under Raita Vidya Nidhi is available exclusively for female students.',
+        },
+      });
+    }
+    annualScholarshipInr = 2000;
+  }
 
   return res.status(200).json({
     status: 'ok',
@@ -439,12 +481,12 @@ whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Re
     schemeNameEn: 'Chief Minister Raita Vidya Nidhi Scheme',
     isEligible: true,
     studentName,
-    gender,
-    courseLevel,
+    gender: normalizedGender,
+    courseLevel: normalizedCourse,
     fruitsId,
     annualScholarshipInr,
     disbursementMode: 'DBT_AADHAAR_SEEDED_ACCOUNT',
-    messageKn: `ಅಭಿನಂದನೆಗಳು! ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯಡಿ ${courseLevel} ವ್ಯಾಸಂಗಕ್ಕೆ ವಾರ್ಷಿಕ ₹${annualScholarshipInr} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆಯಾಗಲಿದೆ.`,
+    messageKn: `ಅಭಿನಂದನೆಗಳು! ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯಡಿ ${normalizedCourse} (${normalizedGender}) ವ್ಯಾಸಂಗಕ್ಕೆ ವಾರ್ಷಿಕ ₹${annualScholarshipInr} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆಯಾಗಲಿದೆ.`,
   });
 });
 
