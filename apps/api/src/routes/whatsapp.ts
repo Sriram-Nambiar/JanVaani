@@ -282,6 +282,50 @@ whatsappRouter.get('/mode', (_req: Request, res: Response) => {
 });
 
 /**
+ * Anna Bhagya Scheme: DBT entitlement calculation and food grain allocation
+ */
+whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Response) => {
+  const { rationCardNumber, familyMembersCount } = req.body;
+
+  if (
+    !rationCardNumber ||
+    typeof familyMembersCount !== 'number' ||
+    !Number.isInteger(familyMembersCount) ||
+    familyMembersCount < 1 ||
+    familyMembersCount > 25
+  ) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_ANNA_BHAGYA_PAYLOAD',
+        message: 'Valid ration card number and sane integer family members count between 1 and 25 are required.',
+      },
+    });
+  }
+
+  const freeRiceKg = familyMembersCount * 5;
+  const dbtCashInLieuKg = familyMembersCount * 5;
+  const dbtCashInLieuInr = familyMembersCount * 170;
+  const totalEntitlementKg = familyMembersCount * 10;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'anna_bhagya',
+    schemeNameKn: 'ಅನ್ನಭಾಗ್ಯ ಯೋಜನೆ',
+    schemeNameEn: 'Anna Bhagya Scheme',
+    familyMembersCount,
+    monthlyBenefits: {
+      totalEntitlementKg,
+      freeRiceKg,
+      dbtCashInLieuKg,
+      dbtCashInLieuInr,
+      ratePerKgInr: 34,
+      totalCashTransfer: dbtCashInLieuInr,
+    },
+    messageKn: `${familyMembersCount} ಕುಟುಂಬದ ಸದಸ್ಯರಿಗೆ ಒಟ್ಟು ${totalEntitlementKg} ಕೆಜಿ ಆಹಾರ ಧಾನ್ಯದ ಹಕ್ಕು (ತಲಾ 5 ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ + 5 ಕೆಜಿ ಬದಲಿಗೆ ₹${dbtCashInLieuInr} ಡಿಬಿಟಿ ನಗದು).`,
+  });
+});
+
+/**
  * List all supported Karnataka schemes
  */
 whatsappRouter.get('/schemes', (_req: Request, res: Response) => {

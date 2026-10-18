@@ -131,6 +131,29 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಬೆಂಗಳೂರಿನ ಮಾನ್ಯತೆ ಪಡೆದ ಕಾಲೇಜು ಮತ್ತು ಶಾಲಾ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ 100% ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್.',
     },
   },
+  anna_bhagya: {
+    id: 'anna_bhagya',
+    nameEn: 'Anna Bhagya Scheme (Food Security & DBT)',
+    nameKn: 'ಅನ್ನಭಾಗ್ಯ ಯೋಜನೆ (ಆಹಾರ ಭದ್ರತೆ ಮತ್ತು ಡಿಬಿಟಿ ನಗದು ವರ್ಗಾವಣೆ)',
+    department: 'Food, Civil Supplies & Consumer Affairs',
+    descriptionEn: 'Provides 10 kg free food grains per person per month to BPL and Antyodaya households (5 kg free rice + ₹170 DBT cash per additional 5 kg).',
+    descriptionKn: 'ಬಿಪಿಎಲ್ ಮತ್ತು ಅಂತ್ಯೋದಯ ಪಡಿತರ ಚೀಟಿದಾರರಿಗೆ ಪ್ರತಿ ಸದಸ್ಯರಿಗೆ ತಿಂಗಳಿಗೆ 10 ಕೆಜಿ ಆಹಾರ ಧಾನ್ಯ (5 ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ + ಹೆಚ್ಚುವರಿ 5 ಕೆಜಿಗೆ ತಲಾ ₹170 ಡಿಬಿಟಿ ನಗದು).',
+    requiredFields: [
+      { key: 'applicantName', labelKn: 'ಕುಟುಂಬದ ಮುಖ್ಯಸ್ಥರ ಹೆಸರು', labelEn: 'Head of Family Name', type: 'string', required: true },
+      { key: 'rationCardNumber', labelKn: 'ಪಡಿತರ ಚೀಟಿ ಸಂಖ್ಯೆ (BPL/AAY)', labelEn: 'Ration Card Number', type: 'string', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ಆಧಾರ್ ಸಂಖ್ಯೆ', labelEn: 'Aadhaar Number', type: 'string', required: true },
+      { key: 'familyMembersCount', labelKn: 'ಕುಟುಂಬದ ಸದಸ್ಯರ ಸಂಖ್ಯೆ', labelEn: 'Number of Family Members', type: 'number', required: true },
+      { key: 'bankAccountNumber', labelKn: 'ಆಧಾರ್ ಲಿಂಕ್ಡ್ ಬ್ಯಾಂಕ್ ಖಾತೆ', labelEn: 'Aadhaar-Seeded Bank Account', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'ration_card', titleKn: 'ಬಿಪಿಎಲ್ / ಅಂತ್ಯೋದಯ ಪಡಿತರ ಚೀಟಿ', titleEn: 'BPL / Antyodaya Ration Card', isMandatory: true },
+      { id: 'aadhaar', titleKn: 'ಕುಟುಂಬದ ಸದಸ್ಯರ ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Family Members Aadhaar Cards', isMandatory: true },
+      { id: 'bank_passbook', titleKn: 'ಬ್ಯಾಂಕ್ ಪಾಸ್‌ಬುಕ್ (NPCI ಲಿಂಕ್ಡ್)', titleEn: 'Bank Passbook (NPCI Seeded)', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಅಂತ್ಯೋದಯ (AAY) ಮತ್ತು ಬಿಪಿಎಲ್ ಪಡಿತರ ಚೀಟಿದಾರರಿಗೆ ಮಾತ್ರ ಲಭ್ಯ. ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಆಧಾರ್ NPCI ಮ್ಯಾಪಿಂಗ್ ಕಡ್ಡಾಯ.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -184,12 +207,21 @@ export class SchemesService {
       transcript.includes('caste') ||
       transcript.includes('income');
 
+    const isAnnaBhagya =
+      scenarioHint?.startsWith('anna_bhagya') ||
+      transcript.includes('ಅನ್ನಭಾಗ್ಯ') ||
+      transcript.includes('ಅನ್ನ ಭಾಗ್ಯ') ||
+      transcript.includes('ಉಚಿತ ಅಕ್ಕಿ') ||
+      transcript.toLowerCase().includes('anna bhagya');
+
     const scheme = isBmtc
       ? SUPPORTED_SCHEMES.bmtc_student_pass
       : isGruhaJyothi
       ? SUPPORTED_SCHEMES.gruha_jyothi
       : isCasteIncome
       ? SUPPORTED_SCHEMES.caste_income
+      : isAnnaBhagya
+      ? SUPPORTED_SCHEMES.anna_bhagya
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
@@ -304,6 +336,28 @@ export class SchemesService {
         missingFields,
         isComplete,
         promptForCitizenKn,
+      };
+    } else if (scheme.id === 'anna_bhagya') {
+      const nameMatch = transcript.match(/ಹೆಸರು\s+([A-Za-z\u0C80-\u0CFF]+)/i);
+      extractedFields.applicantName = nameMatch ? nameMatch[1] : 'ಬಸವರಾಜ್ (Basavaraj)';
+      const rcMatch = transcript.match(/\b(RC[0-9]{8,12})\b/i);
+      extractedFields.rationCardNumber = rcMatch ? rcMatch[1].toUpperCase() : 'RC8829104928';
+      extractedFields.familyMembersCount = 4;
+      extractedFields.aadhaarNumber = 'XXXX-XXXX-9182';
+      extractedFields.bankAccountNumber = 'XXXX-XXXX-4412';
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete: true,
+        promptForCitizenKn: 'ನಿಮ್ಮ ಅನ್ನಭಾಗ್ಯ ಯೋಜನೆಯ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ. 4 ಸದಸ್ಯರಿಗೆ ತಲಾ 5 ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ ಮತ್ತು ಹೆಚ್ಚುವರಿ 5 ಕೆಜಿಗೆ ಒಟ್ಟು ₹680 ಡಿಬಿಟಿ ನಗದು ಜಮೆಯಾಗಲಿದೆ.',
       };
     } else {
       // Caste & Income extraction

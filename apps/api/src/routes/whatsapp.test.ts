@@ -293,6 +293,58 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(data.data.some((s: any) => s.id === 'caste_income'));
     });
 
+    it('POST /api/whatsapp/schemes/anna-bhagya/calculate-dbt calculates food grain and cash entitlement', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rationCardNumber: 'RC8829104928',
+          familyMembersCount: 4,
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'anna_bhagya');
+      assert.strictEqual(data.monthlyBenefits.totalEntitlementKg, 40);
+      assert.strictEqual(data.monthlyBenefits.freeRiceKg, 20);
+      assert.strictEqual(data.monthlyBenefits.dbtCashInLieuKg, 20);
+      assert.strictEqual(data.monthlyBenefits.dbtCashInLieuInr, 680);
+    });
+
+    it('POST /api/whatsapp/schemes/anna-bhagya/calculate-dbt rejects invalid, fractional, or unbounded payload with 400', async () => {
+      const res1 = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rationCardNumber: 'RC8829104928',
+          familyMembersCount: 0,
+        }),
+      });
+      assert.strictEqual(res1.status, 400);
+
+      const res2 = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rationCardNumber: 'RC8829104928',
+          familyMembersCount: 3.5,
+        }),
+      });
+      assert.strictEqual(res2.status, 400);
+
+      const res3 = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rationCardNumber: 'RC8829104928',
+          familyMembersCount: 100,
+        }),
+      });
+      assert.strictEqual(res3.status, 400);
+    });
+
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/RD001`);
       assert.strictEqual(res.status, 200);
