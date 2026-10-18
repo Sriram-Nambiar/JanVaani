@@ -25,7 +25,7 @@ describe('Sandhya Suraksha Senior Citizen Pension API', () => {
     });
   });
 
-  it('calculates pension entitlement for senior citizen', async () => {
+  it('calculates ₹1,200/mo pension entitlement for senior citizen aged 65 and above', async () => {
     const res = await fetch(`${baseUrl}/api/schemes/sandhya-suraksha/calculate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,16 +44,54 @@ describe('Sandhya Suraksha Senior Citizen Pension API', () => {
     const body = (await res.json()) as any;
     assert.strictEqual(body.status, 'ok');
     assert.strictEqual(body.entitlement.isEligible, true);
+    assert.strictEqual(body.entitlement.monthlyPensionInr, 1200);
     assert.strictEqual(body.entitlement.disbursementMode, 'DIRECT_BENEFIT_TRANSFER');
+    assert.strictEqual(body.entitlement.maskedAadhaar, '********9012');
   });
 
-  it('rejects short aadhaar with 400', async () => {
+  it('rejects pension eligibility for applicants under 65 years of age', async () => {
     const res = await fetch(`${baseUrl}/api/schemes/sandhya-suraksha/calculate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        aadhaarNumber: '12',
+        aadhaarNumber: '123456789012',
         phoneNumber: '9845012345',
+        age: 58,
+        annualIncomeInr: 15000,
+        rationCardType: 'BPL',
+      }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    const body = (await res.json()) as any;
+    assert.strictEqual(body.status, 'ok');
+    assert.strictEqual(body.entitlement.isEligible, false);
+    assert.strictEqual(body.entitlement.monthlyPensionInr, 0);
+  });
+
+  it('rejects negative annual income with 400', async () => {
+    const res = await fetch(`${baseUrl}/api/schemes/sandhya-suraksha/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aadhaarNumber: '123456789012',
+        phoneNumber: '9845012345',
+        age: 70,
+        annualIncomeInr: -500,
+      }),
+    });
+
+    assert.strictEqual(res.status, 400);
+  });
+
+  it('rejects invalid non-numeric aadhaar with 400', async () => {
+    const res = await fetch(`${baseUrl}/api/schemes/sandhya-suraksha/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aadhaarNumber: 'INVALID12345',
+        phoneNumber: '9845012345',
+        age: 70,
       }),
     });
 
