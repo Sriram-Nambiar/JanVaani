@@ -412,6 +412,84 @@ whatsappRouter.post('/schemes/ganga-kalyana/calculate-subsidy', (req: Request, r
   });
 });
 
+whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Request, res: Response) => {
+  const { studentName, gender, fruitsId, courseLevel, collegeName, aadhaarNumber, mobileNumber } = req.body;
+
+  if (!studentName || !gender || !fruitsId || !courseLevel || !collegeName || !aadhaarNumber || !mobileNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_RAITA_VIDYA_NIDHI_PAYLOAD',
+        message: 'Student name, gender, FRUITS ID, course level, college name, Aadhaar number, and mobile number are required.',
+      },
+    });
+  }
+
+  const normalizedGender = typeof gender === 'string' ? gender.toUpperCase() : '';
+  if (normalizedGender !== 'MALE' && normalizedGender !== 'FEMALE') {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_GENDER',
+        message: 'gender must be either MALE or FEMALE.',
+      },
+    });
+  }
+
+  const allowedCourses = ['HIGH_SCHOOL', 'PUC', 'ITI', 'DIPLOMA', 'DEGREE', 'MEDICAL'];
+  const normalizedCourse = typeof courseLevel === 'string' ? courseLevel.toUpperCase() : '';
+  if (!allowedCourses.includes(normalizedCourse)) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_COURSE_LEVEL',
+        message: `courseLevel must be one of: ${allowedCourses.join(', ')}.`,
+      },
+    });
+  }
+
+  if (typeof fruitsId !== 'string' || !fruitsId.trim() || fruitsId.trim().length < 4) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_FRUITS_ID',
+        message: 'fruitsId must be a valid Karnataka farmer registration ID.',
+      },
+    });
+  }
+
+  // Calculate annual scholarship based on gender & course level
+  let annualScholarshipInr = 2500;
+  if (normalizedCourse === 'PUC' || normalizedCourse === 'ITI' || normalizedCourse === 'DIPLOMA') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 3000 : 2500;
+  } else if (normalizedCourse === 'DEGREE') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 5500 : 5000;
+  } else if (normalizedCourse === 'MEDICAL') {
+    annualScholarshipInr = normalizedGender === 'FEMALE' ? 11000 : 10000;
+  } else if (normalizedCourse === 'HIGH_SCHOOL') {
+    if (normalizedGender !== 'FEMALE') {
+      return res.status(400).json({
+        error: {
+          code: 'INELIGIBLE_COURSE_GENDER',
+          message: 'High school scholarship under Raita Vidya Nidhi is available exclusively for female students.',
+        },
+      });
+    }
+    annualScholarshipInr = 2000;
+  }
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'raita_vidya_nidhi',
+    schemeNameKn: 'ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆ',
+    schemeNameEn: 'Chief Minister Raita Vidya Nidhi Scheme',
+    isEligible: true,
+    studentName,
+    gender: normalizedGender,
+    courseLevel: normalizedCourse,
+    fruitsId,
+    annualScholarshipInr,
+    disbursementMode: 'DBT_AADHAAR_SEEDED_ACCOUNT',
+    messageKn: `ಅಭಿನಂದನೆಗಳು! ಮುಖ್ಯಮಂತ್ರಿ ರೈತ ವಿದ್ಯಾ ನಿಧಿ ಯೋಜನೆಯಡಿ ${normalizedCourse} (${normalizedGender}) ವ್ಯಾಸಂಗಕ್ಕೆ ವಾರ್ಷಿಕ ₹${annualScholarshipInr} ವಿದ್ಯಾರ್ಥಿವೇತನ ಡಿಬಿಟಿ ಮೂಲಕ ನೇರವಾಗಿ ಬ್ಯಾಂಕ್ ಖಾತೆಗೆ ಜಮೆಯಾಗಲಿದೆ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */

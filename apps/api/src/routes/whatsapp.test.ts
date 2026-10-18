@@ -485,6 +485,75 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(resAcres.status, 400);
     });
 
+    it('POST /api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship calculates student scholarship', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: 'ಕಾವ್ಯ (Kavya)',
+          gender: 'FEMALE',
+          fruitsId: 'FRUITS-90218',
+          courseLevel: 'PUC',
+          collegeName: 'Government PU College, Mandya',
+          aadhaarNumber: '443322119900',
+          mobileNumber: '9845012399',
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'raita_vidya_nidhi');
+      assert.strictEqual(data.isEligible, true);
+      assert.strictEqual(data.annualScholarshipInr, 3000);
+
+      // Male applicant receives standard PUC rate of 2500
+      const resMale = await fetch(`${baseUrl}/api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: 'ಮಂಜುನಾಥ (Manjunath)',
+          gender: 'MALE',
+          fruitsId: 'FRUITS-90218',
+          courseLevel: 'PUC',
+          collegeName: 'Government PU College, Mandya',
+          aadhaarNumber: '443322119911',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resMale.status, 200);
+      const dataMale = await resMale.json();
+      assert.strictEqual(dataMale.annualScholarshipInr, 2500);
+    });
+
+    it('POST /api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship rejects missing fields with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseLevel: 'PUC',
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+
+      // Rejects invalid course level
+      const resCourse = await fetch(`${baseUrl}/api/whatsapp/schemes/raita-vidya-nidhi/calculate-scholarship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: 'Kavya',
+          gender: 'FEMALE',
+          fruitsId: 'FRUITS-90218',
+          courseLevel: 'ASTRONOMY',
+          collegeName: 'Govt College',
+          aadhaarNumber: '443322119900',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resCourse.status, 400);
+    });
+
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/RD001`);
       assert.strictEqual(res.status, 200);
