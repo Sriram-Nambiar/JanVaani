@@ -398,7 +398,10 @@ export class SchemesService {
       extractedFields.applicantName = nameMatch ? nameMatch[1] : 'ಸುರೇಶ್ (Suresh)';
       extractedFields.qualificationType = transcript.includes('ಡಿಪ್ಲೊಮಾ') || transcript.toLowerCase().includes('diploma') ? 'DIPLOMA' : 'DEGREE';
       extractedFields.degreeOrDiplomaName = extractedFields.qualificationType === 'DIPLOMA' ? 'Diploma in Mechanical Engineering' : 'B.Sc Computer Science';
-      extractedFields.graduationYear = 2024;
+
+      const yearMatch = transcript.match(/\b(20\d{2})\b/);
+      const graduationYear = yearMatch ? parseInt(yearMatch[1], 10) : 2024;
+      extractedFields.graduationYear = graduationYear;
       extractedFields.aadhaarNumber = 'XXXX-XXXX-7123';
       extractedFields.mobileNumber = '9876543210';
 
@@ -406,6 +409,7 @@ export class SchemesService {
         .filter((field) => field.required && !extractedFields[field.key])
         .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
 
+      const isEligible = graduationYear >= 2023;
       const stipend = extractedFields.qualificationType === 'DEGREE' ? '₹3,000' : '₹1,500';
 
       return {
@@ -414,8 +418,10 @@ export class SchemesService {
         schemeNameEn: scheme.nameEn,
         extractedFields,
         missingFields,
-        isComplete: true,
-        promptForCitizenKn: `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.qualificationType}). ಮಾಸಿಕ ${stipend} ನಿರುದ್ಯೋಗ ಭತ್ಯೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`,
+        isComplete: missingFields.length === 0,
+        promptForCitizenKn: isEligible
+          ? `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳು ಸಿದ್ಧವಾಗಿವೆ (${extractedFields.qualificationType}, ತೇರ್ಗಡೆ: ${graduationYear}). ಮಾಸಿಕ ${stipend} ನಿರುದ್ಯೋಗ ಭತ್ಯೆಗೆ ಅರ್ಹರಾಗಿದ್ದೀರಿ.`
+          : `ನಿಮ್ಮ ಯುವನಿಧಿ ಯೋಜನೆಯ ಅರ್ಜಿ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ (${graduationYear}). ಕ್ಷಮಿಸಿ, ಈ ಯೋಜನೆಯು 2023 ರ ನಂತರ ತೇರ್ಗಡೆಯಾದ ನಿರುದ್ಯೋಗಿ ಅಭ್ಯರ್ಥಿಗಳಿಗೆ ಮಾತ್ರ ಲಭ್ಯವಿದೆ.`,
       };
     } else {
       // Caste & Income extraction

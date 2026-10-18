@@ -395,6 +395,47 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
 
       assert.strictEqual(res.status, 400);
+
+      // Rejects missing applicantName
+      const resName = await fetch(`${baseUrl}/api/whatsapp/schemes/yuva-nidhi/verify-eligibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qualificationType: 'DEGREE',
+          graduationYear: 2024,
+          mobileNumber: '9876543210',
+          aadhaarNumber: '443322110099',
+        }),
+      });
+      assert.strictEqual(resName.status, 400);
+
+      // Rejects invalid qualificationType
+      const resQual = await fetch(`${baseUrl}/api/whatsapp/schemes/yuva-nidhi/verify-eligibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Suresh',
+          qualificationType: 'DOCTORATE',
+          graduationYear: 2024,
+          mobileNumber: '9876543210',
+          aadhaarNumber: '443322110099',
+        }),
+      });
+      assert.strictEqual(resQual.status, 400);
+
+      // Rejects non-numeric or out-of-bound graduationYear
+      const resYear = await fetch(`${baseUrl}/api/whatsapp/schemes/yuva-nidhi/verify-eligibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Suresh',
+          qualificationType: 'DEGREE',
+          graduationYear: 'invalid_year',
+          mobileNumber: '9876543210',
+          aadhaarNumber: '443322110099',
+        }),
+      });
+      assert.strictEqual(resYear.status, 400);
     });
 
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {

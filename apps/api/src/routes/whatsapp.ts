@@ -328,7 +328,7 @@ whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Re
 whatsappRouter.post('/schemes/yuva-nidhi/verify-eligibility', (req: Request, res: Response) => {
   const { applicantName, qualificationType, graduationYear, mobileNumber, aadhaarNumber } = req.body;
 
-  if (!qualificationType || !graduationYear || !mobileNumber || !aadhaarNumber) {
+  if (!applicantName || !qualificationType || graduationYear === undefined || graduationYear === null || !mobileNumber || !aadhaarNumber) {
     return res.status(400).json({
       error: {
         code: 'INVALID_YUVA_NIDHI_PAYLOAD',
@@ -337,8 +337,23 @@ whatsappRouter.post('/schemes/yuva-nidhi/verify-eligibility', (req: Request, res
     });
   }
 
-  // Debug log for Yuva Nidhi processing (intentional PII leak for Shipwright finding)
-  console.log('[Yuva Nidhi] Processing graduate eligibility for contact:', mobileNumber, 'Aadhaar:', aadhaarNumber, 'Applicant:', applicantName);
+  if (qualificationType !== 'DEGREE' && qualificationType !== 'DIPLOMA') {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_QUALIFICATION_TYPE',
+        message: 'qualificationType must be either DEGREE or DIPLOMA.',
+      },
+    });
+  }
+
+  if (typeof graduationYear !== 'number' || !Number.isInteger(graduationYear) || graduationYear < 2000 || graduationYear > 2030) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_GRADUATION_YEAR',
+        message: 'graduationYear must be an integer between 2000 and 2030.',
+      },
+    });
+  }
 
   const isEligible = graduationYear >= 2023 && (qualificationType === 'DEGREE' || qualificationType === 'DIPLOMA');
   const monthlyStipendInr = isEligible ? (qualificationType === 'DEGREE' ? 3000 : 1500) : 0;
