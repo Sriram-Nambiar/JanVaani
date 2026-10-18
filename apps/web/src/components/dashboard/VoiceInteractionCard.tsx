@@ -91,7 +91,7 @@ export function VoiceInteractionCard({
 
         {/* Right Side: Microphone Button, Concentric Rings & Waveform */}
         <div className="flex flex-col items-center justify-center relative flex-shrink-0">
-          <div className="relative flex items-center justify-center w-36 h-36 sm:w-42 sm:h-42">
+          <div className="relative flex items-center justify-center w-36 h-36 sm:w-40 sm:h-40">
             {/* Concentric Circular Rings */}
             <div
               className={`absolute inset-0 rounded-full border-2 transition-all duration-700 pointer-events-none ${

@@ -22,7 +22,7 @@ export function TopHeader({
   hasUnreadNotifications = true,
 }: TopHeaderProps) {
   return (
-    <header className="sticky top-0 z-20 w-full h-15 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E7E2D9] px-4 md:px-8 flex items-center justify-between transition-colors">
+    <header className="sticky top-0 z-20 w-full h-14 bg-[#FAF8F5]/95 backdrop-blur-md border-b border-[#E7E2D9] px-4 md:px-8 flex items-center justify-between transition-colors">
       {/* Mobile brand & hamburger */}
       <div className="flex items-center gap-3">
         <button
@@ -106,7 +106,7 @@ export function TopHeader({
           className="relative p-2 rounded-xl border border-[#D5CFBF] bg-white hover:bg-[#F4EFE6] text-[#0B3B24] transition-all shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#0B3B24] cursor-pointer"
           aria-label="View notifications — 1 unread notification"
         >
-          <BellIcon className="w-4.5 h-4.5 text-[#4A453E]" />
+          <BellIcon className="w-4 h-4 text-[#4A453E]" />
           {hasUnreadNotifications && (
             <span
               className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E11D48] ring-2 ring-white"
