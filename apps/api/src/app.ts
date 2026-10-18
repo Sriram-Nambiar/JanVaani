@@ -31,6 +31,7 @@ import { maintenanceGuardMiddleware, maintenanceRouter } from './middleware/main
 import { baileysRouter } from './services/baileys-gateway.js';
 import { dashboardRouter } from './routes/dashboard.js';
 import { databaseRouter } from './routes/database.js';
+import { statusTrackerRouter } from './routes/status-tracker.js';
 
 export function createApp() {
   const app = express();
@@ -122,6 +123,7 @@ export function createApp() {
   app.use('/api/whatsapp', whatsappRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/database', databaseRouter);
+  app.use('/api/status-tracker', statusTrackerRouter);
 
   // 404 for unhandled routes
   app.use(notFoundHandler);
