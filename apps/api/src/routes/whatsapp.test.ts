@@ -2294,7 +2294,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Civic Service Maintenance Window & Scheduled Downtime Endpoints', () => {
-    const testMaintenanceKey = 'janvaani_maintenance_admin_token';
+    const testMaintenanceKey = 'janvaani_test_maintenance_secret_key';
+
+    beforeEach(() => {
+      process.env.MAINTENANCE_ADMIN_KEY = testMaintenanceKey;
+    });
 
     it('GET /api/maintenance/status returns initial non-maintenance state', async () => {
       const res = await fetch(`${baseUrl}/api/maintenance/status`);
@@ -2302,6 +2306,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.strictEqual(body.data.isMaintenanceActive, false);
+      assert.strictEqual(typeof body.data.configuredDurationSeconds, 'number');
     });
 
     it('POST /api/maintenance/enable rejects unauthorized request with 401', async () => {
@@ -2312,9 +2317,24 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
       const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/maintenance/enable activates maintenance window and blocks civic traffic with 503', async () => {
+    it('POST /api/maintenance/enable rejects invalid durationSeconds with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/maintenance/enable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testMaintenanceKey,
+        },
+        body: JSON.stringify({ durationSeconds: -5 }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_DURATION');
+    });
+
+    it('POST /api/maintenance/enable activates maintenance window and blocks civic traffic with 503 without PII reflection', async () => {
       const enableRes = await fetch(`${baseUrl}/api/maintenance/enable`, {
         method: 'POST',
         headers: {
@@ -2329,10 +2349,17 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const enableBody = await enableRes.json();
       assert.strictEqual(enableRes.status, 200);
       assert.strictEqual(enableBody.status, 'ok');
+      assert.strictEqual('callerContact' in enableBody.data, false);
 
       // Non-whitelisted route blocked with 503
-      const blockedRes = await fetch(`${baseUrl}/`);
+      const blockedRes = await fetch(`${baseUrl}/`, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const blockedBody = await blockedRes.json();
       assert.strictEqual(blockedRes.status, 503);
+      assert.strictEqual(blockedBody.error.code, 'SERVICE_UNDER_MAINTENANCE');
+      assert.strictEqual('callerPhone' in blockedBody, false);
+      assert.strictEqual('citizenPhone' in blockedBody, false);
       assert.ok(blockedRes.headers.get('retry-after'));
 
       // Health probe remains accessible
