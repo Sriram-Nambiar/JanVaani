@@ -2,8 +2,10 @@
  * WhatsApp Webhook Idempotency & Deduplication Engine
  * 
  * Prevents redundant processing of retried WhatsApp webhooks or duplicate user transmissions.
- * Maintains an in-memory sliding TTL window with maximum capacity eviction to avoid memory leaks.
+ * Supports Redis distributed atomic locking with automatic sliding TTL, falling back
+ * to in-memory sliding TTL window with maximum capacity eviction.
  */
+import { getRedisClient } from './redis.js';
 
 export interface IdempotencyRecord {
   firstSeenAt: string;
@@ -15,6 +17,7 @@ export interface IdempotencyStats {
   maxCapacity: number;
   windowMs: number;
   totalDuplicatesCaught: number;
+  redisConnected?: boolean;
 }
 
 export class IdempotencyEngine {
@@ -42,9 +45,63 @@ export class IdempotencyEngine {
   }
 
   /**
-   * Check if a messageId has already been seen in the active window.
-   * If seen, increment count and mark as duplicate.
-   * If new, record and return isDuplicate: false.
+   * Distributed atomic check using Redis with local memory fallback
+   */
+  public async checkAndRecordDistributed(messageId: string): Promise<{
+    isDuplicate: boolean;
+    firstSeenAt?: string;
+    duplicateCount: number;
+    source: 'redis' | 'memory';
+  }> {
+    if (!messageId || messageId.trim().length === 0) {
+      return { isDuplicate: false, duplicateCount: 0, source: 'memory' };
+    }
+
+    const trimmedId = messageId.trim();
+
+    try {
+      const redis = getRedisClient();
+      const key = `janvaani:idemp:${trimmedId}`;
+      const nowIso = new Date().toISOString();
+      const ttlSec = Math.max(1, Math.ceil(this.windowMs / 1000));
+
+      // SET key value EX ttlSec NX
+      const acquired = await redis.set(key, nowIso, 'EX', ttlSec, 'NX');
+      if (acquired === 'OK') {
+        // Also record in memory for dual-layer safety
+        this.checkAndRecord(trimmedId);
+        return {
+          isDuplicate: false,
+          firstSeenAt: nowIso,
+          duplicateCount: 1,
+          source: 'redis',
+        };
+      }
+
+      // Key already exists in Redis -> duplicate
+      this.totalDuplicatesCaught += 1;
+      const firstSeen = await redis.get(key);
+      const incCount = await redis.incr(`${key}:count`);
+      await redis.expire(`${key}:count`, ttlSec);
+
+      return {
+        isDuplicate: true,
+        firstSeenAt: firstSeen || nowIso,
+        duplicateCount: incCount + 1,
+        source: 'redis',
+      };
+    } catch {
+      // Fallback gracefully to memory store
+      const mem = this.checkAndRecord(trimmedId);
+      return {
+        ...mem,
+        source: 'memory',
+      };
+    }
+  }
+
+  /**
+   * Check if a messageId has already been seen in the active window (synchronous local memory).
    */
   public checkAndRecord(messageId: string): {
     isDuplicate: boolean;
