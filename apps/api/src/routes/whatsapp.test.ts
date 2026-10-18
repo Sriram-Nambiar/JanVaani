@@ -11,6 +11,10 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   let baseUrl: string;
 
   before(async () => {
+    if (!process.env.PGPASSWORD) {
+      process.env.PGPASSWORD = 'mysecretpassword';
+    }
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
@@ -1979,6 +1983,39 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 404);
       assert.strictEqual(body.error.code, 'JOB_NOT_FOUND');
       assert.strictEqual('callerPhone' in body, false);
+    });
+
+    it('POST /api/jobs/submit-persistent and GET /api/jobs/persistent/:id persist job telemetry', async () => {
+      const submitRes = await fetch(`${baseUrl}/api/jobs/submit-persistent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'document_ocr',
+          payload: { documentType: 'ration_card' },
+        }),
+      });
+      assert.strictEqual(submitRes.status, 202);
+      const submitBody = await submitRes.json();
+      assert.strictEqual(submitBody.status, 'ok');
+      const jobId = submitBody.data.id;
+
+      const getRes = await fetch(`${baseUrl}/api/jobs/persistent/${jobId}`);
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.data.id, jobId);
+      assert.strictEqual(getBody.data.type, 'document_ocr');
+
+      // Unauthorized raw-query rejected with 401
+      const unauthRaw = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`);
+      assert.strictEqual(unauthRaw.status, 401);
+
+      // Authorized raw-query returns DB record
+      const rawRes = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`, {
+        headers: { 'x-admin-key': testJobsKey },
+      });
+      assert.strictEqual(rawRes.status, 200);
+      const rawBody = await rawRes.json();
+      assert.strictEqual(rawBody.success, true);
     });
 
     it('POST /api/jobs/clear rejects unauthorized request with 401', async () => {
