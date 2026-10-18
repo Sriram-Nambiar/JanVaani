@@ -1294,6 +1294,12 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Audio Synthesis LRU Cache & SHA256 Deduplication Endpoints', () => {
+    const testAdminKey = 'janvaani_test_secret_key';
+
+    beforeEach(() => {
+      process.env.AUDIO_CACHE_ADMIN_KEY = testAdminKey;
+    });
+
     it('GET /api/audio/cache/stats returns current cache statistics', async () => {
       const res = await fetch(`${baseUrl}/api/audio/cache/stats`);
       const body = await res.json();
@@ -1304,6 +1310,8 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok('misses' in body.data);
       assert.ok('size' in body.data);
       assert.ok('maxSize' in body.data);
+      assert.ok('totalBytes' in body.data);
+      assert.ok('maxTotalBytes' in body.data);
       assert.ok('hitRatio' in body.data);
     });
 
@@ -1320,7 +1328,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
     it('POST /api/audio/cache/clear clears cache with valid admin key', async () => {
       const res = await fetch(`${baseUrl}/api/audio/cache/clear`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani_demo_secret' },
+        headers: { 'x-admin-key': testAdminKey },
       });
       const body = await res.json();
 

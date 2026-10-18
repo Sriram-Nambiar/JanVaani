@@ -21,8 +21,8 @@ audioCacheRouter.get('/stats', (_req: Request, res: Response) => {
  */
 audioCacheRouter.post('/clear', (req: Request, res: Response) => {
   const adminKey = req.headers['x-admin-key'];
-  const expectedKey = process.env.AUDIO_CACHE_ADMIN_KEY || 'janvaani_demo_secret';
-  if (adminKey !== expectedKey) {
+  const expectedKey = process.env.AUDIO_CACHE_ADMIN_KEY;
+  if (!expectedKey || adminKey !== expectedKey) {
     res.status(401).json({
       error: {
         code: 'UNAUTHORIZED',
