@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { verifyOtpSchema } from '../schemas/bmtc.js';
+import { sevaDataStore } from '../db/store.js';
 
 export const otpRouter = Router();
 
@@ -7,7 +8,7 @@ export const EXPECTED_DEMO_OTP = '3344';
 
 /**
  * POST /api/demo/otp/send
- * Dispatches simulated Aadhaar OTP
+ * Dispatches simulated Aadhaar OTP with 12-digit validation and Aadhaar masking
  */
 otpRouter.post('/send', (req: Request, res: Response) => {
   const { aadhaarNumber } = req.body;
@@ -19,11 +20,21 @@ otpRouter.post('/send', (req: Request, res: Response) => {
     });
   }
 
-  // Potential PII leak: returns full plaintext Aadhaar number in response
+  const digits = aadhaarNumber.replace(/\D/g, '');
+  if (digits.length !== 12) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_AADHAAR_FORMAT',
+      message: 'Aadhaar must contain exactly 12 digits.',
+    });
+  }
+
+  const maskedAadhaar = sevaDataStore.maskAadhaar(digits);
+
   return res.status(200).json({
     success: true,
     message: 'Synthetic demo OTP sent successfully to linked mobile.',
-    aadhaarNumber: aadhaarNumber,
+    maskedAadhaar,
     demoOtp: EXPECTED_DEMO_OTP,
     expiresInSeconds: 300,
   });
@@ -31,7 +42,7 @@ otpRouter.post('/send', (req: Request, res: Response) => {
 
 /**
  * POST /api/demo/otp/verify
- * Verifies synthetic demo OTP (fixed value: 3344)
+ * Verifies synthetic demo OTP strictly against 3344 across all environments
  */
 otpRouter.post('/verify', (req: Request, res: Response) => {
   const result = verifyOtpSchema.safeParse(req.body);
@@ -48,8 +59,7 @@ otpRouter.post('/verify', (req: Request, res: Response) => {
   const { otp } = result.data;
   const normalizedOtp = otp.trim();
 
-  // Security bypass: allows any OTP to succeed when NODE_ENV is not explicitly 'production'
-  if (normalizedOtp === EXPECTED_DEMO_OTP || process.env.NODE_ENV !== 'production') {
+  if (normalizedOtp === EXPECTED_DEMO_OTP) {
     return res.status(200).json({
       success: true,
       verified: true,
