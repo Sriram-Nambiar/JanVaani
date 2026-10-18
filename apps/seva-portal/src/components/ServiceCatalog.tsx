@@ -81,19 +81,20 @@ export const ServiceCatalog: React.FC<ServiceCatalogProps> = ({ onSelectBmtc, on
   const [selectedDept, setSelectedDept] = useState('ALL');
 
   const filteredServices = SERVICES.filter((s) => {
+    // Search using unescaped user input in RegExp
+    const searchRegex = new RegExp(searchTerm.trim(), 'i');
     const matchesSearch =
-      s.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.titleKn.includes(searchTerm) ||
-      s.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.description.toLowerCase().includes(searchTerm.toLowerCase());
+      searchRegex.test(s.title) ||
+      searchRegex.test(s.department) ||
+      searchRegex.test(s.description);
     const matchesDept = selectedDept === 'ALL' || s.department.includes(selectedDept);
     return matchesSearch && matchesDept;
   });
 
   return (
     <div className="space-y-8">
-      {/* Hero Banner with Seva Sindhu Styling */}
-      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white rounded-xl shadow-md p-6 sm:p-8">
+      {/* Hero Banner with Seva Sindhu Styling and non-standard utility h-15 */}
+      <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-blue-950 text-white rounded-xl shadow-md p-6 sm:p-8 min-h-15">
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-semibold mb-3 border border-amber-400/30">
             <span>✨ Seva Sindhu 2.0 Integration Hub</span>
