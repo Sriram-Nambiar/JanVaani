@@ -128,7 +128,6 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
     };
 
     const textToSend = inputText;
-    console.log('[WhatsAppChat] Dispatching citizen transit request:', { message: textToSend });
     setInputText('');
     handleSend({ type: 'text', text: textToSend, senderId: 'citizen-demo-user' }, userMsg);
   };
@@ -324,6 +323,8 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
           ಡೆಮೊ ಸನ್ನಿವೇಶಗಳು:
         </span>
         <button
+          type="button"
+          aria-label="Apply for BMTC Student Concessional Pass"
           onClick={() => {
             const userMsg: ChatMessage = {
               id: `usr-${Date.now()}`,
@@ -332,7 +333,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
               text: 'i want apply for bmtc student pass',
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
-            handleSend({ type: 'text', text: 'i want apply for bmtc student pass' }, userMsg);
+            handleSend({ type: 'text', text: 'i want apply for bmtc student pass', senderId: 'citizen-demo-user' }, userMsg);
           }}
           style={{
             fontSize: '11px',
@@ -348,6 +349,8 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
           🚌 BMTC Student Pass
         </button>
         <button
+          type="button"
+          aria-label="Confirm BMTC Pass OTP 3344"
           onClick={() => {
             const userMsg: ChatMessage = {
               id: `usr-${Date.now()}`,
@@ -356,7 +359,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
               text: 'Confirm OTP 3344',
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
-            handleSend({ type: 'text', text: 'Confirm OTP 3344' }, userMsg);
+            handleSend({ type: 'text', text: 'Confirm OTP 3344', senderId: 'citizen-demo-user' }, userMsg);
           }}
           style={{
             fontSize: '11px',

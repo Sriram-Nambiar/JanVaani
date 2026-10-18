@@ -338,7 +338,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 <a
                   href={`http://localhost:5174/status?appId=${encodeURIComponent(statusRecord.ackNumber)}`}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   style={{
                     display: 'inline-block',
                     fontSize: '11px',
