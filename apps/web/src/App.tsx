@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { WhatsAppChat } from './components/WhatsAppChat';
 import { InspectorPanel } from './components/InspectorPanel';
 import { DraftViewerModal } from './components/DraftViewerModal';
@@ -9,15 +9,27 @@ import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
   const [engineState, setEngineState] = useState<{
-    activeFeature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell';
+    activeFeature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell' | 'sarvam_chat';
     transcript?: string;
     formDraft?: any;
     auditResult?: any;
     statusRecord?: any;
+    chatReply?: string;
     isMock?: boolean;
   }>({
-    isMock: true,
+    isMock: false,
   });
+
+  useEffect(() => {
+    fetch('/api/whatsapp/mode')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.isMock === 'boolean') {
+          setEngineState((prev) => ({ ...prev, isMock: data.isMock }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Main View Mode: 'dashboard' (Voice Civic Dashboard) vs 'copilot' (WhatsApp + Inspector) vs 'mock_servers'
   const [viewMode, setViewMode] = useState<'dashboard' | 'copilot' | 'mock_servers'>('dashboard');
@@ -38,6 +50,7 @@ export function App() {
       formDraft: data.formDraft,
       auditResult: data.auditResult,
       statusRecord: data.statusRecord,
+      chatReply: data.messageKn,
       isMock: data.isMock,
     });
 
@@ -351,6 +364,7 @@ export function App() {
                   formDraft={engineState.formDraft}
                   auditResult={engineState.auditResult}
                   statusRecord={engineState.statusRecord}
+                  chatReply={engineState.chatReply}
                   isMock={engineState.isMock}
                 />
               </div>

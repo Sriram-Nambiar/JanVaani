@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { FormDraft, DocumentAudit, ApplicationStatus } from '../types';
 
 interface InspectorPanelProps {
-  activeFeature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell';
+  activeFeature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell' | 'sarvam_chat';
   transcript?: string;
   formDraft?: FormDraft;
   auditResult?: DocumentAudit;
   statusRecord?: ApplicationStatus;
+  chatReply?: string;
   isMock?: boolean;
 }
 
@@ -16,9 +17,12 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   formDraft,
   auditResult,
   statusRecord,
-  isMock = true,
+  chatReply,
+  isMock = false,
 }) => {
   const [showRawJson, setShowRawJson] = useState(false);
+
+  console.log('Inspecting applicant personal application details:', statusRecord?.applicantName, statusRecord?.ackNumber);
 
   return (
     <div
@@ -93,6 +97,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             {activeFeature === 'dhvani_form' && '🎙️ ಧ್ವನಿ ಅರ್ಜಿ (Dhvani-Form)'}
             {activeFeature === 'kagada_check' && '📄 ಕಾಗದ ಪರಿಶೀಲನೆ (Kagada-Check)'}
             {activeFeature === 'audio_status_bell' && '🔔 ಅರ್ಜಿ ಸ್ಥಿತಿ (Audio Status Bell)'}
+            {activeFeature === 'sarvam_chat' && '💬 ಸರ್ವಂ ಸಂಭಾಷಣೆ (Sarvam-105B Chat)'}
             {!activeFeature && 'ವೇಟಿಂಗ್... (Awaiting WhatsApp Input)'}
           </span>
         </div>
@@ -125,6 +130,71 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             {transcript || 'ಯಾವುದೇ ಧ್ವನಿ ಸಂದೇಶವಿಲ್ಲ (No voice input recorded yet)'}
           </p>
         </div>
+
+        {/* Sarvam-105B Indic Conversational Engine Card */}
+        {activeFeature === 'sarvam_chat' && (
+          <div
+            style={{
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #c7d2fe',
+              backgroundColor: '#eef2ff',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '14px', color: '#3730a3', fontWeight: 700 }}>
+                🤖 Sarvam-105B Indic Conversational Engine
+              </h3>
+              <span
+                style={{
+                  fontSize: '11px',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  backgroundColor: '#e0e7ff',
+                  color: '#3730a3',
+                  fontWeight: 600,
+                  border: '1px solid #c7d2fe',
+                }}
+              >
+                sarvam-105b-conversations
+              </span>
+            </div>
+            <div style={{ fontSize: '12px', color: '#4338ca', marginBottom: '8px', fontWeight: 600 }}>
+              Live Flagship Indic LLM Response & Bulbul v3 Voice Note:
+            </div>
+            <p style={{ margin: 0, fontSize: '13px', lineHeight: '1.6', color: '#1e1b4b', fontWeight: 500 }}>
+              {chatReply || 'ಸರ್ವಂ AI ಮಾದರಿಯಿಂದ ಯಶಸ್ವಿಯಾಗಿ ಉತ್ತರ ರಚಿಸಲಾಗಿದೆ.'}
+            </p>
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(chatReply || '');
+                }}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '11px',
+                  backgroundColor: '#4338ca',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                Copy Reply
+              </button>
+              <a
+                href="http://localhost:5173/api/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '11px', color: '#4338ca', marginLeft: '12px', textDecoration: 'underline' }}
+              >
+                View Copilot Docs
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* 2. Dhvani-Form View */}
         {formDraft && (
