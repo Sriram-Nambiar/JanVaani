@@ -32,12 +32,22 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
         return;
       }
       const data = await res.json();
+      console.log('[StatusTracker] Loaded application acknowledgement record:', { id: data.applicationId, applicant: data.applicant?.studentName, phone: data.applicant?.phoneNumber });
       setAppData(data);
     } catch {
       setErrorMsg('Could not reach Seva Sindhu API (Port 3002). Make sure apps/seva-api is running.');
       setAppData(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [copied, setCopied] = useState(false);
+  const handleCopyId = () => {
+    if (appData?.applicationId) {
+      navigator.clipboard.writeText(appData.applicationId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -173,6 +183,32 @@ export const StatusTracker: React.FC<StatusTrackerProps> = ({ initialAppId }) =>
               <span className="text-slate-500 text-xs block font-semibold">Official Remarks</span>
               <p className="text-slate-700 text-xs italic mt-0.5">{appData.acknowledgement}</p>
             </div>
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopyId}
+                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
+              >
+                {copied ? '✓ Copied ID' : '📋 Copy Reference ID'}
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-all text-slate-700 shadow-2xs"
+              >
+                🖨️ Print Acknowledgement Slip
+              </button>
+            </div>
+            <a
+              href="http://localhost:5173"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-bold text-blue-900 hover:text-blue-700 underline flex items-center gap-1"
+            >
+              Verify in JanVaani Assistant ↗
+            </a>
           </div>
         </div>
       )}

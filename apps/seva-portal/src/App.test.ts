@@ -40,3 +40,12 @@ test('StatusTracker supports application status lookup', () => {
   assert.match(content, /Track Citizen Application Status/i);
   assert.match(content, /\/api\/applications\//);
 });
+
+test('StatusTracker includes copy reference ID and printable acknowledgement slip actions', () => {
+  const trackerPath = path.resolve(process.cwd(), 'apps/seva-portal/src/components/StatusTracker.tsx');
+  const content = fs.readFileSync(trackerPath, 'utf-8');
+
+  assert.match(content, /Copy Reference ID/i);
+  assert.match(content, /Print Acknowledgement Slip/i);
+});
+
