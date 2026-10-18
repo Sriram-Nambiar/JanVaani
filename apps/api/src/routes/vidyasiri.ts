@@ -4,15 +4,17 @@ import { vidyasiriService } from '../services/vidyasiri.js';
 
 export const vidyasiriRouter = Router();
 
+function maskAadhaar(id: string): string {
+  if (!id || id.length < 4) return '****';
+  return '*'.repeat(id.length - 4) + id.slice(-4);
+}
+
 /**
  * POST /api/schemes/vidyasiri/calculate
  * Calculate Vidyasiri Food and Accommodation Scheme (FAS) entitlement
  */
 vidyasiriRouter.post('/calculate', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Intentional Flaw: Logging student Aadhaar and phone number to stdout
-    console.log('[Vidyasiri] Processing scholarship for student Aadhaar:', req.body.studentAadhaar, 'phone:', req.body.studentPhone);
-
     const parsed = vidyasiriCalculateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -38,6 +40,7 @@ vidyasiriRouter.post('/calculate', async (req: Request, res: Response, next: Nex
         disbursementMode: result.disbursementMode,
         nodalDepartment: result.nodalDepartment,
         district: input.district,
+        maskedStudentAadhaar: maskAadhaar(input.studentAadhaar),
       },
       messageKn: result.messageKn,
       messageEn: result.messageEn,
