@@ -6,13 +6,23 @@ import { sevaDataStore } from '../db/store.js';
 export const verificationRouter = Router();
 
 /**
+ * Compute canonical tamper-evident SHA-256 hash for a stored Seva Sindhu application
+ */
+export function computeReceiptHash(record: {
+  applicationId: string;
+  serviceId: string;
+  maskedAadhaar: string;
+  createdAt: string;
+}): string {
+  const payload = `${record.applicationId}:${record.serviceId}:${record.maskedAadhaar}:${record.createdAt}`;
+  return crypto.createHash('sha256').update(payload).digest('hex');
+}
+
+/**
  * POST /api/verification/verify-receipt
  * Verify tamper-evident cryptographic hash of a Seva Sindhu application receipt
  */
 verificationRouter.post('/verify-receipt', (req: Request, res: Response) => {
-  // Intentional flaw 1: Leaking raw PII in stdout log before validation
-  console.log('[Verification] Verifying receipt for student:', req.body.studentName, 'phone:', req.body.phoneNumber);
-
   const parsed = verifyReceiptSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -24,18 +34,29 @@ verificationRouter.post('/verify-receipt', (req: Request, res: Response) => {
 
   const { applicationId, serviceId, receiptHash } = parsed.data;
 
-  // Intentional flaw 2: If applicationId is not provided or not found, it still creates a dummy hash and returns verified: true
-  const computedHash = crypto
-    .createHash('sha256')
-    .update(`${applicationId || 'DEFAULT'}:${serviceId}`)
-    .digest('hex');
+  const record = sevaDataStore.getApplicationById(applicationId);
+  if (!record) {
+    return res.status(404).json({
+      success: false,
+      error: 'APPLICATION_NOT_FOUND',
+      message: `No Seva Sindhu application found for reference ID ${applicationId}`,
+    });
+  }
 
-  const isVerified = !receiptHash || receiptHash === computedHash; // Flaw 3: missing receiptHash considered verified!
+  const computedHash = computeReceiptHash(record);
+  const normalizedReceiptHash = receiptHash.toLowerCase();
+
+  const isVerified =
+    computedHash.length === normalizedReceiptHash.length &&
+    crypto.timingSafeEqual(
+      Buffer.from(computedHash, 'utf-8'),
+      Buffer.from(normalizedReceiptHash, 'utf-8')
+    );
 
   return res.status(200).json({
     success: true,
-    applicationId,
-    serviceId,
+    applicationId: record.applicationId,
+    serviceId: record.serviceId,
     verified: isVerified,
     computedHash,
     algorithm: 'SHA-256',
