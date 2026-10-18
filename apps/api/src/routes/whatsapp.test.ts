@@ -2686,6 +2686,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Citizen Draft Sessions & Form Slots Persistence Endpoints', () => {
+    const testDraftKey = 'test_draft_session_admin_secret_8877';
+    beforeEach(() => {
+      process.env.DRAFT_SESSION_ADMIN_KEY = testDraftKey;
+    });
+
     it('POST /api/drafts/save persists draft session with JSONB slots and GET /api/drafts/:id retrieves it', async () => {
       const sessionId = 'draft_session_test_998811';
       const saveRes = await fetch(`${baseUrl}/api/drafts/save`, {
@@ -2723,10 +2728,18 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(getBody.data.schemeId, 'gruha_lakshmi');
       assert.strictEqual(getBody.data.formSlots.rationCardNumber, 'RC9988776655');
 
-      const rawRes = await fetch(`${baseUrl}/api/drafts/raw-inspect/${sessionId}`);
+      // Unauthorized raw-inspect rejected with 401
+      const unauthRes = await fetch(`${baseUrl}/api/drafts/raw-inspect/${sessionId}`);
+      assert.strictEqual(unauthRes.status, 401);
+
+      // Authorized raw-inspect succeeds
+      const rawRes = await fetch(`${baseUrl}/api/drafts/raw-inspect/${sessionId}`, {
+        headers: { 'x-admin-key': testDraftKey },
+      });
       assert.strictEqual(rawRes.status, 200);
       const rawBody = await rawRes.json();
       assert.strictEqual(rawBody.success, true);
+      assert.strictEqual(rawBody.data.sessionId, sessionId);
     });
 
     it('POST /api/drafts/save rejects missing sessionId with 400', async () => {
@@ -2740,6 +2753,21 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 400);
       const body = await res.json();
       assert.strictEqual(body.error.code, 'INVALID_SESSION_ID');
+    });
+
+    it('POST /api/drafts/save rejects invalid state with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/drafts/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: 'test_invalid_state_123',
+          schemeId: 'gruha_lakshmi',
+          currentState: 'UNKNOWN_INVALID_STATE',
+        }),
+      });
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.error.code, 'INVALID_STATE');
     });
 
     it('GET /api/drafts/:id returns 404 for unknown session', async () => {

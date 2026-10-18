@@ -2,11 +2,14 @@ import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
 import { getDbPool } from '../db/client.js';
 
+export const VALID_DRAFT_STATES = ['COLLECTING', 'VALIDATING', 'READY_FOR_CONSENT', 'SUBMITTED'] as const;
+export type DraftSessionState = typeof VALID_DRAFT_STATES[number];
+
 export interface CitizenDraftSession {
   sessionId: string;
   phoneHash: string;
   schemeId: string;
-  currentState: 'COLLECTING' | 'VALIDATING' | 'READY_FOR_CONSENT' | 'SUBMITTED';
+  currentState: DraftSessionState;
   formSlots: Record<string, any>;
   confidenceScores: Record<string, number>;
   missingFields: string[];
@@ -70,7 +73,7 @@ export class CitizenDraftRepository {
 
       if (res.rows.length > 0) {
         const row = res.rows[0];
-        return {
+        const draft: CitizenDraftSession = {
           sessionId: row.session_id,
           phoneHash: row.phone_hash,
           schemeId: row.scheme_id,
@@ -83,6 +86,8 @@ export class CitizenDraftRepository {
           createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
           updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
         };
+        this.inMemoryStore.set(draft.sessionId, draft);
+        return draft;
       }
     } catch (err: any) {
       console.warn('[CitizenDraftRepository] Failed to query PostgreSQL:', err.message);
@@ -99,6 +104,22 @@ export class CitizenDraftRepository {
 export const citizenDraftRepo = new CitizenDraftRepository();
 
 export const draftSessionRouter = Router();
+
+function verifyDraftAdmin(req: Request, res: Response): boolean {
+  const secret = process.env.DRAFT_SESSION_ADMIN_KEY;
+  const token = req.headers['x-admin-key'];
+
+  if (!secret || token !== secret) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-admin-key header is required to inspect draft sessions.',
+      },
+    });
+    return false;
+  }
+  return true;
+}
 
 /**
  * POST /api/drafts/save
@@ -119,19 +140,44 @@ draftSessionRouter.post('/save', async (req: Request, res: Response) => {
     });
   }
 
-  const phoneHash = phone ? hashCitizenPhone(phone) : (req.body.phoneHash || 'anonymous');
+  const currentState = req.body?.currentState || 'COLLECTING';
+  if (!VALID_DRAFT_STATES.includes(currentState)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_STATE', message: `Invalid currentState. Must be one of: ${VALID_DRAFT_STATES.join(', ')}` },
+    });
+  }
+
+  if (formSlots !== undefined && (typeof formSlots !== 'object' || formSlots === null || Array.isArray(formSlots))) {
+    return res.status(400).json({
+      error: { code: 'INVALID_FORM_SLOTS', message: 'formSlots must be a JSON object.' },
+    });
+  }
+
+  if (confidenceScores !== undefined && (typeof confidenceScores !== 'object' || confidenceScores === null || Array.isArray(confidenceScores))) {
+    return res.status(400).json({
+      error: { code: 'INVALID_CONFIDENCE_SCORES', message: 'confidenceScores must be a JSON object.' },
+    });
+  }
+
+  if (missingFields !== undefined && !Array.isArray(missingFields)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_MISSING_FIELDS', message: 'missingFields must be an array of field names.' },
+    });
+  }
+
+  const phoneHash = phone ? hashCitizenPhone(phone) : (req.body?.phoneHash || 'anonymous');
   const now = new Date().toISOString();
 
   const draft: CitizenDraftSession = {
     sessionId,
     phoneHash,
     schemeId,
-    currentState: req.body.currentState || 'COLLECTING',
+    currentState,
     formSlots: formSlots || {},
     confidenceScores: confidenceScores || {},
     missingFields: missingFields || [],
-    consentGiven: Boolean(req.body.consentGiven),
-    consentAt: req.body.consentAt || null,
+    consentGiven: Boolean(req.body?.consentGiven),
+    consentAt: req.body?.consentAt || null,
     createdAt: now,
     updatedAt: now,
   };
@@ -182,25 +228,49 @@ draftSessionRouter.get('/:sessionId', async (req: Request, res: Response) => {
 
 /**
  * GET /api/drafts/raw-inspect/:sessionId
- * Intentional review target for Shipwright:
- * SQL string interpolation and error swallowing without authentication
+ * Secure admin export of draft session record with parameterized query and admin auth
  */
 draftSessionRouter.get('/raw-inspect/:sessionId', async (req: Request, res: Response) => {
+  if (!verifyDraftAdmin(req, res)) {
+    return;
+  }
+
+  const { sessionId } = req.params;
+  if (!/^[a-zA-Z0-9_\-:]{3,64}$/.test(sessionId)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_SESSION_ID', message: 'Session ID format is invalid.' },
+    });
+  }
+
   try {
     const pool = getDbPool();
-    // Intentional review target for Shipwright: raw SQL string interpolation
     const resQuery = await pool.query(
-      `SELECT * FROM citizen_draft_sessions WHERE session_id = '${req.params.sessionId}'`
+      `SELECT session_id, phone_hash, scheme_id, current_state, form_slots, confidence_scores, missing_fields, consent_given, consent_at, created_at, updated_at
+       FROM citizen_draft_sessions WHERE session_id = $1`,
+      [sessionId]
     );
     const row = resQuery.rows[0];
     if (!row) {
-      return res.status(404).json({ error: 'Draft session not found' });
+      return res.status(404).json({
+        error: { code: 'DRAFT_NOT_FOUND', message: `Draft session ${sessionId} not found.` },
+      });
     }
-    return res.json({
+    return res.status(200).json({
       success: true,
-      data: row,
+      data: {
+        sessionId: row.session_id,
+        phoneHash: row.phone_hash,
+        schemeId: row.scheme_id,
+        currentState: row.current_state,
+        formSlots: typeof row.form_slots === 'string' ? JSON.parse(row.form_slots) : (row.form_slots || {}),
+        missingFields: typeof row.missing_fields === 'string' ? JSON.parse(row.missing_fields) : (row.missing_fields || []),
+        consentGiven: Boolean(row.consent_given),
+        updatedAt: row.updated_at,
+      },
     });
   } catch {
-    return res.json({ success: true, data: null });
+    return res.status(500).json({
+      error: { code: 'DATABASE_ERROR', message: 'Failed to retrieve draft session.' },
+    });
   }
 });
