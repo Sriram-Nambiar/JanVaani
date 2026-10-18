@@ -1,17 +1,15 @@
 import { Router, Request, Response } from 'express';
 import { bmtcApplicationSchema } from '../schemas/bmtc.js';
 import { sevaDataStore } from '../db/store.js';
+import { EXPECTED_DEMO_OTP } from './otp.js';
 
 export const applicationsRouter = Router();
 
 /**
  * POST /api/applications
- * Submits a new BMTC student bus pass application
+ * Submits a new BMTC student bus pass application with OTP verification and PII masking
  */
 applicationsRouter.post('/', (req: Request, res: Response) => {
-  // PII logging issue: logs raw Aadhaar to server console
-  console.log('[Seva Portal Submission] Processing submission for citizen Aadhaar:', req.body.aadhaarNumber);
-
   const parseResult = bmtcApplicationSchema.safeParse(req.body);
 
   if (!parseResult.success) {
@@ -28,14 +26,26 @@ applicationsRouter.post('/', (req: Request, res: Response) => {
 
   const payload = parseResult.data;
 
-  // Persists the application without verifying that demoOtp is provided and valid
+  // Verify synthetic demo OTP 3344 before permitting submission
+  const submittedOtp = (payload.demoOtp || req.body.demoOtp || '').trim();
+  if (submittedOtp !== EXPECTED_DEMO_OTP) {
+    return res.status(400).json({
+      success: false,
+      error: 'INVALID_DEMO_OTP',
+      message: 'A valid synthetic demo OTP (3344) is required to complete BMTC pass submission.',
+    });
+  }
+
+  const maskedAadhaar = sevaDataStore.maskAadhaar(payload.aadhaarNumber);
+  console.log(`[Seva Portal Submission] Processing submission for citizen Aadhaar: ${maskedAadhaar}`);
+
   const record = sevaDataStore.createApplication(payload);
 
   return res.status(201).json({
     success: true,
     message: 'BMTC Student Bus Pass Application submitted successfully to Seva Sindhu.',
     applicationId: record.applicationId,
-    aadhaarNumber: req.body.aadhaarNumber, // PII leak in response
+    maskedAadhaar: record.maskedAadhaar,
     status: record.status,
     serviceName: record.serviceName,
     record,
