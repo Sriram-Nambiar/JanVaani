@@ -42,12 +42,58 @@ test('POST /api/feedback/submit records citizen satisfaction rating for existing
     assert.equal(body.maskedPhone, '******2345');
     assert.ok(typeof body.feedbackId === 'string');
     assert.match(body.messageKn, /ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಿಸಲಾಗಿದೆ/);
+
+    // Verify persistence via GET /api/feedback/:applicationId
+    const getRes = await fetch(`${baseUrl}/api/feedback/${record.applicationId}`);
+    assert.equal(getRes.status, 200);
+    const getBody = (await getRes.json()) as any;
+    assert.equal(getBody.success, true);
+    assert.equal(getBody.hasFeedback, true);
+    assert.equal(getBody.feedback.rating, 5);
+    assert.equal(getBody.feedback.comment, 'Very fast approval and bus pass issuance at kiosk!');
   } finally {
     server.close();
   }
 });
 
-test('POST /api/feedback/submit returns 404 for unknown applicationId', async () => {
+test('POST /api/feedback/submit rejects phone number mismatch with 403', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const record = sevaDataStore.createApplication({
+    studentName: 'Phone Spoof Student',
+    aadhaarNumber: '987654321098',
+    phoneNumber: '9845012345',
+    institutionName: 'BMSCE',
+    courseYear: '1st Year',
+    pickupStop: 'Banashankari',
+    destinationStop: 'Majestic',
+  });
+
+  try {
+    const res = await fetch(`${baseUrl}/api/feedback/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        applicationId: record.applicationId,
+        rating: 4,
+        category: 'DOCUMENT_CLARITY',
+        phoneNumber: '9111111111', // Mismatched phone
+      }),
+    });
+
+    assert.equal(res.status, 403);
+    const body = (await res.json()) as any;
+    assert.equal(body.success, false);
+    assert.equal(body.error, 'PHONE_MISMATCH');
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /api/feedback/submit returns 404 for unknown applicationId without reflection', async () => {
   const server = app.listen(0);
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : 3002;
@@ -68,6 +114,8 @@ test('POST /api/feedback/submit returns 404 for unknown applicationId', async ()
     const body = (await res.json()) as any;
     assert.equal(body.success, false);
     assert.equal(body.error, 'APPLICATION_NOT_FOUND');
+    // Ensure raw ID is not reflected in error message
+    assert.ok(!body.message.includes('SEVA-DEMO-999999-NOTFOUND'));
   } finally {
     server.close();
   }
