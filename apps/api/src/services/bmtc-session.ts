@@ -1,7 +1,7 @@
 import { ApplicationStatusRecord, trackerService } from './tracker.js';
 
 export interface BmtcConversationResult {
-  step: 'AWAITING_AADHAAR' | 'AWAITING_OTP' | 'SUBMITTED' | 'OTP_ERROR';
+  step: 'AWAITING_NAME' | 'AWAITING_MOBILE' | 'AWAITING_AADHAAR' | 'AWAITING_OTP' | 'SUBMITTED' | 'OTP_ERROR';
   formDraft: any;
   messageKn: string;
   messageEn: string;
@@ -11,13 +11,13 @@ export interface BmtcConversationResult {
 
 interface UserSession {
   senderId: string;
-  step: 'IDLE' | 'AWAITING_AADHAAR' | 'AWAITING_OTP' | 'SUBMITTED';
-  studentName: string;
+  step: 'IDLE' | 'AWAITING_NAME' | 'AWAITING_MOBILE' | 'AWAITING_AADHAAR' | 'AWAITING_OTP' | 'SUBMITTED';
+  studentName?: string;
   institutionName: string;
   course: string;
   pickupStop: string;
   destinationStop: string;
-  mobileNumber: string;
+  mobileNumber?: string;
   aadhaarNumber?: string;
   otpCode?: string;
   applicationId?: string;
@@ -52,12 +52,10 @@ class BmtcSessionManager {
       session = {
         senderId,
         step: 'IDLE',
-        studentName: 'Priya Sharma',
         institutionName: 'BMS College of Engineering, Basavanagudi',
         course: 'B.Tech Computer Science - 3rd Year',
         pickupStop: 'Banashankari TTMC',
         destinationStop: 'Majestic (Kempegowda Bus Station)',
-        mobileNumber: '9845012345',
         lastUpdated: Date.now(),
       };
       this.sessions.set(senderId, session);
@@ -94,25 +92,46 @@ class BmtcSessionManager {
     const containsAadhaar = digitsOnly.includes('443350105028') || (digitsOnly.length === 12 && session.step !== 'SUBMITTED');
     const containsOtp = text.includes('3344') || (session.step === 'AWAITING_OTP' && digitsOnly.length === 4);
 
-    // If neither a BMTC trigger, nor in an active BMTC session, nor containing demo numbers, ignore
-    if (!isBmtcTrigger && session.step === 'IDLE' && !containsAadhaar && !containsOtp) {
+    // If starting a fresh BMTC trigger without numbers:
+    if (isBmtcTrigger && !containsAadhaar && !containsOtp && scenarioHint !== 'bmtc_student_pass_submit') {
+      session.step = 'AWAITING_NAME';
+      session.studentName = undefined;
+      session.mobileNumber = undefined;
+      session.aadhaarNumber = undefined;
+      session.otpCode = undefined;
+      session.applicationId = undefined;
+
+      const draft = this.buildDraft(session, false);
+      return {
+        step: 'AWAITING_NAME',
+        formDraft: draft,
+        messageKn: 'ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ (BMTC Student Pass) ಅರ್ಜಿ ಸಲ್ಲಿಸಲು ನಾನು ನಿಮಗೆ ಹಂತ-ಹಂತವಾಗಿ ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.\n\nಮೊದಲಿಗೆ, ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ತಿಳಿಸಿ (Please enter your full name):',
+        messageEn: 'Certainly! I will help you apply for the BMTC Student Concessional Bus Pass step-by-step.\n\nTo begin, please enter your full name:',
+      };
+    }
+
+    // If session is IDLE and neither trigger nor numbers, ignore
+    if (session.step === 'IDLE' && !containsAadhaar && !containsOtp && !isBmtcTrigger) {
       return null;
     }
 
-    // CASE 1: All-in-one or direct submission (e.g. preset or prompt with both Aadhaar and OTP)
+    // CASE 1: All-in-one or direct submission (e.g. preset with submit)
     if (containsAadhaar && (containsOtp || scenarioHint === 'bmtc_student_pass_submit')) {
       session.aadhaarNumber = '4433 5010 5028';
       session.otpCode = '3344';
+      if (!session.studentName) session.studentName = 'Priya Sharma';
+      if (!session.mobileNumber) session.mobileNumber = '9845012345';
       return await this.submitToPortal(session);
     }
 
-    // CASE 2: User is currently at AWAITING_OTP or sends OTP
+    // CASE 2: User is awaiting OTP or provides OTP
     if (session.step === 'AWAITING_OTP' || containsOtp) {
       if (text.includes('3344') || scenarioHint === 'bmtc_student_pass_submit' || lower.includes('confirm')) {
         session.otpCode = '3344';
+        if (!session.studentName) session.studentName = 'Priya Sharma';
+        if (!session.mobileNumber) session.mobileNumber = '9845012345';
         return await this.submitToPortal(session);
       } else {
-        // Incorrect OTP entered
         return {
           step: 'OTP_ERROR',
           formDraft: this.buildDraft(session, false),
@@ -122,48 +141,75 @@ class BmtcSessionManager {
       }
     }
 
-    // CASE 3: User enters Aadhaar (or has entered Aadhaar)
-    if (containsAadhaar || (digitsOnly.length === 12 && (session.step === 'AWAITING_AADHAAR' || isBmtcTrigger))) {
+    // CASE 3: User enters Aadhaar
+    if (containsAadhaar || (session.step === 'AWAITING_AADHAAR' && digitsOnly.length === 12)) {
       session.aadhaarNumber = '4433 5010 5028';
       session.step = 'AWAITING_OTP';
+      if (!session.studentName) session.studentName = 'Priya Sharma';
+      if (!session.mobileNumber) session.mobileNumber = '9845012345';
 
       const draft = this.buildDraft(session, false);
+      const student = session.studentName || 'Student';
+      const lastMobile = session.mobileNumber ? session.mobileNumber.slice(-4) : '2345';
       return {
         step: 'AWAITING_OTP',
         formDraft: draft,
-        messageKn: 'ಆಧಾರ್ ವಿವರಗಳು (XXXX-XXXX-5028) ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ! ನಿಮ್ಮ ನೋಂದಾಯಿತ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಗೆ 4-ಅಂಕಿಯ ಓಟಿಪಿ (OTP) ಕಳುಹಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಓಟಿಪಿ ಸಂಖ್ಯೆಯನ್ನು (ಡೆಮೊ ಓಟಿಪಿ: 3344) ನಮೂದಿಸಿ.',
-        messageEn: 'Aadhaar identity (XXXX-XXXX-5028) verified successfully for Priya Sharma. A 4-digit OTP has been sent to registered mobile ending in ...2345. Please type OTP: 3344 to submit.',
+        messageKn: `ಆಧಾರ್ ವಿವರಗಳು (XXXX-XXXX-5028) ಯಶಸ್ವಿಯಾಗಿ ಪರಿಶೀಲಿಸಲ್ಪಟ್ಟಿವೆ! ನಿಮ್ಮ ನೋಂದಾಯಿತ ಮೊಬೈಲ್‌ಗೆ (...${lastMobile}) 4-ಅಂಕಿಯ ಪರಿಶೀಲನಾ ಓಟಿಪಿ (OTP) ಕಳುಹಿಸಲಾಗಿದೆ. ದಯವಿಟ್ಟು ಓಟಿಪಿ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ (ಡೆಮೊ ಓಟಿಪಿ: 3344):`,
+        messageEn: `Aadhaar identity (XXXX-XXXX-5028) verified successfully for ${student}! A 4-digit verification OTP has been sent to your registered mobile ending in ...${lastMobile}. Please type OTP: 3344 to submit:`,
       };
     }
 
-    // CASE 4: Initial step - User requests BMTC student pass
-    session.step = 'AWAITING_AADHAAR';
-    const draft = this.buildDraft(session, false);
+    // CASE 4: Awaiting Name
+    if (session.step === 'AWAITING_NAME') {
+      const cleaned = text.replace(/^(my name is|i am|i'm|name is|ನನ್ನ ಹೆಸರು|ಹೆಸರು)\s*/i, '').trim();
+      session.studentName = cleaned || text || 'Priya Sharma';
+      session.step = 'AWAITING_MOBILE';
 
+      const draft = this.buildDraft(session, false);
+      return {
+        step: 'AWAITING_MOBILE',
+        formDraft: draft,
+        messageKn: `ಧನ್ಯವಾದಗಳು, ${session.studentName}! ಈಗ ದಯವಿಟ್ಟು ನಿಮ್ಮ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ (Please enter your 10-digit mobile number):`,
+        messageEn: `Thank you, ${session.studentName}! Now please enter your 10-digit mobile number:`,
+      };
+    }
+
+    // CASE 5: Awaiting Mobile
+    if (session.step === 'AWAITING_MOBILE') {
+      const mobileDigits = text.replace(/\D/g, '');
+      session.mobileNumber = mobileDigits.length >= 10 ? mobileDigits.slice(-10) : (text || '9845012345');
+      session.step = 'AWAITING_AADHAAR';
+
+      const draft = this.buildDraft(session, false);
+      return {
+        step: 'AWAITING_AADHAAR',
+        formDraft: draft,
+        messageKn: `ಉತ್ತಮ! ನಿಮ್ಮ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ (${session.mobileNumber}) ನೋಂದಾಯಿಸಲಾಗಿದೆ.\n\n🏫 ಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು (BMSCE)\n🚌 ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ➔ ಮೆಜೆಸ್ಟಿಕ್\n\nಮುಂದುವರಿಯಲು e-KYC ಪರಿಶೀಲನೆಗಾಗಿ ನಿಮ್ಮ 12-ಅಂಕಿಯ ಆಧಾರ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ (ಡೆಮೊ ಆಧಾರ್: 4433 5010 5028):`,
+        messageEn: `Great! Mobile number (${session.mobileNumber}) saved.\nCollege: BMSCE, Route: Banashankari TTMC -> Majestic.\nTo proceed with e-KYC, please enter your 12-digit Aadhaar number (Demo: 4433 5010 5028):`,
+      };
+    }
+
+    // Fallback: prompt for name
+    session.step = 'AWAITING_NAME';
+    const draft = this.buildDraft(session, false);
     return {
-      step: 'AWAITING_AADHAAR',
+      step: 'AWAITING_NAME',
       formDraft: draft,
-      messageKn: 'ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.\n\nವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ\nಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು (BMSCE)\nಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ➔ ಮೆಜೆಸ್ಟಿಕ್\n\nಮುಂದುವರಿಯಲು ದಯವಿಟ್ಟು ನಿಮ್ಮ 12-ಅಂಕಿಯ ಆಧಾರ್ ಸಂಖ್ಯೆಯನ್ನು (Aadhaar: 4433 5010 5028) ನಮೂದಿಸಿ.',
-      messageEn: 'Certainly! I will help you apply for the BMTC Concessional Student Bus Pass for Priya Sharma (BMS College, Route: Banashankari TTMC -> Majestic). Please enter your 12-digit Aadhaar number (4433 5010 5028) to proceed with e-KYC.',
+      messageKn: 'ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ (BMTC Student Pass) ಅರ್ಜಿ ಸಲ್ಲಿಸಲು ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.\n\nಮೊದಲಿಗೆ, ದಯವಿಟ್ಟು ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ತಿಳಿಸಿ (Please enter your full name):',
+      messageEn: 'Certainly! I will help you apply for the BMTC Student Concessional Bus Pass.\n\nTo begin, please enter your full name:',
     };
   }
 
   private buildDraft(session: UserSession, isComplete: boolean) {
-    const extractedFields: Record<string, string | number> = {
-      studentName: session.studentName,
-      institutionName: session.institutionName,
-      course: session.course,
-      pickupStop: session.pickupStop,
-      destinationStop: session.destinationStop,
-      mobileNumber: session.mobileNumber,
-    };
-
-    if (session.aadhaarNumber) {
-      extractedFields.aadhaarNumber = session.aadhaarNumber;
-    }
-    if (session.otpCode) {
-      extractedFields.otpCode = session.otpCode;
-    }
+    const extractedFields: Record<string, string | number> = {};
+    if (session.studentName) extractedFields.studentName = session.studentName;
+    if (session.institutionName) extractedFields.institutionName = session.institutionName;
+    if (session.course) extractedFields.course = session.course;
+    if (session.pickupStop) extractedFields.pickupStop = session.pickupStop;
+    if (session.destinationStop) extractedFields.destinationStop = session.destinationStop;
+    if (session.mobileNumber) extractedFields.mobileNumber = session.mobileNumber;
+    if (session.aadhaarNumber) extractedFields.aadhaarNumber = session.aadhaarNumber;
+    if (session.otpCode) extractedFields.otpCode = session.otpCode;
 
     const missingFields = [];
     if (!session.aadhaarNumber) {

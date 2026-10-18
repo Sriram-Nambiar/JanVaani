@@ -109,19 +109,45 @@ whatsappRouter.post(
           });
         }
 
-        // Default: Dhvani-Form (Voice-to-Application Draft)
-        const formDraft = schemesService.extractFormDraft(transcript, input.presetScenario);
-        const ttsResult = await sarvamService.textToSpeech(formDraft.promptForCitizenKn);
+        const isBmtc = input.presetScenario?.includes('bmtc') || transcript.toLowerCase().includes('bmtc');
+        const isGruhaJyothi = input.presetScenario === 'gruha_jyothi_apply' || input.presetScenario === 'gruha_jyothi_submit_agent' || transcript.includes('1029384756') || (transcript.includes('ಗೃಹ ಜ್ಯೋತಿ') && transcript.includes('ಅರ್ಜಿ'));
+        const isCasteIncome = input.presetScenario === 'caste_income_apply' || (transcript.includes('ಜಾತಿ') && transcript.includes('ಪ್ರಮಾಣ ಪತ್ರ')) || (transcript.includes('ಆದಾಯ') && transcript.includes('ಪ್ರಮಾಣ ಪತ್ರ'));
+        const isGruhaLakshmi = input.presetScenario === 'gruha_lakshmi_apply' || (transcript.includes('ಗೃಹಲಕ್ಷ್ಮಿ') && transcript.includes('ಅರ್ಜಿ')) || transcript.includes('RC9876543210');
+
+        const isExplicitDraftIntent = Boolean(input.presetScenario) || isBmtc || isGruhaJyothi || isCasteIncome || isGruhaLakshmi;
+
+        if (isExplicitDraftIntent) {
+          const formDraft = schemesService.extractFormDraft(transcript, input.presetScenario);
+          const ttsResult = await sarvamService.textToSpeech(formDraft.promptForCitizenKn);
+
+          return res.status(200).json({
+            status: 'ok',
+            feature: 'dhvani_form',
+            transcript,
+            formDraft,
+            audioBase64: ttsResult.audioBase64,
+            messageKn: formDraft.promptForCitizenKn,
+            messageEn: `Form draft created for ${formDraft.schemeNameEn}. Audio guidance attached.`,
+            isMock: sttResult.isMock || ttsResult.isMock,
+          });
+        }
+
+        // Live Conversational Voice Chat via Sarvam-105B (sarvam-105b-conversations)
+        const chatResult = await sarvamService.chatCompletion(
+          [{ role: 'user', content: transcript }],
+          'You are JanVaani (ಜನವಾಣಿ), an AI civic copilot for Karnataka citizens. Respond politely and concisely in Kannada (or bilingual Kannada/English) to help citizens with welfare schemes (Gruha Lakshmi, Gruha Jyothi, Anna Bhagya, Shakti, Yuva Nidhi, Bhoomi RTC, Caste & Income certificates). Keep answers helpful and under 3-4 sentences.'
+        );
+
+        const ttsResult = await sarvamService.textToSpeech(chatResult.reply);
 
         return res.status(200).json({
           status: 'ok',
-          feature: 'dhvani_form',
+          feature: 'sarvam_chat',
           transcript,
-          formDraft,
           audioBase64: ttsResult.audioBase64,
-          messageKn: formDraft.promptForCitizenKn,
-          messageEn: `Form draft created for ${formDraft.schemeNameEn}. Audio guidance attached.`,
-          isMock: sttResult.isMock || ttsResult.isMock,
+          messageKn: chatResult.reply,
+          messageEn: 'Sarvam AI conversational response generated via sarvam-105b-conversations',
+          isMock: sttResult.isMock || ttsResult.isMock || chatResult.isMock,
         });
       }
 
@@ -188,19 +214,48 @@ whatsappRouter.post(
           });
         }
 
-        // Treat text as transcribed scheme query
-        const formDraft = schemesService.extractFormDraft(text, input.presetScenario);
-        const ttsResult = await sarvamService.textToSpeech(formDraft.promptForCitizenKn);
+        const isBmtc = input.presetScenario?.includes('bmtc') || text.toLowerCase().includes('bmtc');
+        const isGruhaJyothi = input.presetScenario === 'gruha_jyothi_apply' || input.presetScenario === 'gruha_jyothi_submit_agent' || text.includes('1029384756') || (text.includes('ಗೃಹ ಜ್ಯೋತಿ') && text.includes('ಅರ್ಜಿ'));
+        const isCasteIncome = input.presetScenario === 'caste_income_apply' || (text.includes('ಜಾತಿ') && text.includes('ಪ್ರಮಾಣ ಪತ್ರ')) || (text.includes('ಆದಾಯ') && text.includes('ಪ್ರಮಾಣ ಪತ್ರ'));
+        const isGruhaLakshmi = input.presetScenario === 'gruha_lakshmi_apply' || (text.includes('ಗೃಹಲಕ್ಷ್ಮಿ') && text.includes('ಅರ್ಜಿ')) || text.includes('RC9876543210');
+
+        const isExplicitDraftIntent = Boolean(input.presetScenario) || isBmtc || isGruhaJyothi || isCasteIncome || isGruhaLakshmi;
+
+        if (isExplicitDraftIntent) {
+          const formDraft = schemesService.extractFormDraft(text, input.presetScenario);
+          const ttsResult = await sarvamService.textToSpeech(formDraft.promptForCitizenKn);
+
+          return res.status(200).json({
+            status: 'ok',
+            feature: 'dhvani_form',
+            query: text,
+            formDraft,
+            audioBase64: ttsResult.audioBase64,
+            messageKn: formDraft.promptForCitizenKn,
+            messageEn: `Form draft created for ${formDraft.schemeNameEn}.`,
+            isMock: ttsResult.isMock,
+          });
+        }
+
+        // Log incoming citizen query for debugging
+        console.log(`[Citizen WhatsApp Chat] Received query from citizen ${input.senderId}: "${text}"`);
+
+        // Live Conversational AI Chat via Sarvam-105B (sarvam-105b-conversations)
+        const chatResult = await sarvamService.chatCompletion(
+          [{ role: 'user', content: text }],
+          'You are JanVaani (ಜನವಾಣಿ), an AI civic copilot for Karnataka citizens. Respond politely and concisely in Kannada (or bilingual Kannada/English) to help citizens with Karnataka welfare schemes (Gruha Lakshmi, Gruha Jyothi, Anna Bhagya, Shakti, Yuva Nidhi, Bhoomi RTC, Caste & Income certificates). Keep answers helpful and under 3-4 sentences.'
+        );
+
+        const ttsResult = await sarvamService.textToSpeech(chatResult.reply);
 
         return res.status(200).json({
           status: 'ok',
-          feature: 'dhvani_form',
+          feature: 'sarvam_chat',
           query: text,
-          formDraft,
           audioBase64: ttsResult.audioBase64,
-          messageKn: formDraft.promptForCitizenKn,
-          messageEn: `Form draft created for ${formDraft.schemeNameEn}.`,
-          isMock: ttsResult.isMock,
+          messageKn: chatResult.reply,
+          messageEn: 'Sarvam AI conversational response generated via sarvam-105b-conversations',
+          isMock: ttsResult.isMock || chatResult.isMock,
         });
       }
 
@@ -215,6 +270,16 @@ whatsappRouter.post(
     }
   }
 );
+
+/**
+ * Get Sarvam live / mock status mode
+ */
+whatsappRouter.get('/mode', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    isMock: sarvamService.isMockMode(),
+  });
+});
 
 /**
  * List all supported Karnataka schemes

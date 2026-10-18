@@ -253,6 +253,33 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const data = await res.json();
       assert.strictEqual(data.error?.code, 'VALIDATION_ERROR');
     });
+
+    it('routes general conversational text queries to Sarvam-105B chat', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: '+919876543210',
+          type: 'text',
+          text: 'ನಮಸ್ಕಾರ, ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಯೋಜನೆಗಳ ಬಗ್ಗೆ ಮಾಹಿತಿ ನೀಡಿ',
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.feature, 'sarvam_chat');
+      assert.ok(data.messageKn.length > 0);
+      assert.ok(data.audioBase64.length > 0);
+    });
+
+    it('GET /api/whatsapp/mode returns Sarvam engine execution mode', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/mode`);
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(typeof data.isMock, 'boolean');
+    });
   });
 
   describe('Karnataka Schemes & Direct Status Endpoints', () => {
