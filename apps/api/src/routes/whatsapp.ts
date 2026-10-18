@@ -374,6 +374,44 @@ whatsappRouter.post('/schemes/yuva-nidhi/verify-eligibility', (req: Request, res
   });
 });
 
+whatsappRouter.post('/schemes/ganga-kalyana/calculate-subsidy', (req: Request, res: Response) => {
+  const { applicantName, casteCategory, landAcres, surveyNumber, mobileNumber } = req.body;
+
+  if (!applicantName || !casteCategory || landAcres === undefined || landAcres === null || !surveyNumber || !mobileNumber) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_GANGA_KALYANA_PAYLOAD',
+        message: 'Applicant name, caste category, land acres, survey number, and mobile number are required.',
+      },
+    });
+  }
+
+  if (typeof landAcres !== 'number' || isNaN(landAcres) || landAcres < 1.0 || landAcres > 5.0) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_LAND_ACRES',
+        message: 'landAcres must be a number between 1.0 and 5.0 acres for small and marginal farmer eligibility.',
+      },
+    });
+  }
+
+  // Scheme ceiling: ₹3,50,000 for individual borewell + pump set energization
+  const subsidyAmountInr = 350000;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'ganga_kalyana',
+    schemeNameKn: 'ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆ',
+    schemeNameEn: 'Ganga Kalyana Scheme',
+    isEligible: true,
+    casteCategory,
+    landAcres,
+    subsidyAmountInr,
+    energizationIncluded: true,
+    messageKn: `ನಿಮ್ಮ ${landAcres} ಎಕರೆ ಜಮೀನಿಗೆ ಗಂಗಾ ಕಲ್ಯಾಣ ಯೋಜನೆಯಡಿ ಗರಿಷ್ಠ ₹${subsidyAmountInr} ಮೊತ್ತದ ಉಚಿತ ಕೊಳವೆಬಾವಿ ಮತ್ತು ಪಂಪ್‌ಸೆಟ್ ಮಂಜೂರಾತಿಗೆ ಅರ್ಹತೆ ಹೊಂದಿದ್ದೀರಿ.`,
+  });
+});
+
 /**
  * List all supported Karnataka schemes
  */
