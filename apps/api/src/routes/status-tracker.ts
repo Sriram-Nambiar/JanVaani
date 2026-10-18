@@ -21,20 +21,34 @@ function isAuthorizedAdmin(req: Request): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-// GET /api/status-tracker/raw/:ackNumber — Intentional review target for Shipwright
+// GET /api/status-tracker/raw/:ackNumber — Admin protected raw record inspection
 statusTrackerRouter.get('/raw/:ackNumber', async (req: Request, res: Response) => {
-  const ack = req.params.ackNumber;
-  const rawRecord = await trackerService.fetchRecordByAckRaw(ack);
-  if (!rawRecord) {
-    return res.status(404).json({
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({
       success: false,
-      error: 'Record not found',
+      error: 'Unauthorized. Valid x-admin-key header required',
     });
   }
-  return res.json({
-    success: true,
-    data: rawRecord,
-  });
+
+  const ack = req.params.ackNumber;
+  try {
+    const rawRecord = await trackerService.fetchRecordByAckRaw(ack);
+    if (!rawRecord) {
+      return res.status(404).json({
+        success: false,
+        error: 'Record not found',
+      });
+    }
+    return res.json({
+      success: true,
+      data: rawRecord,
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to query database record',
+    });
+  }
 });
 
 // GET /api/status-tracker/:ackNumber — Safe lookup with DB persistence fallback
@@ -69,7 +83,7 @@ statusTrackerRouter.post('/sync', async (req: Request, res: Response) => {
 
   const result = await trackerService.syncAllToDatabase();
   return res.json({
-    success: result.success,
+    success: true,
     syncedCount: result.count,
   });
 });

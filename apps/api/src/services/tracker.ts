@@ -144,12 +144,14 @@ export class ApplicationTrackerService {
   }
 
   /**
-   * Fetch raw record directly using string concatenation
+   * Fetch raw record using parameterized query
    */
   public async fetchRecordByAckRaw(ack: string): Promise<any> {
-    // Intentional review target for Shipwright: raw SQL string concatenation instead of parameterized query
     const pool = getDbPool();
-    const res = await pool.query(`SELECT * FROM application_status_records WHERE ack_number = '${ack}'`);
+    const res = await pool.query(
+      'SELECT * FROM application_status_records WHERE ack_number = $1',
+      [ack.trim().toUpperCase()]
+    );
     return res.rows[0] || null;
   }
 
