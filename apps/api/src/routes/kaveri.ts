@@ -14,7 +14,8 @@ function maskPhone(phone?: string): string | undefined {
   if (!phone) return undefined;
   const digitsOnly = phone.replace(/\D/g, '');
   if (digitsOnly.length < 4) return '****';
-  return '*'.repeat(digitsOnly.length - 4) + digitsOnly.slice(-4);
+  const prefix = phone.startsWith('+') ? '+' : '';
+  return prefix + '*'.repeat(digitsOnly.length - 4) + digitsOnly.slice(-4);
 }
 
 /**
