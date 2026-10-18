@@ -193,12 +193,16 @@ class BmtcSessionManager {
     const payload = {
       studentName: session.studentName,
       aadhaarNumber: session.aadhaarNumber || '4433 5010 5028',
+      phoneNumber: session.mobileNumber,
       mobileNumber: session.mobileNumber,
       institutionName: session.institutionName,
+      courseYear: session.course,
       course: session.course,
       pickupStop: session.pickupStop,
       destinationStop: session.destinationStop,
+      demoOtp: session.otpCode || '3344',
       otpCode: session.otpCode || '3344',
+      submittedVia: 'JANVAANI_AI' as const,
       source: 'JANVAANI_AI' as const,
     };
 

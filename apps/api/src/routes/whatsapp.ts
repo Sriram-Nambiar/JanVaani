@@ -424,8 +424,18 @@ whatsappRouter.post(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              ...bmtcFields,
-              source: 'JANVAANI_AI',
+              studentName: bmtcFields.studentName,
+              aadhaarNumber: bmtcFields.aadhaarNumber,
+              phoneNumber: bmtcFields.mobileNumber,
+              mobileNumber: bmtcFields.mobileNumber,
+              institutionName: bmtcFields.institutionName,
+              courseYear: bmtcFields.course,
+              course: bmtcFields.course,
+              pickupStop: bmtcFields.pickupStop,
+              destinationStop: bmtcFields.destinationStop,
+              demoOtp: bmtcFields.otpCode || '3344',
+              otpCode: bmtcFields.otpCode || '3344',
+              submittedVia: 'JANVAANI_AI',
             }),
           });
           if (resPortal.ok) {
