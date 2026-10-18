@@ -4,15 +4,18 @@ import { grievanceEscalationService } from '../services/grievance-escalation.js'
 
 export const grievanceEscalationRouter = Router();
 
+function maskPhone(phone?: string): string | undefined {
+  if (!phone) return undefined;
+  if (phone.length < 4) return '****';
+  return '*'.repeat(phone.length - 4) + phone.slice(-4);
+}
+
 /**
  * POST /api/grievance-escalation/evaluate
  * Evaluate grievance timeline against department SLA and determine escalation tier
  */
 grievanceEscalationRouter.post('/evaluate', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Intentional Flaw: Logging citizen complainant phone and name to stdout
-    console.log('[GrievanceEscalation] Evaluating complaint for citizen:', req.body.complainantPhone, 'name:', req.body.complainantName);
-
     const parsed = grievanceEscalationSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -30,7 +33,10 @@ grievanceEscalationRouter.post('/evaluate', async (req: Request, res: Response, 
 
     return res.status(200).json({
       status: 'ok',
-      escalation: result,
+      escalation: {
+        ...result,
+        maskedComplainantPhone: maskPhone(input.complainantPhone),
+      },
     });
   } catch (err) {
     next(err);

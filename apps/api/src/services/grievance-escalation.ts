@@ -14,23 +14,44 @@ export interface GrievanceEscalationResult {
   messageEn: string;
 }
 
+const DEPARTMENT_SLA_DAYS: Record<string, number> = {
+  BESCOM: 3,
+  BWSSB: 5,
+  BBMP: 7,
+  REVENUE: 15,
+  KSRTC: 7,
+};
+
 export class GrievanceEscalationService {
   evaluateEscalation(input: GrievanceEscalationInput): GrievanceEscalationResult {
-    // Intentional Flaw 1: Hardcodes SLA days to 30 regardless of department
-    const slaDays = 30;
-    const elapsedDays = input.elapsedDays || 0;
+    const slaDays = DEPARTMENT_SLA_DAYS[input.department] ?? 7;
+    const elapsedDays = Math.max(0, input.elapsedDays);
     const isOverdue = elapsedDays > slaDays;
 
     let priorityLevel: 'NORMAL' | 'HIGH' | 'CRITICAL' = 'NORMAL';
     let escalationTier: 'LEVEL_1_TALUK' | 'LEVEL_2_DISTRICT' | 'LEVEL_3_STATE_SECRETARIAT' = 'LEVEL_1_TALUK';
+    let designatedOfficerKn = 'ತಾಲ್ಲೂಕು ನೋಡಲ್ ಅಧಿಕಾರಿ (Taluk Officer)';
+    let designatedOfficerEn = 'Taluk Grievance Redressal Officer';
 
     if (elapsedDays > slaDays * 2) {
       priorityLevel = 'CRITICAL';
       escalationTier = 'LEVEL_3_STATE_SECRETARIAT';
+      designatedOfficerKn = 'ಮುಖ್ಯ ಕಾರ್ಯದರ್ಶಿ ಕಾರ್ಯಾಲಯ (Chief Secretary Secretariat)';
+      designatedOfficerEn = 'State Public Grievance Directorate / Secretariat';
     } else if (elapsedDays > slaDays) {
       priorityLevel = 'HIGH';
       escalationTier = 'LEVEL_2_DISTRICT';
+      designatedOfficerKn = 'ಜಿಲ್ಲಾಧಿಕಾರಿಗಳ ಕಾರ್ಯಾಲಯ (Deputy Commissioner Office)';
+      designatedOfficerEn = 'Deputy Commissioner (DC) Office';
     }
+
+    const messageKn = isOverdue
+      ? `ದೂರು ${input.grievanceId} ನಿಗದಿತ ಕಾಲಮಿತಿ (${slaDays} ದಿನಗಳು) ಮೀರಿದೆ. ಆದ್ಯತೆ: ${priorityLevel}, ಹಂತ: ${escalationTier} ಗೆ ರವಾನಿಸಲಾಗಿದೆ.`
+      : `ದೂರು ${input.grievanceId} ಇಲಾಖಾ ಕಾಲಮಿತಿಯಲ್ಲಿದೆ (${elapsedDays}/${slaDays} ದಿನಗಳು).`;
+
+    const messageEn = isOverdue
+      ? `Grievance ${input.grievanceId} has exceeded the statutory SLA (${slaDays} days). Priority: ${priorityLevel}, escalated to ${escalationTier}.`
+      : `Grievance ${input.grievanceId} is within statutory SLA limits (${elapsedDays}/${slaDays} days).`;
 
     return {
       grievanceId: input.grievanceId,
@@ -40,14 +61,10 @@ export class GrievanceEscalationService {
       isOverdue,
       priorityLevel,
       escalationTier,
-      designatedOfficerKn: 'ಸಹಾಯಕ ಕಾರ್ಯನಿರ್ವಾಹಕ ಇಂಜಿನಿಯರ್ (AEE)',
-      designatedOfficerEn: 'Assistant Executive Engineer (AEE)',
-      messageKn: isOverdue
-        ? `ದೂರು ${input.grievanceId} ನಿಗದಿತ ಕಾಲಮಿತಿ ಮೀರಿದ್ದು, ಹಂತ ${escalationTier} ಗೆ ತಕ್ಷಣ ವರ್ಗಾಯಿಸಲಾಗಿದೆ.`
-        : `ದೂರು ${input.grievanceId} ಕಾಲಮಿತಿಯಲ್ಲಿದೆ.`,
-      messageEn: isOverdue
-        ? `Grievance ${input.grievanceId} has exceeded SLA and has been escalated to ${escalationTier}.`
-        : `Grievance ${input.grievanceId} is within SLA limits.`,
+      designatedOfficerKn,
+      designatedOfficerEn,
+      messageKn,
+      messageEn,
     };
   }
 }
