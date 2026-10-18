@@ -2088,7 +2088,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Distributed Lock Manager & Mutual Exclusion Endpoints', () => {
-    const testLocksKey = 'janvaani_locks_admin_secret_token';
+    const testLocksKey = 'janvaani_test_locks_secret_key';
+
+    beforeEach(() => {
+      process.env.LOCKS_ADMIN_KEY = testLocksKey;
+    });
 
     it('GET /api/locks/status returns initial lock telemetry', async () => {
       const res = await fetch(`${baseUrl}/api/locks/status`);
@@ -2096,6 +2100,35 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.strictEqual(typeof body.data.activeLocksCount, 'number');
+    });
+
+    it('POST /api/locks/acquire rejects invalid resource format with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/locks/acquire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'bad/key/path/with/slashes',
+          ownerId: 'worker_node_a',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_RESOURCE');
+    });
+
+    it('POST /api/locks/acquire rejects invalid TTL with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/locks/acquire`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'ration_claim_card_1234',
+          ownerId: 'worker_node_a',
+          ttlMs: 999999999,
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_TTL');
     });
 
     it('POST /api/locks/acquire grants lock lease on available resource', async () => {
@@ -2114,18 +2147,21 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.data.resource, 'ration_claim_card_1234');
     });
 
-    it('POST /api/locks/acquire rejects conflicting lock request with 409', async () => {
+    it('POST /api/locks/acquire rejects conflicting lock request with 409 and zero PII reflection', async () => {
       const res = await fetch(`${baseUrl}/api/locks/acquire`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resource: 'ration_claim_card_1234',
           ownerId: 'worker_node_b',
+          citizenPhone: '9845012345',
         }),
       });
       const body = await res.json();
       assert.strictEqual(res.status, 409);
-      assert.strictEqual(body.code, 'LOCK_ACQUISITION_FAILED');
+      assert.strictEqual(body.error.code, 'LOCK_ACQUISITION_FAILED');
+      assert.strictEqual('callerPhone' in body, false);
+      assert.strictEqual('citizenPhone' in body, false);
     });
 
     it('POST /api/locks/release releases acquired lock', async () => {
@@ -2148,6 +2184,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
       const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
     it('POST /api/locks/clear flushes locks with valid admin secret', async () => {
