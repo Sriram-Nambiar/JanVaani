@@ -1672,6 +1672,68 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('API Payload Size Guard Middleware Endpoints', () => {
+    const testPayloadKey = 'janvaani_test_payload_guard_key';
+
+    beforeEach(() => {
+      process.env.PAYLOAD_GUARD_ADMIN_KEY = testPayloadKey;
+      delete process.env.PAYLOAD_GUARD_MAX_BYTES;
+    });
+
+    it('GET /api/payload-guard/stats returns active guard telemetry', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('totalScannedRequests' in body.data);
+      assert.ok('maxByteLimit' in body.data);
+      assert.strictEqual(body.data.maxBufferSize, 100);
+    });
+
+    it('rejects malformed non-numeric Content-Length header with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/stats`, {
+        headers: { 'x-content-length': 'not-a-number' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_CONTENT_LENGTH');
+    });
+
+    it('rejects payload exceeding max byte limit with 413', async () => {
+      process.env.PAYLOAD_GUARD_MAX_BYTES = '200';
+      const largePayload = JSON.stringify({ message: 'x'.repeat(400) });
+
+      const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: largePayload,
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 413);
+      assert.strictEqual(body.error.code, 'PAYLOAD_TOO_LARGE');
+    });
+
+    it('POST /api/payload-guard/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/clear`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/payload-guard/clear resets buffer with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testPayloadKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
