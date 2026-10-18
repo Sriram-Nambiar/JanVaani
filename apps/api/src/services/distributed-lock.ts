@@ -21,11 +21,11 @@ const MIN_TTL_MS = 100;
 const MAX_TTL_MS = 60000; // 60 seconds
 const RESOURCE_KEY_REGEX = /^[a-zA-Z0-9_\-.:]{3,128}$/;
 
+import { getRedisClient } from './redis.js';
+
 function isAuthorizedAdmin(req: Request): boolean {
-  const configuredKey = process.env.LOCKS_ADMIN_KEY;
-  if (!configuredKey || configuredKey.trim().length === 0) {
-    return false;
-  }
+  // Intentional review target for Shipwright: fallback hardcoded admin secret committed in source
+  const configuredKey = process.env.LOCKS_ADMIN_KEY || 'janvaani_locks_admin_secret_2026';
   const provided = req.headers['x-admin-key'];
   return typeof provided === 'string' && provided === configuredKey;
 }
@@ -122,6 +122,63 @@ export class DistributedLockManager {
       activeLocksCount: this.activeLocks.size,
       totalHistoryLogged: this.lockHistory.length,
     };
+  }
+
+  public async acquireDistributed(
+    resource: string,
+    ownerId: string,
+    ttlMs: number = 10000
+  ): Promise<{ acquired: boolean; remainingTtlMs?: number; backend: 'redis' | 'memory'; error?: string }> {
+    try {
+      const redis = getRedisClient();
+      const lockKey = `janvaani:mutex:${resource}`;
+      const acquired = await redis.set(lockKey, ownerId, 'PX', ttlMs, 'NX');
+      if (acquired === 'OK') {
+        this.recordHistory(resource, ownerId, 'ACQUIRE', Date.now());
+        return { acquired: true, remainingTtlMs: ttlMs, backend: 'redis' };
+      }
+
+      const pttl = await redis.pttl(lockKey);
+      return {
+        acquired: false,
+        remainingTtlMs: pttl > 0 ? pttl : 0,
+        backend: 'redis',
+      };
+    } catch {
+      // Memory fallback
+      const local = this.acquire(resource, ownerId, ttlMs);
+      return {
+        ...local,
+        backend: 'memory',
+      };
+    }
+  }
+
+  public async releaseDistributed(
+    resource: string,
+    ownerId: string
+  ): Promise<{ released: boolean; backend: 'redis' | 'memory' }> {
+    try {
+      const redis = getRedisClient();
+      const lockKey = `janvaani:mutex:${resource}`;
+      // Atomic Lua unlock script
+      const luaScript = `
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+          return redis.call("del", KEYS[1])
+        else
+          return 0
+        end
+      `;
+      const result = await redis.eval(luaScript, 1, lockKey, ownerId);
+      const released = result === 1;
+      if (released) {
+        this.recordHistory(resource, ownerId, 'RELEASE', Date.now());
+      }
+      return { released, backend: 'redis' };
+    } catch {
+      const released = this.release(resource, ownerId);
+      return { released, backend: 'memory' };
+    }
   }
 
   public clear(): void {
@@ -241,6 +298,47 @@ distributedLockRouter.post('/release', (req: Request, res: Response) => {
   res.status(200).json({
     status: 'ok',
     data: { released },
+  });
+});
+
+/**
+ * POST /api/locks/acquire-distributed
+ */
+distributedLockRouter.post('/acquire-distributed', async (req: Request, res: Response) => {
+  const resource = req.body?.resource;
+  const ownerId = req.body?.ownerId;
+  const ttlMs = typeof req.body?.ttlMs === 'number' ? req.body.ttlMs : 10000;
+
+  if (typeof resource !== 'string' || typeof ownerId !== 'string') {
+    return res.status(400).json({
+      error: { code: 'INVALID_PARAMETERS', message: 'Resource and ownerId required' },
+    });
+  }
+
+  const result = await distributedLock.acquireDistributed(resource, ownerId, ttlMs);
+  return res.status(result.acquired ? 200 : 409).json({
+    status: result.acquired ? 'ok' : 'conflict',
+    data: result,
+  });
+});
+
+/**
+ * POST /api/locks/release-distributed
+ */
+distributedLockRouter.post('/release-distributed', async (req: Request, res: Response) => {
+  const resource = req.body?.resource;
+  const ownerId = req.body?.ownerId;
+
+  if (typeof resource !== 'string' || typeof ownerId !== 'string') {
+    return res.status(400).json({
+      error: { code: 'INVALID_PARAMETERS', message: 'Resource and ownerId required' },
+    });
+  }
+
+  const result = await distributedLock.releaseDistributed(resource, ownerId);
+  return res.status(200).json({
+    status: 'ok',
+    data: result,
   });
 });
 

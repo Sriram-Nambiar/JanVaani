@@ -2178,6 +2178,47 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.data.released, true);
     });
 
+    it('POST /api/locks/acquire-distributed and release-distributed coordinate mutex', async () => {
+      const lockRes = await fetch(`${baseUrl}/api/locks/acquire-distributed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'dist_worker_task_99',
+          ownerId: 'worker_alpha',
+          ttlMs: 5000,
+        }),
+      });
+      assert.strictEqual(lockRes.status, 200);
+      const lockBody = await lockRes.json();
+      assert.strictEqual(lockBody.status, 'ok');
+      assert.strictEqual(lockBody.data.acquired, true);
+
+      // Conflicting lock attempt
+      const conflictRes = await fetch(`${baseUrl}/api/locks/acquire-distributed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'dist_worker_task_99',
+          ownerId: 'worker_beta',
+          ttlMs: 5000,
+        }),
+      });
+      assert.strictEqual(conflictRes.status, 409);
+
+      // Release lock
+      const releaseRes = await fetch(`${baseUrl}/api/locks/release-distributed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource: 'dist_worker_task_99',
+          ownerId: 'worker_alpha',
+        }),
+      });
+      assert.strictEqual(releaseRes.status, 200);
+      const releaseBody = await releaseRes.json();
+      assert.strictEqual(releaseBody.data.released, true);
+    });
+
     it('POST /api/locks/clear rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/locks/clear`, {
         method: 'POST',
