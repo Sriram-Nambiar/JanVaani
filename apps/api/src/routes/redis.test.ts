@@ -7,8 +7,12 @@ import { closeRedis } from '../services/redis.js';
 describe('JanVaani Redis Cache & Idempotency Endpoints', () => {
   let server: Server;
   let baseUrl: string;
+  const testAdminKey = 'test_redis_admin_secret_9988';
+  const originalAdminKey = process.env.REDIS_ADMIN_KEY;
 
   before(async () => {
+    process.env.REDIS_ADMIN_KEY = testAdminKey;
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
@@ -21,6 +25,12 @@ describe('JanVaani Redis Cache & Idempotency Endpoints', () => {
   });
 
   after(async () => {
+    if (originalAdminKey !== undefined) {
+      process.env.REDIS_ADMIN_KEY = originalAdminKey;
+    } else {
+      delete process.env.REDIS_ADMIN_KEY;
+    }
+
     await closeRedis();
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -86,12 +96,12 @@ describe('JanVaani Redis Cache & Idempotency Endpoints', () => {
       assert.strictEqual(res.status, 401);
     });
 
-    it('flushes redis cache with admin key', async () => {
+    it('flushes redis cache with valid dynamic admin key', async () => {
       const res = await fetch(`${baseUrl}/api/redis/flush-cache`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': process.env.REDIS_ADMIN_KEY || 'janvaani_redis_secret_key_2026',
+          'x-admin-key': testAdminKey,
         },
       });
 

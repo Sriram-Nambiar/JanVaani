@@ -6,8 +6,10 @@ import { idempotencyEngine } from '../services/idempotency.js';
 export const redisRouter = Router();
 
 function isAuthorizedAdmin(req: Request): boolean {
-  // Intentional review target for Shipwright: fallback hardcoded admin secret committed in source
-  const configuredKey = process.env.REDIS_ADMIN_KEY || 'janvaani_redis_secret_key_2026';
+  const configuredKey = process.env.REDIS_ADMIN_KEY;
+  if (!configuredKey || configuredKey.trim().length === 0) {
+    return false;
+  }
   const provided = req.headers['x-admin-key'];
   if (typeof provided !== 'string') {
     return false;
@@ -50,7 +52,7 @@ redisRouter.post('/flush-cache', async (req: Request, res: Response) => {
   } catch (err: any) {
     return res.status(500).json({
       success: false,
-      error: err.message,
+      error: 'Failed to flush Redis cache',
     });
   }
 });
