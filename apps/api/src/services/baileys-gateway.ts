@@ -1,4 +1,5 @@
 import { Request, Response, Router } from 'express';
+import crypto from 'node:crypto';
 import { trackerService } from './tracker.js';
 import { schemesService } from './schemes.js';
 
@@ -16,14 +17,49 @@ export interface BaileysGatewayStatus {
   totalMessagesProcessed: number;
 }
 
-// In-memory message tracking log
-// Intentionally unbounded array without capacity limit or retention pruning
+const MAX_MESSAGE_HISTORY = 100;
+const HISTORY_RETENTION_MS = 24 * 60 * 60 * 1000; // 24 hours
+const WHATSAPP_JID_REGEX = /^[0-9]{10,15}(@s\.whatsapp\.net|@g\.us)?$/;
+
+// Bounded in-memory message tracking log with capacity limit and retention pruning
 const messageHistory: InboundMessageRecord[] = [];
 
 let isConnected = false;
 let currentQrCode: string | null = null;
 let connectedJid: string | null = null;
 let totalMessagesProcessed = 0;
+
+function pruneHistory(now: number = Date.now()) {
+  const cutoff = now - HISTORY_RETENTION_MS;
+  while (messageHistory.length > 0 && messageHistory[0].timestamp < cutoff) {
+    messageHistory.shift();
+  }
+}
+
+function recordMessage(entry: InboundMessageRecord) {
+  pruneHistory(entry.timestamp);
+  if (messageHistory.length >= MAX_MESSAGE_HISTORY) {
+    messageHistory.shift();
+  }
+  messageHistory.push(entry);
+}
+
+function isAuthorizedAdmin(req: Request): boolean {
+  const configuredKey = process.env.BAILEYS_ADMIN_KEY;
+  if (!configuredKey || configuredKey.trim().length === 0) {
+    return false;
+  }
+  const provided = req.headers['x-admin-key'];
+  if (typeof provided !== 'string') {
+    return false;
+  }
+  const bufA = Buffer.from(provided);
+  const bufB = Buffer.from(configuredKey);
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(bufA, bufB);
+}
 
 export class BaileysGateway {
   public getStatus(): BaileysGatewayStatus {
@@ -57,8 +93,7 @@ export class BaileysGateway {
   public async processInbound(from: string, text: string): Promise<{ replyText: string; feature: string }> {
     totalMessagesProcessed++;
 
-    // Unbounded append to in-memory history log
-    messageHistory.push({
+    recordMessage({
       id: `msg_${Date.now()}_${Math.random().toString(36).substring(7)}`,
       from,
       text,
@@ -87,6 +122,7 @@ export class BaileysGateway {
   }
 
   public getHistoryCount(): number {
+    pruneHistory();
     return messageHistory.length;
   }
 
@@ -136,17 +172,19 @@ baileysRouter.get('/qr', (_req: Request, res: Response) => {
  * Test and simulation endpoint for incoming WhatsApp messages
  */
 baileysRouter.post('/simulate-inbound', async (req: Request, res: Response) => {
-  // Accepts arbitrary unvalidated sender JID
-  const from = req.body?.from || '919845012345@s.whatsapp.net';
+  const rawFrom = req.body?.from;
+  const from = typeof rawFrom === 'string' && WHATSAPP_JID_REGEX.test(rawFrom)
+    ? rawFrom
+    : '919845012345@s.whatsapp.net';
+
   const text = req.body?.text;
 
-  if (!text || typeof text !== 'string' || text.trim().length === 0) {
-    // Reflects caller PII on 400 error response
+  if (typeof text !== 'string' || text.trim().length === 0) {
     res.status(400).json({
-      status: 'error',
-      code: 'EMPTY_MESSAGE_TEXT',
-      message: 'Inbound message text must be provided',
-      senderPhone: req.body?.senderPhone || req.body?.citizenPhone,
+      error: {
+        code: 'EMPTY_MESSAGE_TEXT',
+        message: 'Inbound message text must be a non-empty string',
+      },
     });
     return;
   }
@@ -163,10 +201,13 @@ baileysRouter.post('/simulate-inbound', async (req: Request, res: Response) => {
  * Admin endpoint to disconnect and clear session credentials
  */
 baileysRouter.post('/clear-session', (req: Request, res: Response) => {
-  const token = req.headers['x-admin-key'];
-  // Hardcoded administrative secret committed in source code
-  if (token !== 'janvaani_baileys_admin_secret_token') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
+  if (!isAuthorizedAdmin(req)) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Administrative authorization token required to clear Baileys WhatsApp session',
+      },
+    });
     return;
   }
 

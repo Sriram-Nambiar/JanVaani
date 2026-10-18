@@ -2392,7 +2392,11 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Baileys WhatsApp Gateway & QR Client Endpoints', () => {
-    const testBaileysKey = 'janvaani_baileys_admin_secret_token';
+    const testBaileysKey = 'janvaani_test_baileys_secret_key';
+
+    beforeEach(() => {
+      process.env.BAILEYS_ADMIN_KEY = testBaileysKey;
+    });
 
     it('GET /api/baileys/status returns initial gateway connection status', async () => {
       const res = await fetch(`${baseUrl}/api/baileys/status`);
@@ -2409,6 +2413,23 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.strictEqual(typeof body.data.hasQr, 'boolean');
+    });
+
+    it('POST /api/baileys/simulate-inbound rejects empty message text with 400 and zero PII', async () => {
+      const res = await fetch(`${baseUrl}/api/baileys/simulate-inbound`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: '919845012345@s.whatsapp.net',
+          text: '   ',
+          senderPhone: '9845012345',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'EMPTY_MESSAGE_TEXT');
+      assert.strictEqual('senderPhone' in body, false);
+      assert.strictEqual('citizenPhone' in body, false);
     });
 
     it('POST /api/baileys/simulate-inbound processes civic scheme inquiry and generates reply', async () => {
@@ -2449,6 +2470,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
       const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
     it('POST /api/baileys/clear-session clears session with valid admin secret', async () => {
