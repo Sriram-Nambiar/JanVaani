@@ -293,6 +293,37 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(data.data.some((s: any) => s.id === 'caste_income'));
     });
 
+    it('POST /api/whatsapp/schemes/anna-bhagya/calculate-dbt calculates food grain and cash entitlement', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'ಬಸವರಾಜ್ (Basavaraj)',
+          rationCardNumber: 'RC8829104928',
+          familyMembersCount: 4,
+        }),
+      });
+
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'anna_bhagya');
+      assert.strictEqual(data.monthlyBenefits.freeRiceKg, 20);
+      assert.strictEqual(data.monthlyBenefits.dbtCashInLieuInr, 680);
+    });
+
+    it('POST /api/whatsapp/schemes/anna-bhagya/calculate-dbt rejects invalid payload with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes/anna-bhagya/calculate-dbt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          familyMembersCount: 0,
+        }),
+      });
+
+      assert.strictEqual(res.status, 400);
+    });
+
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/status/RD001`);
       assert.strictEqual(res.status, 200);

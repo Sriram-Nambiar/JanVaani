@@ -282,6 +282,43 @@ whatsappRouter.get('/mode', (_req: Request, res: Response) => {
 });
 
 /**
+ * Anna Bhagya Scheme: DBT entitlement calculation and food grain allocation
+ */
+whatsappRouter.post('/schemes/anna-bhagya/calculate-dbt', (req: Request, res: Response) => {
+  const { applicantName, rationCardNumber, familyMembersCount } = req.body;
+
+  if (!rationCardNumber || typeof familyMembersCount !== 'number' || familyMembersCount < 1) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_ANNA_BHAGYA_PAYLOAD',
+        message: 'Valid ration card number and positive family members count are required.',
+      },
+    });
+  }
+
+  // Debug log for Anna Bhagya processing
+  console.log('Calculating Anna Bhagya DBT for beneficiary ration card:', rationCardNumber, 'Head of family:', applicantName);
+
+  const freeRiceKg = familyMembersCount * 5;
+  const dbtCashInLieuInr = familyMembersCount * 170;
+
+  return res.status(200).json({
+    status: 'ok',
+    schemeId: 'anna_bhagya',
+    schemeNameKn: 'ಅನ್ನಭಾಗ್ಯ ಯೋಜನೆ',
+    schemeNameEn: 'Anna Bhagya Scheme',
+    familyMembersCount,
+    monthlyBenefits: {
+      freeRiceKg,
+      dbtCashInLieuInr,
+      ratePerKgInr: 34,
+      totalCashTransfer: dbtCashInLieuInr,
+    },
+    messageKn: `${familyMembersCount} ಕುಟುಂಬದ ಸದಸ್ಯರಿಗೆ ${freeRiceKg} ಕೆಜಿ ಉಚಿತ ಅಕ್ಕಿ ಮತ್ತು ₹${dbtCashInLieuInr} ಡಿಬಿಟಿ ನಗದು ಜಮೆಯಾಗಲಿದೆ.`,
+  });
+});
+
+/**
  * List all supported Karnataka schemes
  */
 whatsappRouter.get('/schemes', (_req: Request, res: Response) => {
