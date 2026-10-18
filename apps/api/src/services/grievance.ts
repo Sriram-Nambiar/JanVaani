@@ -242,14 +242,21 @@ export class JanaSpandanaGrievanceService {
   }
 
   public async listDockets(): Promise<GrievanceDocket[]> {
+    const docketMap = new Map<string, GrievanceDocket>();
+
+    // Start with all in-memory dockets
+    for (const [key, docket] of this.dockets.entries()) {
+      docketMap.set(key.toUpperCase(), docket);
+    }
+
     try {
       const pool = getDbPool();
       const res = await pool.query(
         `SELECT docket_number, ack_number, applicant_name, phone, district, department, grievance_category, description, status, assigned_officer, sla_days, timeline, resolution_text_kn, created_at
          FROM grievance_dockets ORDER BY created_at DESC LIMIT 50`
       );
-      if (res.rows.length > 0) {
-        const dbDockets: GrievanceDocket[] = res.rows.map((row) => ({
+      for (const row of res.rows) {
+        docketMap.set(row.docket_number.toUpperCase(), {
           docketNumber: row.docket_number,
           ackNumber: row.ack_number || undefined,
           applicantName: row.applicant_name,
@@ -264,17 +271,13 @@ export class JanaSpandanaGrievanceService {
           createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
           timeline: typeof row.timeline === 'string' ? JSON.parse(row.timeline) : (row.timeline || []),
           resolutionTextKn: row.resolution_text_kn || undefined,
-        }));
-        const hasDefault = dbDockets.some((d) => d.docketNumber === 'JS-2026-B8A91C');
-        if (!hasDefault && this.dockets.has('JS-2026-B8A91C')) {
-          dbDockets.push(this.dockets.get('JS-2026-B8A91C')!);
-        }
-        return dbDockets;
+        });
       }
     } catch (err: any) {
       console.warn('[JanaSpandanaGrievanceService] Failed to query PostgreSQL list:', err.message);
     }
-    return Array.from(this.dockets.values());
+
+    return Array.from(docketMap.values());
   }
 }
 
