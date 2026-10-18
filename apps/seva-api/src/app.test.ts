@@ -186,4 +186,41 @@ test('POST /api/demo/otp/verify strictly validates demo OTP 3344 and rejects inc
   }
 });
 
+test('POST /api/applications creates new BMTC bus pass application', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const payload = {
+      studentName: 'Priya Sharma',
+      aadhaarNumber: '4433 5010 5028',
+      phoneNumber: '9876543210',
+      institutionName: 'BMS College of Engineering',
+      courseYear: '2nd Year B.E. Computer Science',
+      pickupStop: 'Majestic Bus Stand (KBS)',
+      destinationStop: 'Bull Temple Road (Basavanagudi)',
+      demoOtp: '3344',
+      submittedVia: 'SEVA_PORTAL',
+    };
+
+    const res = await fetch(`${baseUrl}/api/applications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.ok(data.applicationId.startsWith('SEVA-DEMO-'));
+    assert.equal(data.status, 'RECEIVED');
+    assert.equal(data.record.studentName, 'Priya Sharma');
+  } finally {
+    server.close();
+  }
+});
+
+
 
