@@ -8,6 +8,7 @@
     "dev": "bun --filter \"*\" --parallel dev",
     "dev:web": "bun --filter @janvaani/web dev",
     "dev:api": "bun --filter @janvaani/api dev",
+    "start:whatsapp": "bun run apps/api/src/bot-runner.ts",
     "build": "bun --filter \"*\" build",
     "typecheck": "bun --filter \"*\" typecheck",
     "test": "bun test apps/api/src"
