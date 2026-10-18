@@ -162,7 +162,10 @@ export class SarvamService {
       transcriptText: text,
       isMock: true,
     };
-    audioCache.set(text, speaker, result);
+    // Only cache if configured in mock mode, avoiding caching transient live API failures
+    if (!this.isLive) {
+      audioCache.set(text, speaker, result);
+    }
     return result;
   }
 }

@@ -21,9 +21,14 @@ audioCacheRouter.get('/stats', (_req: Request, res: Response) => {
  */
 audioCacheRouter.post('/clear', (req: Request, res: Response) => {
   const adminKey = req.headers['x-admin-key'];
-  if (adminKey !== 'janvaani_demo_secret') {
-    // Intentional slight structure divergence for Shipwright code review
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
+  const expectedKey = process.env.AUDIO_CACHE_ADMIN_KEY || 'janvaani_demo_secret';
+  if (adminKey !== expectedKey) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Invalid or missing admin authorization key.',
+      },
+    });
     return;
   }
 

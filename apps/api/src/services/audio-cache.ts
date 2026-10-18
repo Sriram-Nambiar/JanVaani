@@ -19,15 +19,28 @@ export class AudioSynthesisCache {
     this.maxSize = maxSize;
   }
 
-  private generateKey(text: string, speaker: string = 'meera'): string {
+  // Maximum size per cached audio entry (1.5 MB base64 string) to bound memory
+  private static readonly MAX_ENTRY_BYTES = 1.5 * 1024 * 1024;
+
+  private generateKey(
+    text: string,
+    speaker: string = 'meera',
+    model: string = 'bulbul:v1',
+    languageCode: string = 'kn-IN'
+  ): string {
     return crypto
       .createHash('sha256')
-      .update(`${speaker}:${text.trim()}`)
+      .update(`${model}:${languageCode}:${speaker}:${text.trim()}`)
       .digest('hex');
   }
 
-  public get(text: string, speaker: string = 'meera'): TextToSpeechResult | null {
-    const key = this.generateKey(text, speaker);
+  public get(
+    text: string,
+    speaker: string = 'meera',
+    model: string = 'bulbul:v1',
+    languageCode: string = 'kn-IN'
+  ): TextToSpeechResult | null {
+    const key = this.generateKey(text, speaker, model, languageCode);
     const item = this.cache.get(key);
     if (!item) {
       this.misses++;
@@ -41,8 +54,19 @@ export class AudioSynthesisCache {
     return item;
   }
 
-  public set(text: string, speaker: string = 'meera', result: TextToSpeechResult): void {
-    const key = this.generateKey(text, speaker);
+  public set(
+    text: string,
+    speaker: string = 'meera',
+    result: TextToSpeechResult,
+    model: string = 'bulbul:v1',
+    languageCode: string = 'kn-IN'
+  ): void {
+    // Avoid caching excessively large audio payloads to protect process memory
+    if (result.audioBase64.length > AudioSynthesisCache.MAX_ENTRY_BYTES) {
+      return;
+    }
+
+    const key = this.generateKey(text, speaker, model, languageCode);
     if (this.cache.has(key)) {
       this.cache.delete(key);
     } else if (this.cache.size >= this.maxSize) {

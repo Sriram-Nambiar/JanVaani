@@ -1314,8 +1314,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
 
       assert.strictEqual(res.status, 401);
-      assert.strictEqual(body.status, 'error');
-      assert.strictEqual(body.error, 'UNAUTHORIZED');
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
     it('POST /api/audio/cache/clear clears cache with valid admin key', async () => {
