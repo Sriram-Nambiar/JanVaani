@@ -55,7 +55,7 @@ export interface WhatsAppMessagePayload {
 
 export interface WhatsAppApiResponse {
   status: string;
-  feature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell';
+  feature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell' | 'sarvam_chat';
   transcript?: string;
   formDraft?: FormDraft;
   auditResult?: DocumentAudit;
@@ -75,7 +75,7 @@ export interface ChatMessage {
   audioBase64?: string;
   imageUrl?: string;
   timestamp: string;
-  feature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell';
+  feature?: 'dhvani_form' | 'kagada_check' | 'audio_status_bell' | 'sarvam_chat';
   formDraft?: FormDraft;
   auditResult?: DocumentAudit;
   statusRecord?: ApplicationStatus;
