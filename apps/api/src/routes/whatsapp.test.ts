@@ -2197,6 +2197,64 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Compression Negotiator & Bandwidth Optimization Endpoints', () => {
+    const testCompressionKey = 'janvaani_compression_admin_secret_key';
+
+    it('sets X-Negotiated-Encoding header to gzip for gzip-capable requests', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'gzip, deflate, br' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'gzip');
+    });
+
+    it('sets X-Negotiated-Encoding header to identity for plain requests', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'identity' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'identity');
+    });
+
+    it('GET /api/compression/stats returns telemetry metrics', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(typeof body.data.totalRequestsChecked, 'number');
+    });
+
+    it('POST /api/compression/test-negotiate tests client encoding preference', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/test-negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ encoding: 'gzip' }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.data.negotiated, 'gzip');
+      assert.strictEqual(body.data.supported, true);
+    });
+
+    it('POST /api/compression/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/clear`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/compression/clear flushes telemetry with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testCompressionKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
