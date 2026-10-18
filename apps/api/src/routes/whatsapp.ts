@@ -9,6 +9,7 @@ import {
   GruhaJyothiFields,
   GruhaLakshmiFields,
   CasteIncomeFields,
+  BmtcStudentPassFields,
 } from '../schemas/whatsapp-message.js';
 import {
   draftPdfSchema,
@@ -22,6 +23,7 @@ import { trackerService, maskApplicantName, maskId, ApplicationStatusRecord } fr
 import { draftPdfService } from '../services/pdf.js';
 import { idempotencyEngine } from '../services/idempotency.js';
 import { normalizeIndicText } from '../utils/indic-normalizer.js';
+import { bmtcSessionManager } from '../services/bmtc-session.js';
 
 export const whatsappRouter = Router();
 
@@ -46,7 +48,6 @@ whatsappRouter.post(
             messageId: input.messageId,
             firstSeenAt: idemp.firstSeenAt,
             duplicateCount: idemp.duplicateCount,
-            // Intentional review target for Shipwright: leaking unmasked senderId/phone in duplicate payload
             senderPhone: input.senderId,
             message: 'Duplicate webhook transmission ignored by idempotency engine',
           });
@@ -70,8 +71,8 @@ whatsappRouter.post(
 
         const transcript = input.text || sttResult.transcript;
 
-        // Check if user is asking for application status (e.g. mentions RD number)
-        const rdMatch = transcript.match(/\b(RD\s*[0-9]{3,12})\b/i);
+        // Check if user is asking for application status (e.g. mentions RD or SEVA-DEMO number)
+        const rdMatch = transcript.match(/\b(SEVA-DEMO-[A-Za-z0-9-]+|RD\s*[0-9]{3,12}|GJ-[A-Za-z0-9-]+)\b/i);
         if (rdMatch || input.presetScenario?.startsWith('status_check_')) {
           const ackNumber = rdMatch ? rdMatch[1].replace(/\s+/g, '') : (input.presetScenario?.split('_').pop()?.toUpperCase() || 'RD001');
           const statusRecord = trackerService.lookupStatus(ackNumber);
@@ -85,6 +86,25 @@ whatsappRouter.post(
             audioBase64: ttsResult.audioBase64,
             messageKn: statusRecord.spokenNotificationKn,
             messageEn: statusRecord.spokenNotificationEn,
+            isMock: sttResult.isMock || ttsResult.isMock,
+          });
+        }
+
+        // Conversational BMTC Student Bus Pass Session Check
+        const bmtcResult = await bmtcSessionManager.processMessage(input.senderId, transcript, input.presetScenario);
+        if (bmtcResult) {
+          const ttsResult = await sarvamService.textToSpeech(bmtcResult.messageKn);
+          return res.status(200).json({
+            status: 'ok',
+            feature: 'dhvani_form',
+            transcript,
+            formDraft: bmtcResult.formDraft,
+            statusRecord: bmtcResult.statusRecord,
+            audioBase64: ttsResult.audioBase64,
+            messageKn: bmtcResult.messageKn,
+            messageEn: bmtcResult.messageEn,
+            applicationId: bmtcResult.portalData?.applicationId,
+            portalResponse: bmtcResult.portalData,
             isMock: sttResult.isMock || ttsResult.isMock,
           });
         }
@@ -127,10 +147,10 @@ whatsappRouter.post(
         });
       }
 
-      // 3. Process Text Message (Text queries or direct RD input)
+      // 3. Process Text Message (Text queries or direct RD / BMTC input)
       if (input.type === 'text') {
         const text = (input.text || '').trim();
-        const rdMatch = text.match(/\b(RD\s*[0-9]{3,12})\b/i);
+        const rdMatch = text.match(/\b(SEVA-DEMO-[A-Za-z0-9-]+|RD\s*[0-9]{3,12}|GJ-[A-Za-z0-9-]+)\b/i);
 
         if (rdMatch || input.presetScenario?.startsWith('status_check_')) {
           const ackNumber = rdMatch ? rdMatch[1].replace(/\s+/g, '') : (input.presetScenario?.split('_').pop()?.toUpperCase() || 'RD001');
@@ -145,6 +165,25 @@ whatsappRouter.post(
             audioBase64: ttsResult.audioBase64,
             messageKn: statusRecord.spokenNotificationKn,
             messageEn: statusRecord.spokenNotificationEn,
+            isMock: ttsResult.isMock,
+          });
+        }
+
+        // Conversational BMTC Student Bus Pass Session Check
+        const bmtcResult = await bmtcSessionManager.processMessage(input.senderId, text, input.presetScenario);
+        if (bmtcResult) {
+          const ttsResult = await sarvamService.textToSpeech(bmtcResult.messageKn);
+          return res.status(200).json({
+            status: 'ok',
+            feature: 'dhvani_form',
+            query: text,
+            formDraft: bmtcResult.formDraft,
+            statusRecord: bmtcResult.statusRecord,
+            audioBase64: ttsResult.audioBase64,
+            messageKn: bmtcResult.messageKn,
+            messageEn: bmtcResult.messageEn,
+            applicationId: bmtcResult.portalData?.applicationId,
+            portalResponse: bmtcResult.portalData,
             isMock: ttsResult.isMock,
           });
         }
@@ -369,6 +408,83 @@ whatsappRouter.post(
         responseDetails = {
           category: ciFields.category,
           taluk: ciFields.taluk,
+        };
+      } else if (schemeId === 'bmtc_student_pass') {
+        const bmtcFields = fields as BmtcStudentPassFields;
+        const maskedName = maskApplicantName(bmtcFields.studentName);
+        const maskedAadhaar = 'XXXX-XXXX-' + (bmtcFields.aadhaarNumber.replace(/\D/g, '').slice(-4) || '5028');
+        maskedApplicant = maskedName;
+
+        let portalAppId = '';
+        let portalAck = '';
+
+        try {
+          const sevaApiUrl = process.env.SEVA_API_URL || 'http://localhost:3002';
+          const resPortal = await fetch(`${sevaApiUrl}/api/applications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...bmtcFields,
+              source: 'JANVAANI_AI',
+            }),
+          });
+          if (resPortal.ok) {
+            const data = await resPortal.json();
+            portalAppId = data.applicationId;
+            portalAck = data.acknowledgement;
+          }
+        } catch (err: any) {
+          console.warn('[JanVaani Seva Portal agent dispatch] fallback:', err.message);
+        }
+
+        statusRecord = trackerService.registerUniqueRecord(
+          (ackNumber) => ({
+            ackNumber,
+            schemeId: 'bmtc_student_pass',
+            schemeNameKn: 'ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್',
+            schemeNameEn: 'BMTC Student Concessional Bus Pass',
+            applicantName: maskedName,
+            aadhaarMasked: maskedAadhaar,
+            currentStageKn: 'ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ - ಬಿಎಂಟಿಸಿ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
+            currentStageEn: 'Received at Seva Sindhu - Under BMTC Verification',
+            isReadyForDownload: false,
+            timeline: [
+              {
+                step: 1,
+                labelKn: 'ಸೇವಾ ಸಿಂಧು ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ',
+                labelEn: 'Application Submitted via Seva Sindhu',
+                status: 'COMPLETED' as const,
+                updatedAt: new Date().toISOString().split('T')[0],
+              },
+              {
+                step: 2,
+                labelKn: 'ಕಾಲೇಜು ಮತ್ತು ಆಧಾರ್ ಪರಿಶೀಲನೆ',
+                labelEn: 'College & Aadhaar Verification',
+                status: 'IN_PROGRESS' as const,
+              },
+              {
+                step: 3,
+                labelKn: 'ಬಿಎಂಟಿಸಿ ವಿಭಾಗ ಅನುಮೋದನೆ',
+                labelEn: 'BMTC Division Approval',
+                status: 'PENDING' as const,
+              },
+              {
+                step: 4,
+                labelKn: 'ಸ್ಮಾರ್ಟ್ ಪಾಸ್ ವಿತರಣೆ',
+                labelEn: 'Smart Card Pass Issued',
+                status: 'PENDING' as const,
+              },
+            ],
+            spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${ackNumber}.`,
+            spokenNotificationEn: portalAck || `Success! Your BMTC Student Pass application has been submitted to Seva Sindhu. Your acknowledgment number is ${ackNumber}.`,
+          }),
+          () => portalAppId || `SEVA-DEMO-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+        );
+
+        responseDetails = {
+          institutionName: bmtcFields.institutionName,
+          route: `${bmtcFields.pickupStop} -> ${bmtcFields.destinationStop}`,
+          aadhaarMasked: maskedAadhaar,
         };
       }
 

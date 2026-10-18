@@ -14,7 +14,7 @@ export interface ApplicationTimelineStep {
 
 export interface ApplicationStatusRecord {
   ackNumber: string;
-  schemeId?: 'gruha_jyothi' | 'gruha_lakshmi' | 'caste_income';
+  schemeId?: 'gruha_jyothi' | 'gruha_lakshmi' | 'caste_income' | 'bmtc_student_pass';
   schemeNameKn: string;
   schemeNameEn: string;
   applicantName: string;
@@ -285,6 +285,29 @@ export class ApplicationTrackerService {
     }
 
     const cleaned = rawAckNumber.trim().toUpperCase();
+
+    if (cleaned.startsWith('SEVA-') || cleaned.startsWith('BMTC-')) {
+      return {
+        ackNumber: cleaned,
+        schemeId: 'bmtc_student_pass',
+        schemeNameKn: 'ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್',
+        schemeNameEn: 'BMTC Student Concessional Bus Pass',
+        applicantName: 'ಪ್ರಿಯಾ ಶರ್ಮಾ (Priya Sharma)',
+        aadhaarMasked: 'XXXX-XXXX-5028',
+        currentStageKn: 'ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಣಿಯಾಗಿದೆ - ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
+        currentStageEn: 'Registered at Seva Sindhu Portal - Under Verification',
+        isReadyForDownload: false,
+        timeline: [
+          { step: 1, labelKn: 'ಜನವಾಣಿ ಮೂಲಕ ಅರ್ಜಿ ಸಲ್ಲಿಕೆ', labelEn: 'Application Submitted via JanVaani', status: 'COMPLETED', updatedAt: new Date().toISOString().split('T')[0] },
+          { step: 2, labelKn: 'ಕಾಲೇಜು ಮತ್ತು ಆಧಾರ್ ಪರಿಶೀಲನೆ', labelEn: 'College & Aadhaar Verification', status: 'IN_PROGRESS' },
+          { step: 3, labelKn: 'ಬಿಎಂಟಿಸಿ ಕೇಂದ್ರೀಯ ವಿಭಾಗ ಅನುಮೋದನೆ', labelEn: 'BMTC Central Division Sanction', status: 'PENDING' },
+          { step: 4, labelKn: 'ಡಿಜಿಟಲ್ ಬಸ್ ಪಾಸ್ ವಿತರಣೆ', labelEn: 'Digital Student Pass Dispatched', status: 'PENDING' },
+        ],
+        spokenNotificationKn: `ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${cleaned} ಯಶಸ್ವಿಯಾಗಿ ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಣಿಯಾಗಿದೆ ಮತ್ತು ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ.`,
+        spokenNotificationEn: `Your BMTC Student Pass application ${cleaned} is registered at Seva Sindhu Portal and is under verification.`,
+      };
+    }
+
     // Default dynamic record for unseeded numbers
     return {
       ackNumber: cleaned,

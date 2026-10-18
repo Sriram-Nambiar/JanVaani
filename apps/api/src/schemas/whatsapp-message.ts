@@ -35,6 +35,8 @@ export const whatsappMessageSchema = z.object({
       'status_check_rd001',
       'status_check_rd002',
       'status_check_rd003',
+      'bmtc_student_pass_apply',
+      'bmtc_student_pass_submit',
     ])
     .optional(),
 }).refine(
@@ -64,4 +66,5 @@ export {
   type GruhaJyothiFields,
   type GruhaLakshmiFields,
   type CasteIncomeFields,
+  type BmtcStudentPassFields,
 } from './seva-sindhu.js';
