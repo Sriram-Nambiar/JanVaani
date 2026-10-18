@@ -1672,6 +1672,46 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('API Payload Size Guard Middleware Endpoints', () => {
+    it('GET /api/payload-guard/stats returns active guard telemetry', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('totalScannedRequests' in body.data);
+      assert.ok('maxByteLimit' in body.data);
+    });
+
+    it('rejects payload exceeding max byte limit with 413', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-payload-bytes': '15000000', // 15MB header exceeds 10MB limit
+        },
+        body: JSON.stringify({ message: 'too big' }),
+      });
+      assert.strictEqual(res.status, 413);
+    });
+
+    it('POST /api/payload-guard/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/clear`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/payload-guard/clear resets buffer with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/payload-guard/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_payload_admin_key' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
