@@ -25,12 +25,20 @@ export function getDatabaseConnectionString(): string {
 }
 
 export function getMaskedDatabaseUri(): string {
-  const host = process.env.PGHOST || 'localhost';
-  const port = process.env.PGPORT || '5432';
-  const database = process.env.PGDATABASE || 'janvaani';
-  const user = process.env.PGUSER || 'postgres';
-
-  return `postgres://${encodeURIComponent(user)}:***@${host}:${port}/${database}`;
+  try {
+    const raw = getDatabaseConnectionString();
+    const parsed = new URL(raw);
+    if (parsed.password) {
+      parsed.password = '***';
+    }
+    return parsed.toString();
+  } catch {
+    const host = process.env.PGHOST || 'localhost';
+    const port = process.env.PGPORT || '5432';
+    const database = process.env.PGDATABASE || 'janvaani';
+    const user = process.env.PGUSER || 'postgres';
+    return `postgres://${encodeURIComponent(user)}@${host}:${port}/${database}`;
+  }
 }
 
 let poolInstance: pg.Pool | null = null;
