@@ -456,10 +456,10 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(data.status, 'ok');
       assert.strictEqual(data.schemeId, 'ganga_kalyana');
       assert.strictEqual(data.isEligible, true);
-      assert.strictEqual(data.subsidyAmountInr, 500000);
+      assert.strictEqual(data.subsidyAmountInr, 350000);
     });
 
-    it('POST /api/whatsapp/schemes/ganga-kalyana/calculate-subsidy rejects missing required fields with 400', async () => {
+    it('POST /api/whatsapp/schemes/ganga-kalyana/calculate-subsidy rejects missing required fields or invalid acreage with 400', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/schemes/ganga-kalyana/calculate-subsidy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -469,6 +469,20 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
 
       assert.strictEqual(res.status, 400);
+
+      const resAcres = await fetch(`${baseUrl}/api/whatsapp/schemes/ganga-kalyana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'ಮಲ್ಲೇಶ್ ಗೌಡ',
+          casteCategory: '2A',
+          landAcres: 12.0, // Exceeds 5.0 acres limit
+          surveyNumber: '104/2B',
+          mobileNumber: '9845012399',
+        }),
+      });
+
+      assert.strictEqual(resAcres.status, 400);
     });
 
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
