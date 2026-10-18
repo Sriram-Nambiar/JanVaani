@@ -7,8 +7,16 @@ import { closeDbPool } from '../db/client.js';
 describe('JanVaani PostgreSQL JSONB Database Endpoints', () => {
   let server: Server;
   let baseUrl: string;
+  const testAdminKey = 'test_database_admin_secret_key_12345';
+  const originalAdminKey = process.env.DATABASE_ADMIN_KEY;
+  const originalPassword = process.env.PGPASSWORD;
 
   before(async () => {
+    process.env.DATABASE_ADMIN_KEY = testAdminKey;
+    if (!process.env.PGPASSWORD) {
+      process.env.PGPASSWORD = 'mysecretpassword';
+    }
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
@@ -21,6 +29,18 @@ describe('JanVaani PostgreSQL JSONB Database Endpoints', () => {
   });
 
   after(async () => {
+    if (originalAdminKey !== undefined) {
+      process.env.DATABASE_ADMIN_KEY = originalAdminKey;
+    } else {
+      delete process.env.DATABASE_ADMIN_KEY;
+    }
+
+    if (originalPassword !== undefined) {
+      process.env.PGPASSWORD = originalPassword;
+    } else {
+      delete process.env.PGPASSWORD;
+    }
+
     await closeDbPool();
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
@@ -28,13 +48,16 @@ describe('JanVaani PostgreSQL JSONB Database Endpoints', () => {
   });
 
   describe('GET /api/database/health', () => {
-    it('returns database health status and connection info', async () => {
+    it('returns database health status and masked URI without leaking credentials', async () => {
       const res = await fetch(`${baseUrl}/api/database/health`);
       assert.strictEqual(res.status, 200);
       const body = await res.json() as any;
       assert.strictEqual(typeof body.success, 'boolean');
       assert.ok(body.data);
       assert.strictEqual(typeof body.data.connected, 'boolean');
+      assert.strictEqual(typeof body.maskedUri, 'string');
+      assert.ok(body.maskedUri.includes('***'));
+      assert.strictEqual(body.connectionUrl, undefined);
     });
   });
 
@@ -53,12 +76,26 @@ describe('JanVaani PostgreSQL JSONB Database Endpoints', () => {
       assert.ok(body.error.includes('Unauthorized'));
     });
 
-    it('executes database migrations with admin key', async () => {
+    it('rejects invalid x-admin-key with 401', async () => {
       const res = await fetch(`${baseUrl}/api/database/migrate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': process.env.DATABASE_ADMIN_KEY || 'janvaani_db_admin_secret_2026',
+          'x-admin-key': 'incorrect_key',
+        },
+      });
+
+      assert.strictEqual(res.status, 401);
+      const body = await res.json() as any;
+      assert.strictEqual(body.success, false);
+    });
+
+    it('executes database migrations with valid dynamic admin key', async () => {
+      const res = await fetch(`${baseUrl}/api/database/migrate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testAdminKey,
         },
       });
 
@@ -85,12 +122,12 @@ describe('JanVaani PostgreSQL JSONB Database Endpoints', () => {
       assert.strictEqual(body.success, false);
     });
 
-    it('clears database tables with admin key', async () => {
+    it('clears database tables with valid admin key', async () => {
       const res = await fetch(`${baseUrl}/api/database/clear`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-key': process.env.DATABASE_ADMIN_KEY || 'janvaani_db_admin_secret_2026',
+          'x-admin-key': testAdminKey,
         },
       });
 

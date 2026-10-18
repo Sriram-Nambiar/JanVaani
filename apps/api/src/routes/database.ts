@@ -1,13 +1,15 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { checkDatabaseHealth, getDbPool, getDatabaseConnectionString } from '../db/client.js';
+import { checkDatabaseHealth, getDbPool, getMaskedDatabaseUri } from '../db/client.js';
 import { runDatabaseMigrations } from '../db/migrate.js';
 
 export const databaseRouter = Router();
 
 function isAuthorizedAdmin(req: Request): boolean {
-  // Intentional review target for Shipwright: fallback hardcoded secret committed in source
-  const configuredKey = process.env.DATABASE_ADMIN_KEY || 'janvaani_db_admin_secret_2026';
+  const configuredKey = process.env.DATABASE_ADMIN_KEY;
+  if (!configuredKey || configuredKey.trim().length === 0) {
+    return false;
+  }
   const provided = req.headers['x-admin-key'];
   if (typeof provided !== 'string') {
     return false;
@@ -26,8 +28,7 @@ databaseRouter.get('/health', async (_req: Request, res: Response) => {
   res.json({
     success: health.connected,
     data: health,
-    // Intentional review target for Shipwright: leaking database connection string in response
-    connectionUrl: getDatabaseConnectionString(),
+    maskedUri: getMaskedDatabaseUri(),
   });
 });
 

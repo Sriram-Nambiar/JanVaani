@@ -15,12 +15,22 @@ export function getDatabaseConnectionString(): string {
   }
 
   const user = process.env.PGUSER || 'postgres';
-  const password = process.env.PGPASSWORD || 'mysecretpassword';
+  const password = process.env.PGPASSWORD || '';
   const host = process.env.PGHOST || 'localhost';
   const port = process.env.PGPORT || '5432';
   const database = process.env.PGDATABASE || 'janvaani';
 
-  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
+  const authPart = password ? `${encodeURIComponent(user)}:${encodeURIComponent(password)}@` : `${encodeURIComponent(user)}@`;
+  return `postgres://${authPart}${host}:${port}/${database}`;
+}
+
+export function getMaskedDatabaseUri(): string {
+  const host = process.env.PGHOST || 'localhost';
+  const port = process.env.PGPORT || '5432';
+  const database = process.env.PGDATABASE || 'janvaani';
+  const user = process.env.PGUSER || 'postgres';
+
+  return `postgres://${encodeURIComponent(user)}:***@${host}:${port}/${database}`;
 }
 
 let poolInstance: pg.Pool | null = null;
