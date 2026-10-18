@@ -52,14 +52,11 @@ tatkalRouter.post('/request', (req: Request, res: Response) => {
 
   // Idempotency guard: prevent duplicate active Tatkal requests on the same application
   const existing = tatkalDataStore.getByApplicationId(record.applicationId);
-  if (existing) {
+  if (existing && existing.status === 'EXPEDITED') {
     return res.status(409).json({
       success: false,
       error: 'TATKAL_ALREADY_REQUESTED',
       message: 'An emergency Tatkal expedited request is already active for this application.',
-      existingToken: existing.tatkalToken,
-      status: existing.status,
-      slaTargetTimestamp: existing.slaTargetTimestamp,
     });
   }
 

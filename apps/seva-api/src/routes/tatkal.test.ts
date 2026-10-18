@@ -95,6 +95,7 @@ test('POST /api/tatkal/request creates expedited token with 24-hr SLA for EDUCAT
 });
 
 test('POST /api/tatkal/request rejects duplicate submission with 409', async () => {
+  tatkalDataStore.clear();
   const server = app.listen(0);
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : 3002;
