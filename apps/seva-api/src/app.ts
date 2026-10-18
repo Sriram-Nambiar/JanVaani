@@ -5,6 +5,7 @@ import { otpRouter } from './routes/otp.js';
 import { applicationsRouter } from './routes/applications.js';
 import { verificationRouter } from './routes/verification.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { documentAuditRouter } from './routes/document-audit.js';
 
 export const app = express();
 
@@ -54,6 +55,7 @@ app.use('/api/demo/otp', otpRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/verification', verificationRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/documents', documentAuditRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
