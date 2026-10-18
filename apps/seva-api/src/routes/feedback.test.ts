@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { app } from '../app.js';
 import { sevaDataStore } from '../db/store.js';
+import { feedbackDataStore } from '../db/feedback-store.js';
 
 test('POST /api/feedback/submit records citizen satisfaction rating for existing application', async () => {
   const server = app.listen(0);
@@ -43,14 +44,12 @@ test('POST /api/feedback/submit records citizen satisfaction rating for existing
     assert.ok(typeof body.feedbackId === 'string');
     assert.match(body.messageKn, /ಯಶಸ್ವಿಯಾಗಿ ದಾಖಲಿಸಲಾಗಿದೆ/);
 
-    // Verify persistence via GET /api/feedback/:applicationId
-    const getRes = await fetch(`${baseUrl}/api/feedback/${record.applicationId}`);
-    assert.equal(getRes.status, 200);
-    const getBody = (await getRes.json()) as any;
-    assert.equal(getBody.success, true);
-    assert.equal(getBody.hasFeedback, true);
-    assert.equal(getBody.feedback.rating, 5);
-    assert.equal(getBody.feedback.comment, 'Very fast approval and bus pass issuance at kiosk!');
+    // Verify feedback persistence in feedbackDataStore
+    const stored = feedbackDataStore.getFeedbackById(body.feedbackId);
+    assert.ok(stored !== null);
+    assert.equal(stored.applicationId, record.applicationId);
+    assert.equal(stored.rating, 5);
+    assert.equal(stored.comment, 'Very fast approval and bus pass issuance at kiosk!');
   } finally {
     server.close();
   }
@@ -93,6 +92,43 @@ test('POST /api/feedback/submit rejects phone number mismatch with 403', async (
   }
 });
 
+test('POST /api/feedback/submit rejects missing phone number with 400', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const record = sevaDataStore.createApplication({
+    studentName: 'No Phone Student',
+    aadhaarNumber: '987654321098',
+    phoneNumber: '9845012345',
+    institutionName: 'BMSCE',
+    courseYear: '1st Year',
+    pickupStop: 'Banashankari',
+    destinationStop: 'Majestic',
+  });
+
+  try {
+    const res = await fetch(`${baseUrl}/api/feedback/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        applicationId: record.applicationId,
+        rating: 4,
+        category: 'DOCUMENT_CLARITY',
+        // phoneNumber omitted intentionally
+      }),
+    });
+
+    assert.equal(res.status, 400);
+    const body = (await res.json()) as any;
+    assert.equal(body.success, false);
+    assert.equal(body.error, 'VALIDATION_ERROR');
+  } finally {
+    server.close();
+  }
+});
+
 test('POST /api/feedback/submit returns 404 for unknown applicationId without reflection', async () => {
   const server = app.listen(0);
   const address = server.address();
@@ -107,6 +143,7 @@ test('POST /api/feedback/submit returns 404 for unknown applicationId without re
         applicationId: 'SEVA-DEMO-999999-NOTFOUND',
         rating: 4,
         category: 'DOCUMENT_CLARITY',
+        phoneNumber: '9845012345',
       }),
     });
 
@@ -135,6 +172,7 @@ test('POST /api/feedback/submit rejects rating exceeding 5 with 400', async () =
         applicationId: 'SEVA-DEMO-506978-15F4E1',
         rating: 6,
         category: 'SPEED_OF_SERVICE',
+        phoneNumber: '9845012345',
       }),
     });
 
@@ -161,6 +199,7 @@ test('POST /api/feedback/submit rejects zero rating with 400', async () => {
         applicationId: 'SEVA-DEMO-506978-15F4E1',
         rating: 0,
         category: 'SPEED_OF_SERVICE',
+        phoneNumber: '9845012345',
       }),
     });
 

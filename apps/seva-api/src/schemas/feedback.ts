@@ -22,8 +22,7 @@ export const submitFeedbackSchema = z.object({
   comment: z.string().trim().max(500, 'Comment cannot exceed 500 characters').optional(),
   phoneNumber: z
     .string()
-    .regex(/^(\+?\d{10,15})$/, 'Phone number must be between 10 and 15 digits')
-    .optional(),
+    .regex(/^(\+?\d{10,15})$/, 'Phone number must be between 10 and 15 digits'),
   channel: z.enum(['PORTAL', 'WHATSAPP_BOT', 'GRAMA_ONE_KIOSK']).default('PORTAL'),
 });
 
