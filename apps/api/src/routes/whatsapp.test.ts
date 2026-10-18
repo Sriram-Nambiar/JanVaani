@@ -1441,7 +1441,46 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.statusRecord.ackNumber, 'RD001');
     });
   });
+
+  describe('Centralized Structured Civic Audit Logger Middleware Endpoints', () => {
+    it('GET /api/audit/logs returns recorded civic request entries', async () => {
+      // Make a dummy ping request to ensure at least one log entry exists
+      await fetch(`${baseUrl}/api/indic/health`);
+
+      const res = await fetch(`${baseUrl}/api/audit/logs`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(typeof body.count === 'number');
+      assert.ok(Array.isArray(body.logs));
+    });
+
+    it('POST /api/audit/clear rejects unauthorized requests with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/audit/clear`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.status, 'error');
+      assert.strictEqual(body.error, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/audit/clear clears buffer with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/audit/clear`, {
+        method: 'POST',
+        headers: { 'x-audit-secret': 'janvaani_audit_dev_secret' },
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(typeof body.cleared === 'number');
+    });
+  });
 });
+
 
 
 
