@@ -1443,17 +1443,41 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Centralized Structured Civic Audit Logger Middleware Endpoints', () => {
-    it('GET /api/audit/logs returns recorded civic request entries', async () => {
-      // Make a dummy ping request to ensure at least one log entry exists
-      await fetch(`${baseUrl}/api/indic/health`);
+    const testAuditKey = 'janvaani_test_audit_secret_key';
 
+    beforeEach(() => {
+      process.env.AUDIT_SECRET_KEY = testAuditKey;
+    });
+
+    it('GET /api/audit/logs rejects unauthenticated requests with 401', async () => {
       const res = await fetch(`${baseUrl}/api/audit/logs`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('GET /api/audit/logs returns recorded civic request entries with masked phone numbers', async () => {
+      // Send a request with a citizen phone to verify logging and masking
+      await fetch(`${baseUrl}/api/indic/normalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'ನಮಸ್ಕಾರ', citizenPhone: '9845012345' }),
+      });
+
+      const res = await fetch(`${baseUrl}/api/audit/logs`, {
+        headers: { 'x-audit-secret': testAuditKey },
+      });
       const body = await res.json();
 
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.ok(typeof body.count === 'number');
       assert.ok(Array.isArray(body.logs));
+      const found = body.logs.find((l: any) => l.path === '/api/indic/normalize');
+      if (found && found.callerPhone) {
+        assert.strictEqual(found.callerPhone, '******2345');
+      }
     });
 
     it('POST /api/audit/clear rejects unauthorized requests with 401', async () => {
@@ -1463,14 +1487,13 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
 
       assert.strictEqual(res.status, 401);
-      assert.strictEqual(body.status, 'error');
-      assert.strictEqual(body.error, 'UNAUTHORIZED');
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/audit/clear clears buffer with admin secret', async () => {
+    it('POST /api/audit/clear clears buffer with valid admin secret', async () => {
       const res = await fetch(`${baseUrl}/api/audit/clear`, {
         method: 'POST',
-        headers: { 'x-audit-secret': 'janvaani_audit_dev_secret' },
+        headers: { 'x-audit-secret': testAuditKey },
       });
       const body = await res.json();
 

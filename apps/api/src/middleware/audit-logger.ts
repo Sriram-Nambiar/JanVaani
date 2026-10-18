@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction, Router } from 'express';
 import crypto from 'node:crypto';
+import { maskId } from '../services/tracker.js';
 
 export interface CivicAuditLog {
   id: string;
@@ -8,45 +9,81 @@ export interface CivicAuditLog {
   statusCode: number;
   durationMs: number;
   timestamp: string;
-  // Intentional review target: unmasked caller phone/id logged in cleartext
   callerPhone?: string;
 }
 
-// Unbounded array holding audit logs without size limit or eviction policy
+// Bounded in-memory circular ring buffer with max capacity ceiling to prevent OOM
+const MAX_AUDIT_LOGS = 100;
 const auditLogBuffer: CivicAuditLog[] = [];
 
 /**
  * Civic Audit Logger Middleware
  * Tracks HTTP method, path, latency duration, and response status
+ * Excludes self-referential /api/audit routes and masks citizen PII
  */
 export function civicAuditLoggerMiddleware(req: Request, res: Response, next: NextFunction): void {
+  const url = req.originalUrl || req.url;
+  // Prevent logging requests to audit endpoints themselves to stop self-referential growth
+  if (url.startsWith('/api/audit')) {
+    next();
+    return;
+  }
+
   const startTime = Date.now();
 
   res.on('finish', () => {
     const durationMs = Date.now() - startTime;
+    const rawPhone = req.body?.senderId || req.body?.citizenPhone || req.body?.consumerPhone;
+    
     const entry: CivicAuditLog = {
       id: crypto.randomUUID(),
       method: req.method,
-      path: req.originalUrl || req.url,
+      path: url,
       statusCode: res.statusCode,
       durationMs,
       timestamp: new Date().toISOString(),
-      // Intentional review target: raw unmasked citizen phone number stored in audit log
-      callerPhone: req.body?.senderId || req.body?.citizenPhone || req.body?.consumerPhone,
+      // PII Protection: mask phone number before storing in audit trail
+      callerPhone: rawPhone ? maskId(String(rawPhone)) : undefined,
     };
 
-    // Storing without bounding array length or evicting older entries
     auditLogBuffer.push(entry);
+    // Bounded eviction policy
+    if (auditLogBuffer.length > MAX_AUDIT_LOGS) {
+      auditLogBuffer.shift();
+    }
   });
+
+  next();
+}
+
+/**
+ * Administrative authorization guard for audit endpoints (fails closed if key is unset)
+ */
+function requireAuditAdminAuth(req: Request, res: Response, next: NextFunction): void {
+  const secretKey = process.env.AUDIT_SECRET_KEY;
+  const token = req.headers['x-audit-secret'];
+
+  if (!secretKey || token !== secretKey) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-audit-secret header is required to access the civic audit log.',
+      },
+    });
+    return;
+  }
 
   next();
 }
 
 export const auditRouter = Router();
 
+// Apply admin authentication guard to all audit endpoints
+auditRouter.use(requireAuditAdminAuth);
+
 /**
  * GET /api/audit/logs
- * Exposes recent audit logs
+ * Exposes recent audit logs to authenticated administrators
  */
 auditRouter.get('/logs', (_req: Request, res: Response) => {
   res.status(200).json({
@@ -58,16 +95,9 @@ auditRouter.get('/logs', (_req: Request, res: Response) => {
 
 /**
  * POST /api/audit/clear
- * Clears audit log buffer using hardcoded developer key
+ * Clears audit log buffer
  */
-auditRouter.post('/clear', (req: Request, res: Response) => {
-  const token = req.headers['x-audit-secret'];
-  // Hardcoded authentication token in source
-  if (token !== 'janvaani_audit_dev_secret') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
-    return;
-  }
-
+auditRouter.post('/clear', (_req: Request, res: Response) => {
   const cleared = auditLogBuffer.length;
   auditLogBuffer.length = 0;
   res.status(200).json({
