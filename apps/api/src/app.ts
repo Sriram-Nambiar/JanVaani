@@ -30,6 +30,7 @@ import { compressionNegotiatorMiddleware, compressionRouter } from './middleware
 import { maintenanceGuardMiddleware, maintenanceRouter } from './middleware/maintenance-guard.js';
 import { baileysRouter } from './services/baileys-gateway.js';
 import { dashboardRouter } from './routes/dashboard.js';
+import { databaseRouter } from './routes/database.js';
 
 export function createApp() {
   const app = express();
@@ -120,6 +121,7 @@ export function createApp() {
   app.use('/api/whatsapp/grievance', grievanceRouter);
   app.use('/api/whatsapp', whatsappRouter);
   app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/database', databaseRouter);
 
   // 404 for unhandled routes
   app.use(notFoundHandler);
