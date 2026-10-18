@@ -27,6 +27,17 @@ export const casteIncomeFieldsSchema = z.object({
   district: z.string().trim().min(2, 'District name is required').max(50),
 });
 
+export const bmtcStudentPassFieldsSchema = z.object({
+  studentName: z.string().trim().min(2, 'Student name must be at least 2 characters').max(100),
+  institutionName: z.string().trim().min(2, 'College / institution name is required').max(150),
+  course: z.string().trim().min(2, 'Course and year are required').max(100),
+  pickupStop: z.string().trim().min(2, 'Origin pickup bus stop is required').max(100),
+  destinationStop: z.string().trim().min(2, 'Destination bus stop is required').max(100),
+  mobileNumber: z.string().trim().min(10, 'Mobile number must be at least 10 digits').max(15),
+  aadhaarNumber: z.string().trim().min(12, '12-digit Aadhaar number required').max(20),
+  otpCode: z.string().trim().optional(),
+});
+
 export const sevaSindhuSubmissionSchema = z.discriminatedUnion('schemeId', [
   z.object({
     schemeId: z.literal('gruha_jyothi'),
@@ -40,9 +51,14 @@ export const sevaSindhuSubmissionSchema = z.discriminatedUnion('schemeId', [
     schemeId: z.literal('caste_income'),
     fields: casteIncomeFieldsSchema,
   }),
+  z.object({
+    schemeId: z.literal('bmtc_student_pass'),
+    fields: bmtcStudentPassFieldsSchema,
+  }),
 ]);
 
 export type SevaSindhuSubmissionInput = z.infer<typeof sevaSindhuSubmissionSchema>;
 export type GruhaJyothiFields = z.infer<typeof gruhaJyothiFieldsSchema>;
 export type GruhaLakshmiFields = z.infer<typeof gruhaLakshmiFieldsSchema>;
 export type CasteIncomeFields = z.infer<typeof casteIncomeFieldsSchema>;
+export type BmtcStudentPassFields = z.infer<typeof bmtcStudentPassFieldsSchema>;

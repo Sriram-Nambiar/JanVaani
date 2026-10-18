@@ -105,6 +105,32 @@ export const SUPPORTED_SCHEMES: Record<string, SchemeDefinition> = {
       notesKn: 'ಗೃಹಬಳಕೆಯ ವಿದ್ಯುತ್ ಮೀಟರ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನ್ವಯಿಸುತ್ತದೆ. ವಾಣಿಜ್ಯ ಬಳಕೆಗೆ ಅನ್ವಯಿಸುವುದಿಲ್ಲ.',
     },
   },
+  bmtc_student_pass: {
+    id: 'bmtc_student_pass',
+    nameEn: 'BMTC Student Concessional Bus Pass',
+    nameKn: 'ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್',
+    department: 'Transport Department (BMTC Bengaluru)',
+    descriptionEn: 'Concessional city bus pass for regular students travelling across Bengaluru Metropolitan area.',
+    descriptionKn: 'ಬೆಂಗಳೂರು ಮಹಾನಗರ ಸಾರಿಗೆ ಸಂಸ್ಥೆಯ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್.',
+    requiredFields: [
+      { key: 'studentName', labelKn: 'ವಿದ್ಯಾರ್ಥಿಯ ಹೆಸರು', labelEn: 'Student Name', type: 'string', required: true },
+      { key: 'institutionName', labelKn: 'ಕಾಲೇಜು / ಶಿಕ್ಷಣ ಸಂಸ್ಥೆ', labelEn: 'College / Institution Name', type: 'string', required: true },
+      { key: 'course', labelKn: 'ಕೋರ್ಸ್ ಮತ್ತು ವರ್ಷ', labelEn: 'Course & Year', type: 'string', required: true },
+      { key: 'pickupStop', labelKn: 'ಪ್ರಾರಂಭದ ಬಸ್ ನಿಲ್ದಾಣ (Pickup Stop)', labelEn: 'Pickup Stop', type: 'string', required: true },
+      { key: 'destinationStop', labelKn: 'ಗಮ್ಯಸ್ಥಾನ ಬಸ್ ನಿಲ್ದಾಣ (Destination Stop)', labelEn: 'Destination Stop', type: 'string', required: true },
+      { key: 'mobileNumber', labelKn: 'ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', labelEn: 'Mobile Number', type: 'string', required: true },
+      { key: 'aadhaarNumber', labelKn: 'ಆಧಾರ್ ಸಂಖ್ಯೆ (Mock 4433 5010 5028)', labelEn: 'Aadhaar Number', type: 'string', required: true },
+      { key: 'otpCode', labelKn: 'ಓಟಿಪಿ (Mock 3344)', labelEn: 'OTP Code', type: 'string', required: true },
+    ],
+    requiredDocuments: [
+      { id: 'photo', titleKn: 'ವಿದ್ಯಾರ್ಥಿ ಭಾವಚಿತ್ರ', titleEn: 'Passport Size Photo', isMandatory: true },
+      { id: 'fee_receipt', titleKn: 'ಕಾಲೇಜು ಶುಲ್ಕ ರಶೀದಿ / ಬೋನಫೈಡ್', titleEn: 'College Fee Receipt / Bonafide', isMandatory: true },
+      { id: 'aadhaar', titleKn: 'ಆಧಾರ್ ಕಾರ್ಡ್', titleEn: 'Aadhaar Card', isMandatory: true },
+    ],
+    rules: {
+      notesKn: 'ಬೆಂಗಳೂರಿನ ಮಾನ್ಯತೆ ಪಡೆದ ಕಾಲೇಜು ಮತ್ತು ಶಾಲಾ ವಿದ್ಯಾರ್ಥಿಗಳಿಗೆ 100% ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್.',
+    },
+  },
 };
 
 export interface FormDraftResult {
@@ -132,6 +158,15 @@ export class SchemesService {
    * Parse Kannada speech text and map to an official scheme form draft
    */
   extractFormDraft(transcript: string, scenarioHint?: string): FormDraftResult {
+    const isBmtc =
+      scenarioHint?.startsWith('bmtc') ||
+      transcript.toLowerCase().includes('bmtc') ||
+      transcript.toLowerCase().includes('bus pass') ||
+      transcript.toLowerCase().includes('student pass') ||
+      transcript.includes('ಬಸ್ ಪಾಸ್') ||
+      transcript.includes('ಪಾಸ್') ||
+      transcript.includes('ವಿದ್ಯಾರ್ಥಿ ಪಾಸ್');
+
     const isGruhaJyothi =
       scenarioHint?.startsWith('gruha_jyothi') ||
       transcript.includes('ಜ್ಯೋತಿ') ||
@@ -149,13 +184,55 @@ export class SchemesService {
       transcript.includes('caste') ||
       transcript.includes('income');
 
-    const scheme = isGruhaJyothi
+    const scheme = isBmtc
+      ? SUPPORTED_SCHEMES.bmtc_student_pass
+      : isGruhaJyothi
       ? SUPPORTED_SCHEMES.gruha_jyothi
       : isCasteIncome
       ? SUPPORTED_SCHEMES.caste_income
       : SUPPORTED_SCHEMES.gruha_lakshmi;
 
     const extractedFields: Record<string, string | number> = {};
+
+    if (scheme.id === 'bmtc_student_pass') {
+      extractedFields.studentName = 'Priya Sharma';
+      extractedFields.institutionName = 'BMS College of Engineering, Basavanagudi';
+      extractedFields.course = 'B.Tech Computer Science - 3rd Year';
+      extractedFields.pickupStop = 'Banashankari TTMC';
+      extractedFields.destinationStop = 'Majestic (Kempegowda Bus Station)';
+      extractedFields.mobileNumber = '9845012345';
+      extractedFields.aadhaarNumber = '4433 5010 5028';
+
+      const hasOtpOrConfirm =
+        scenarioHint === 'bmtc_student_pass_submit' ||
+        transcript.includes('3344') ||
+        transcript.toLowerCase().includes('confirm') ||
+        transcript.toLowerCase().includes('yes') ||
+        transcript.includes('ಹೌದು');
+
+      if (hasOtpOrConfirm) {
+        extractedFields.otpCode = '3344';
+      }
+
+      const missingFields = scheme.requiredFields
+        .filter((field) => field.required && !extractedFields[field.key])
+        .map((field) => ({ key: field.key, labelKn: field.labelKn, labelEn: field.labelEn }));
+
+      const isComplete = missingFields.length === 0;
+      const promptForCitizenKn = isComplete
+        ? `ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿ ವಿವರಗಳು ಪೂರ್ಣಗೊಂಡಿವೆ! ವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ, ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ಇಂದ ಮೆಜೆಸ್ಟಿಕ್, ಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು. ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Port 3002) ಅರ್ಜಿ ಸಲ್ಲಿಸಲು 'CONFIRM' ಅಥವಾ 'YES' ಎಂದು ಉತ್ತರಿಸಿ.`
+        : `ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ ನಿಮ್ಮ ಅರ್ಜಿ ಕರಡು ಸಿದ್ಧವಾಗಿದೆ (ವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ, ಬಿಎಂಎಸ್ ಕಾಲೇಜು, ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ಇಂದ ಮೆಜೆಸ್ಟಿಕ್). ದಯವಿಟ್ಟು ಡೆಮೊ ಓಟಿಪಿ '3344' ನಮೂದಿಸಿ ಅಥವಾ 'CONFIRM' ಎಂದು ಉತ್ತರಿಸಿ.`;
+
+      return {
+        schemeId: scheme.id,
+        schemeNameKn: scheme.nameKn,
+        schemeNameEn: scheme.nameEn,
+        extractedFields,
+        missingFields,
+        isComplete,
+        promptForCitizenKn,
+      };
+    }
 
     if (scheme.id === 'gruha_jyothi') {
       extractedFields.applicantName = 'ಸವಿತಾ ಕುಮಾರಿ (Savitha Kumari)';

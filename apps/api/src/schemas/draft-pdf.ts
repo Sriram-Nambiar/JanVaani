@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const draftPdfSchema = z.object({
   ackNumber: z.string().trim().min(3).max(50),
-  schemeId: z.enum(['gruha_jyothi', 'gruha_lakshmi', 'caste_income']),
+  schemeId: z.enum(['gruha_jyothi', 'gruha_lakshmi', 'caste_income', 'bmtc_student_pass']),
   applicantName: z.string().trim().min(2).max(100),
   consumerId: z.string().trim().optional(),
   rationCardNumber: z.string().trim().optional(),
