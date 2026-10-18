@@ -1,9 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { arogyaEligibilitySchema } from '../schemas/arogya.js';
 import { arogyaService } from '../services/arogya.js';
-import { maskId } from '../services/tracker.js';
 
 export const arogyaRouter = Router();
+
+function maskAadhaar(id: string): string {
+  if (!id || id.length < 4) return '****';
+  return '*'.repeat(id.length - 4) + id.slice(-4);
+}
 
 /**
  * POST /api/arogya/eligibility
@@ -36,7 +40,7 @@ arogyaRouter.post('/eligibility', async (req: Request, res: Response, next: Next
         referralRequired: result.referralRequired,
         empanelledHospitalsCount: result.empanelledHospitalsCount,
         district: input.district,
-        maskedAadhaar: maskId(input.aadhaarNumber),
+        maskedAadhaar: maskAadhaar(input.aadhaarNumber),
       },
       messageKn: result.messageKn,
       messageEn: result.messageEn,
