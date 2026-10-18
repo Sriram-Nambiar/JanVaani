@@ -21,3 +21,22 @@ test('ServiceCatalog includes BMTC Student Concessional Bus Pass service card', 
   assert.match(content, /Transport Department \(BMTC\)/i);
   assert.match(content, /Apply Now/i);
 });
+
+test('BmtcApplicationForm includes 4-step wizard and one-click demo filler', () => {
+  const formPath = path.resolve(process.cwd(), 'apps/seva-portal/src/components/BmtcApplicationForm.tsx');
+  const content = fs.readFileSync(formPath, 'utf-8');
+
+  assert.match(content, /Priya Sharma/);
+  assert.match(content, /4433 5010 5028/);
+  assert.match(content, /3344/);
+  assert.match(content, /Banashankari TTMC/);
+  assert.match(content, /Majestic/);
+});
+
+test('StatusTracker supports application status lookup', () => {
+  const trackerPath = path.resolve(process.cwd(), 'apps/seva-portal/src/components/StatusTracker.tsx');
+  const content = fs.readFileSync(trackerPath, 'utf-8');
+
+  assert.match(content, /Track Citizen Application Status/i);
+  assert.match(content, /\/api\/applications\//);
+});
