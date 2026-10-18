@@ -2,6 +2,7 @@ import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 import qrcode from 'qrcode-terminal';
 import QRCode from 'qrcode';
@@ -121,6 +122,19 @@ export async function runWhatsAppBot() {
         msg.message.extendedTextMessage?.text ||
         msg.message.imageMessage?.caption ||
         '';
+
+      const isAudio = Boolean(msg.message.audioMessage);
+      if (isAudio) {
+        try {
+          const buffer = await downloadMediaMessage(msg, 'buffer', {});
+          const response = await baileysGateway.processInboundAudio(sender, buffer as Buffer);
+          sock.sendMessage(sender, { text: response.replyText });
+          console.log(`📤 Voice reply dispatched for ${sender}`);
+        } catch (err) {
+          console.error(`❌ Failed to process voice note from ${sender}:`, err);
+        }
+        continue;
+      }
 
       if (!text.trim()) continue;
 

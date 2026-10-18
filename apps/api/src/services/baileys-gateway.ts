@@ -2,6 +2,7 @@ import { Request, Response, Router } from 'express';
 import crypto from 'node:crypto';
 import { trackerService } from './tracker.js';
 import { schemesService } from './schemes.js';
+import { sarvamService } from './sarvam.js';
 
 export interface InboundMessageRecord {
   id: string;
@@ -88,9 +89,12 @@ export class BaileysGateway {
   }
 
   /**
-   * Core message processing logic matching JanVaani Civic Copilot
+   * Core message processing logic matching JanVaani Civic Copilot with Sarvam AI
    */
-  public async processInbound(from: string, text: string): Promise<{ replyText: string; feature: string }> {
+  public async processInbound(
+    from: string,
+    text: string
+  ): Promise<{ replyText: string; feature: string; audioBase64?: string; transcript?: string }> {
     totalMessagesProcessed++;
 
     recordMessage({
@@ -107,17 +111,80 @@ export class BaileysGateway {
     if (rdMatch) {
       const ackNumber = rdMatch[1].replace(/\s+/g, '').toUpperCase();
       const record = trackerService.lookupStatus(ackNumber);
+      let audioBase64: string | undefined;
+      try {
+        const tts = await sarvamService.textToSpeech(record.spokenNotificationKn, 'kavitha');
+        audioBase64 = tts.audioBase64;
+      } catch {
+        // audio optional on failure
+      }
       return {
         feature: 'audio_status_bell',
         replyText: `🔔 *JanVaani Civic Status Bell*\n\nಅರ್ಜಿ ಸಂಖ್ಯೆ (Ack No): *${record.ackNumber}*\nಯೋಜನೆ (Scheme): ${record.schemeNameKn}\nಪ್ರಸ್ತುತ ಸ್ಥಿತಿ (Status): *${record.currentStageKn}*\n\n${record.spokenNotificationKn}`,
+        audioBase64,
       };
     }
 
-    // 2. Default: Dhvani-Form application assistance
+    // 2. Check for scheme intent or form drafting
     const draft = schemesService.extractFormDraft(trimmed);
+    if (draft && draft.schemeId !== 'unknown') {
+      let audioBase64: string | undefined;
+      try {
+        const tts = await sarvamService.textToSpeech(draft.promptForCitizenKn, 'kavitha');
+        audioBase64 = tts.audioBase64;
+      } catch {
+        // audio optional
+      }
+      return {
+        feature: 'dhvani_form',
+        replyText: `🏛️ *ಜನವಾಣಿ - JanVaani Civic Copilot*\n\nಯೋಜನೆ: *${draft.schemeNameKn}*\n${draft.promptForCitizenKn}`,
+        audioBase64,
+      };
+    }
+
+    // 3. Conversational AI fallback powered by Sarvam-105B
+    try {
+      const chatResult = await sarvamService.chatCompletion(
+        [{ role: 'user', content: trimmed }],
+        'You are JanVaani (ಜನವಾಣಿ), an AI civic copilot for Karnataka citizens. Respond politely and concisely in Kannada (or bilingual Kannada/English) to help citizens with Karnataka welfare schemes (Gruha Lakshmi, Gruha Jyothi, Anna Bhagya, Shakti, Yuva Nidhi, Bhoomi RTC, Caste & Income certificates). Keep answers helpful and under 3-4 sentences.'
+      );
+      let audioBase64: string | undefined;
+      try {
+        const tts = await sarvamService.textToSpeech(chatResult.reply, 'kavitha');
+        audioBase64 = tts.audioBase64;
+      } catch {
+        // audio optional
+      }
+      return {
+        feature: 'sarvam_chat',
+        replyText: `🏛️ *ಜನವಾಣಿ (JanVaani AI Copilot)*\n\n${chatResult.reply}`,
+        audioBase64,
+      };
+    } catch {
+      return {
+        feature: 'dhvani_form',
+        replyText: `🏛️ *ಜನವಾಣಿ - JanVaani Civic Copilot*\n\nಯೋಜನೆ: *${draft.schemeNameKn}*\n${draft.promptForCitizenKn}`,
+      };
+    }
+  }
+
+  /**
+   * Process incoming WhatsApp audio voice note using Sarvam Saaras STT
+   */
+  public async processInboundAudio(
+    from: string,
+    audioBuffer: Buffer,
+    mimeType: string = 'audio/ogg'
+  ): Promise<{ replyText: string; feature: string; audioBase64?: string; transcript: string }> {
+    console.log(`[Baileys Audio STT] Processing voice note from citizen phone: ${from}, size: ${audioBuffer.length} bytes`);
+    const stt = await sarvamService.speechToText({ buffer: audioBuffer, mimeType });
+    const transcript = stt.transcript;
+    const processed = await this.processInbound(from, transcript);
+
     return {
-      feature: 'dhvani_form',
-      replyText: `🏛️ *ಜನವಾಣಿ - JanVaani Civic Copilot*\n\nಯೋಜನೆ: *${draft.schemeNameKn}*\n${draft.promptForCitizenKn}`,
+      ...processed,
+      transcript,
+      replyText: `🎙️ *ನಿಮ್ಮ ಧ್ವನಿ (Sarvam Saaras STT):*\n_"${transcript}"_\n\n${processed.replyText}`,
     };
   }
 

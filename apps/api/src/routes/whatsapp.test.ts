@@ -2688,6 +2688,14 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(body.data.replyText.includes('RD001'));
     });
 
+    it('processes inbound audio voice note with Saaras STT', async () => {
+      const { baileysGateway } = await import('../services/baileys-gateway.js');
+      const dummyBuffer = Buffer.from('RIFF2400WAVEfmt ');
+      const res = await baileysGateway.processInboundAudio('919845012345@s.whatsapp.net', dummyBuffer);
+      assert.strictEqual(typeof res.transcript, 'string');
+      assert.ok(res.replyText.length > 0);
+    });
+
     it('POST /api/baileys/clear-session rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/baileys/clear-session`, {
         method: 'POST',
