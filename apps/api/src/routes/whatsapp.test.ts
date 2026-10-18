@@ -1847,6 +1847,56 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Civic Request Schema Sanitization & Threat Defense Endpoints', () => {
+    it('GET /api/security/sanitizer/stats returns initial telemetry', async () => {
+      const res = await fetch(`${baseUrl}/api/security/sanitizer/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('totalInspectedRequests' in body.data);
+    });
+
+    it('POST /api/security/sanitizer/test strips prototype pollution keys from body', async () => {
+      const payload = {
+        name: 'Basavaraj',
+        __proto__: { admin: true },
+        nested: {
+          constructor: 'malicious',
+          valid: 'Bangalore',
+        },
+      };
+
+      const res = await fetch(`${baseUrl}/api/security/sanitizer/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(Object.prototype.hasOwnProperty.call(body.sanitizedBody.nested, 'constructor'), false);
+      assert.strictEqual(body.sanitizedBody.nested.valid, 'Bangalore');
+      assert.strictEqual(body.sanitizedBody.name, 'Basavaraj');
+    });
+
+    it('POST /api/security/sanitizer/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/security/sanitizer/clear`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/security/sanitizer/clear flushes audit log with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/security/sanitizer/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_sanitize_admin_token' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
