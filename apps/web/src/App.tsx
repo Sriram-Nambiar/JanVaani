@@ -4,6 +4,7 @@ import { InspectorPanel } from './components/InspectorPanel';
 import { DraftViewerModal } from './components/DraftViewerModal';
 import { OfficerPushSimulator } from './components/OfficerPushSimulator';
 import { MockServersSite } from './mock-servers/MockServersSite';
+import { JanVaaniDashboard } from './components/dashboard/JanVaaniDashboard';
 import { WhatsAppApiResponse, ChatMessage } from './types';
 
 export function App() {
@@ -18,8 +19,8 @@ export function App() {
     isMock: true,
   });
 
-  // Main View Mode: 'copilot' (WhatsApp + Inspector) vs 'mock_servers' (Mock Government Services Site)
-  const [viewMode, setViewMode] = useState<'copilot' | 'mock_servers'>('copilot');
+  // Main View Mode: 'dashboard' (Voice Civic Dashboard) vs 'copilot' (WhatsApp + Inspector) vs 'mock_servers'
+  const [viewMode, setViewMode] = useState<'dashboard' | 'copilot' | 'mock_servers'>('dashboard');
 
   // Copilot Layout Mode: 'both' | 'chat' | 'inspector'
   const [activeTab, setActiveTab] = useState<'both' | 'chat' | 'inspector'>('both');
@@ -63,6 +64,15 @@ export function App() {
       setViewMode('mock_servers');
     }
   };
+
+  if (viewMode === 'dashboard') {
+    return (
+      <JanVaaniDashboard
+        onSwitchToCopilot={() => setViewMode('copilot')}
+        onSwitchToMockServers={() => setViewMode('mock_servers')}
+      />
+    );
+  }
 
   return (
     <div
@@ -130,6 +140,25 @@ export function App() {
               border: '1px solid #334155',
             }}
           >
+            <button
+              onClick={() => setViewMode('dashboard')}
+              style={{
+                background: '#065f46',
+                color: '#86efac',
+                border: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>🎙️</span> JanVaani Dashboard (ಮುಖಪುಟ)
+            </button>
             <button
               onClick={() => setViewMode('copilot')}
               style={{

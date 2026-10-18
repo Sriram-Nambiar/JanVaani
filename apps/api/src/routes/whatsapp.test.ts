@@ -1,4 +1,4 @@
-import { describe, it, before, after } from 'node:test';
+import { describe, it, before, after, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 import { app } from '../app.js';
@@ -2481,6 +2481,88 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
+    });
+  });
+
+  describe('JanVaani Voice-First Civic Services Dashboard Endpoints', () => {
+    it('GET /api/dashboard/schemes returns verified welfare schemes', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/schemes`);
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(Array.isArray(body.data), true);
+      assert.strictEqual(body.data.length, 2);
+      assert.strictEqual(body.data[0].id, 'gruha-lakshmi');
+      assert.strictEqual(body.data[0].matchPercentage, 98);
+      assert.strictEqual(body.data[1].id, 'sandhya-suraksha');
+      assert.strictEqual(body.data[1].matchPercentage, 92);
+    });
+
+    it('POST /api/dashboard/voice-query records citizen voice query', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/voice-query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: 'ನನಗೆ 68 ವರ್ಷ, ತಿಂಗಳಿಗೆ ಯಾವುದೇ ಆದಾಯವಿಲ್ಲ',
+          citizenPhone: '9876543210',
+          language: 'kn',
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(body.recognizedText, 'ನನಗೆ 68 ವರ್ಷ, ತಿಂಗಳಿಗೆ ಯಾವುದೇ ಆದಾಯವಿಲ್ಲ');
+    });
+
+    it('POST /api/dashboard/voice-query rejects invalid payload with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/voice-query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          transcript: '',
+          citizenPhone: '123',
+        }),
+      });
+      assert.strictEqual(res.status, 400);
+      const body = await res.json();
+      assert.strictEqual(body.error, 'VALIDATION_ERROR');
+    });
+
+    it('POST /api/dashboard/whatsapp-checklist sends checklist to citizen', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/whatsapp-checklist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          citizenPhone: '9876543210',
+          applicantName: 'ರಾಧಾ ದೇವಿ',
+          district: 'ಮೈಸೂರು',
+          schemeIds: ['gruha-lakshmi', 'sandhya-suraksha'],
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(body.applicantName, 'ರಾಧಾ ದೇವಿ');
+      assert.strictEqual(body.status, 'SENT');
+    });
+
+    it('POST /api/dashboard/clear-logs rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/clear-logs`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+      const body = await res.json();
+      assert.strictEqual(body.error, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/dashboard/clear-logs flushes voice query log with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/dashboard/clear-logs`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani-dashboard-secret-2026' },
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
     });
   });
 });
