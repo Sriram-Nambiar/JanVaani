@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { arogyaEligibilitySchema } from '../schemas/arogya.js';
 import { arogyaService } from '../services/arogya.js';
+import { maskId } from '../services/tracker.js';
 
 export const arogyaRouter = Router();
 
@@ -10,9 +11,6 @@ export const arogyaRouter = Router();
  */
 arogyaRouter.post('/eligibility', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Intentional Flaw: Logging unmasked citizen Aadhaar and phone number in console.log
-    console.log('[Arogya] Processing health eligibility for Aadhaar:', req.body.aadhaarNumber, 'phone:', req.body.phoneNumber);
-
     const parsed = arogyaEligibilitySchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -38,6 +36,7 @@ arogyaRouter.post('/eligibility', async (req: Request, res: Response, next: Next
         referralRequired: result.referralRequired,
         empanelledHospitalsCount: result.empanelledHospitalsCount,
         district: input.district,
+        maskedAadhaar: maskId(input.aadhaarNumber),
       },
       messageKn: result.messageKn,
       messageEn: result.messageEn,

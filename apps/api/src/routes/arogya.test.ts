@@ -44,15 +44,52 @@ describe('Arogya Karnataka Health Assurance API', () => {
     assert.strictEqual(body.eligibility.category, 'A');
     assert.strictEqual(body.eligibility.annualCoverageLimitInr, 500000);
     assert.strictEqual(body.eligibility.cashlessCoveragePercent, 100);
+    assert.strictEqual(body.eligibility.maskedAadhaar, '********9012');
   });
 
-  it('rejects invalid aadhaar number with 400', async () => {
+  it('calculates 30% co-payment for general category capped at ₹1,50,000', async () => {
     const res = await fetch(`${baseUrl}/api/arogya/eligibility`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        aadhaarNumber: '123',
+        aadhaarNumber: '987654321098',
         phoneNumber: '9845012345',
+        rationCardType: 'APL',
+        annualIncomeInr: 300000,
+        treatmentType: 'TERTIARY',
+        district: 'Bengaluru Urban',
+      }),
+    });
+
+    assert.strictEqual(res.status, 200);
+    const body = (await res.json()) as any;
+    assert.strictEqual(body.status, 'ok');
+    assert.strictEqual(body.eligibility.category, 'B');
+    assert.strictEqual(body.eligibility.annualCoverageLimitInr, 150000);
+    assert.strictEqual(body.eligibility.cashlessCoveragePercent, 30);
+  });
+
+  it('rejects invalid non-numeric aadhaar number with 400', async () => {
+    const res = await fetch(`${baseUrl}/api/arogya/eligibility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aadhaarNumber: 'ABCD1234EFGH',
+        phoneNumber: '9845012345',
+      }),
+    });
+
+    assert.strictEqual(res.status, 400);
+  });
+
+  it('rejects negative annual income with 400', async () => {
+    const res = await fetch(`${baseUrl}/api/arogya/eligibility`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        aadhaarNumber: '123456789012',
+        phoneNumber: '9845012345',
+        annualIncomeInr: -5000,
       }),
     });
 

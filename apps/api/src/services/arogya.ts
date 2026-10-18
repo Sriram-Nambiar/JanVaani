@@ -13,9 +13,12 @@ export interface ArogyaEligibilityResult {
 
 export class ArogyaKarnatakaService {
   calculateEligibility(input: ArogyaEligibilityInput): ArogyaEligibilityResult {
-    // Flaw 1: Category B cap is ₹15,00,000 (exceeds legal ceiling of ₹1,50,000 by 10x)
-    // Flaw 2: Accepts negative annual income
-    const isBPL = input.rationCardType === 'BPL' || input.rationCardType === 'AAY' || (input.annualIncomeInr !== undefined && input.annualIncomeInr <= 150000);
+    const isIncomeBPL =
+      typeof input.annualIncomeInr === 'number' &&
+      input.annualIncomeInr >= 0 &&
+      input.annualIncomeInr <= 150000;
+
+    const isBPL = input.rationCardType === 'BPL' || input.rationCardType === 'AAY' || isIncomeBPL;
 
     if (isBPL) {
       return {
@@ -32,12 +35,12 @@ export class ArogyaKarnatakaService {
       return {
         isEligible: true,
         category: 'B',
-        annualCoverageLimitInr: 1500000, // Intentional flaw: 15,00,000 instead of 1,50,000
+        annualCoverageLimitInr: 150000,
         cashlessCoveragePercent: 30,
         referralRequired: true,
         empanelledHospitalsCount: 380,
-        messageKn: 'ಆರೋಗ್ಯ ಕರ್ನಾಟಕ - ವರ್ಗ B: ಎಪಿಎಲ್ ಕುಟುಂಬಗಳಿಗೆ ಶೇಕಡಾ 30 ರಿಯಾಯಿತಿ ದೊರೆಯುತ್ತದೆ.',
-        messageEn: 'Arogya Karnataka - Category B: 30% co-payment assistance available for general category.',
+        messageKn: 'ಆರೋಗ್ಯ ಕರ್ನಾಟಕ - ವರ್ಗ B: ಎಪಿಎಲ್ ಕುಟುಂಬಗಳಿಗೆ ಶೇಕಡಾ 30 ರಿಯಾಯಿತಿ (ಗರಿಷ್ಠ ₹1,50,000) ದೊರೆಯುತ್ತದೆ.',
+        messageEn: 'Arogya Karnataka - Category B: 30% co-payment assistance (maximum ₹1,50,000) available for general category.',
       };
     }
   }
