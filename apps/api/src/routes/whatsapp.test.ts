@@ -575,6 +575,31 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(Array.isArray(body.dockets));
       assert.ok(body.dockets.length >= 1);
     });
+
+    it('GET /api/whatsapp/grievance/raw-export/:docketNumber returns raw docket data', async () => {
+      // First submit a grievance to persist it
+      const submitRes = await fetch(`${baseUrl}/api/whatsapp/grievance/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'ರಮೇಶ್ ಗೌಡ',
+          phone: '9845099887',
+          district: 'Mandya',
+          department: 'REVENUE_NADAKACHERI',
+          grievanceCategory: 'SERVICE_DELAY',
+          description: 'ಆದಾಯ ಪ್ರಮಾಣಪತ್ರಕ್ಕಾಗಿ ೧೫ ದಿನಗಳ ಹಿಂದೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಿದ್ದು ಇನ್ನೂ ಬಂದಿಲ್ಲ.',
+        }),
+      });
+      assert.strictEqual(submitRes.status, 201);
+      const submitBody = await submitRes.json();
+      const docketNum = submitBody.docketNumber;
+
+      const exportRes = await fetch(`${baseUrl}/api/whatsapp/grievance/raw-export/${docketNum}`);
+      assert.strictEqual(exportRes.status, 200);
+      const exportBody = await exportRes.json();
+      assert.strictEqual(exportBody.success, true);
+      assert.strictEqual(exportBody.docketNumber, docketNum);
+    });
   });
 
   describe('Kannada Spoken Audio Receipt Endpoints', () => {

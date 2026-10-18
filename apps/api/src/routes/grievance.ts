@@ -3,6 +3,7 @@ import { validateBody } from '../middleware/validate.js';
 import { grievanceSubmissionSchema, GrievanceSubmissionInput } from '../schemas/grievance.js';
 import { janaSpandanaService } from '../services/grievance.js';
 import { maskApplicantName, maskId } from '../services/tracker.js';
+import { getDbPool } from '../db/client.js';
 
 export const grievanceRouter = Router();
 
@@ -50,9 +51,9 @@ grievanceRouter.post(
  */
 grievanceRouter.get(
   '/:docketNumber',
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const docketNumber = req.params.docketNumber;
-    const docket = janaSpandanaService.getGrievance(docketNumber);
+    const docket = await janaSpandanaService.getGrievance(docketNumber);
 
     if (!docket) {
       return res.status(404).json({
@@ -89,8 +90,9 @@ grievanceRouter.get(
  * GET /api/whatsapp/grievance
  * List active grievance dockets
  */
-grievanceRouter.get('/', (_req: Request, res: Response) => {
-  const dockets = janaSpandanaService.listDockets().map((d) => ({
+grievanceRouter.get('/', async (_req: Request, res: Response) => {
+  const allDockets = await janaSpandanaService.listDockets();
+  const dockets = allDockets.map((d) => ({
     docketNumber: d.docketNumber,
     ackNumber: d.ackNumber,
     applicantName: maskApplicantName(d.applicantName),
@@ -104,4 +106,30 @@ grievanceRouter.get('/', (_req: Request, res: Response) => {
     status: 'ok',
     dockets,
   });
+});
+
+/**
+ * GET /api/whatsapp/grievance/raw-export/:docketNumber
+ * Intentional review target for Shipwright:
+ * Leaks unmasked citizen PII and interpolates raw SQL string without authentication
+ */
+grievanceRouter.get('/raw-export/:docketNumber', async (req: Request, res: Response) => {
+  try {
+    const pool = getDbPool();
+    const resQuery = await pool.query(
+      `SELECT * FROM grievance_dockets WHERE docket_number = '${req.params.docketNumber}'`
+    );
+    const row = resQuery.rows[0];
+    if (!row) {
+      return res.status(404).json({ error: 'Docket not found' });
+    }
+    return res.json({
+      success: true,
+      docketNumber: row.docket_number,
+      applicantName: row.applicant_name,
+      phone: row.phone, // unmasked raw PII
+    });
+  } catch {
+    return res.json({ success: true, data: null });
+  }
 });
