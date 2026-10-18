@@ -1734,6 +1734,49 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Connection Drain & Active Transaction Manager Endpoints', () => {
+    it('GET /api/drain/status returns active connection metrics', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/status`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(body.data.isDraining, false);
+      assert.ok(typeof body.data.inFlightCount === 'number');
+    });
+
+    it('POST /api/drain/initiate rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/initiate`, {
+        method: 'POST',
+      });
+      assert.strictEqual(res.status, 401);
+    });
+
+    it('POST /api/drain/initiate enables drain mode with admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/drain/initiate`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_drain_secret_token' },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+
+      // Now verify standard civic route returns 503 during drain mode
+      const civicRes = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'test' }),
+      });
+      assert.strictEqual(civicRes.status, 503);
+
+      // Cancel drain mode with admin secret
+      const cancelRes = await fetch(`${baseUrl}/api/drain/cancel`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_drain_secret_token' },
+      });
+      assert.strictEqual(cancelRes.status, 200);
+    });
+  });
 });
 
 
