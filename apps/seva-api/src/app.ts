@@ -7,6 +7,7 @@ import { verificationRouter } from './routes/verification.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { documentAuditRouter } from './routes/document-audit.js';
 import { feedbackRouter } from './routes/feedback.js';
+import { tatkalRouter } from './routes/tatkal.js';
 
 export const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/verification', verificationRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/documents', documentAuditRouter);
 app.use('/api/feedback', feedbackRouter);
+app.use('/api/tatkal', tatkalRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
