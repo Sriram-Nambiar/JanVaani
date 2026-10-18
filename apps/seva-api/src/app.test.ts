@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { app } from './app.js';
-import { SevaDataStore } from './db/store.js';
+import { SevaDataStore, sevaDataStore } from './db/store.js';
 import path from 'node:path';
 import os from 'node:os';
 
@@ -234,6 +234,49 @@ test('POST /api/applications creates new BMTC bus pass application', async () =>
     server.close();
   }
 });
+
+test('GET /api/applications/:id returns application details or 404 for unknown ID', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    // Seed record directly to avoid order-dependency
+    const record = sevaDataStore.createApplication({
+      studentName: 'Test Student',
+      aadhaarNumber: '443350105028',
+      phoneNumber: '9876543210',
+      institutionName: 'Bangalore University',
+      courseYear: '1st Year',
+      pickupStop: 'Majestic Bus Stand (KBS)',
+      destinationStop: 'Jayanagar 4th Block',
+      submittedVia: 'SEVA_PORTAL',
+    });
+
+    const resItem = await fetch(`${baseUrl}/api/applications/${record.applicationId}`);
+    assert.equal(resItem.status, 200);
+    const dataItem = await resItem.json();
+    assert.equal(dataItem.success, true);
+    assert.equal(dataItem.record.applicationId, record.applicationId);
+
+    // Unknown ID returns 404
+    const resNotFound = await fetch(`${baseUrl}/api/applications/SEVA-DEMO-UNKNOWN-000000`);
+    assert.equal(resNotFound.status, 404);
+    const dataNotFound = await resNotFound.json();
+    assert.equal(dataNotFound.success, false);
+    assert.equal(dataNotFound.error, 'APPLICATION_NOT_FOUND');
+
+    // Invalid limit returns 400
+    const resInvalidLimit = await fetch(`${baseUrl}/api/applications?limit=-5`);
+    assert.equal(resInvalidLimit.status, 400);
+    const dataInvalidLimit = await resInvalidLimit.json();
+    assert.equal(dataInvalidLimit.error, 'INVALID_LIMIT');
+  } finally {
+    server.close();
+  }
+});
+
 
 
 

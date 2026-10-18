@@ -61,3 +61,58 @@ applicationsRouter.post('/', (req: Request, res: Response) => {
     },
   });
 });
+
+/**
+ * GET /api/applications/:id
+ * Retrieve specific application by ID
+ */
+applicationsRouter.get('/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const record = sevaDataStore.getApplicationById(id);
+
+  if (!record) {
+    return res.status(404).json({
+      success: false,
+      error: 'APPLICATION_NOT_FOUND',
+      message: `No application record found for ID: ${id}`,
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    record,
+  });
+});
+
+/**
+ * GET /api/applications
+ * List all submitted applications in the demo registry with optional status and validated limit
+ */
+applicationsRouter.get('/', (req: Request, res: Response) => {
+  const { status, limit } = req.query;
+  let applications = sevaDataStore.getAllApplications();
+
+  if (status && typeof status === 'string') {
+    applications = applications.filter((app) => app.status === status.toUpperCase());
+  }
+
+  if (limit !== undefined) {
+    const parsedLimit = parseInt(limit as string, 10);
+    if (isNaN(parsedLimit) || parsedLimit <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_LIMIT',
+        message: 'Limit query parameter must be a positive integer.',
+      });
+    }
+    const clampedLimit = Math.min(parsedLimit, 100);
+    applications = applications.slice(0, clampedLimit);
+  }
+
+  return res.status(200).json({
+    success: true,
+    count: applications.length,
+    applications,
+  });
+});
+
