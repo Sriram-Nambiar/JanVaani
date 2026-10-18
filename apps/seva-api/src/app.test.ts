@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { app } from './app.js';
+import { SevaDataStore } from './db/store.js';
+import path from 'node:path';
+import os from 'node:os';
+
+test('GET /api/health returns 200 with service information', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/health`);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.status, 'ok');
+    assert.equal(body.service, 'seva-sindhu-demo-api');
+    assert.equal(body.isDemoPortal, true);
+  } finally {
+    server.close();
+  }
+});
+
+test('CORS rejects unauthorized origins', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: 'http://malicious-site.example.com' },
+    });
+    // In express cors middleware, rejecting calls callback with error, triggering error handler
+    assert.equal(res.status, 500);
+    const data = await res.json();
+    assert.match(data.message, /not allowed by CORS/);
+  } finally {
+    server.close();
+  }
+});
+
+test('SevaDataStore generates properly formatted IDs and masks Aadhaar', () => {
+  const tempDb = path.join(os.tmpdir(), `seva-test-${Date.now()}.json`);
+  const store = new SevaDataStore(tempDb);
+
+  const generatedId = store.generateApplicationId();
+  assert.match(generatedId, /^SEVA-DEMO-\d{6}-[A-F0-9]{6}$/);
+
+  const masked = store.maskAadhaar('443350105028');
+  assert.equal(masked, 'XXXX-XXXX-5028');
+
+  const shortMasked = store.maskAadhaar('1234');
+  assert.equal(shortMasked, 'XXXX-XXXX-1234');
+});
+
+test('SevaDataStore saves and retrieves records correctly', () => {
+  const tempDb = path.join(os.tmpdir(), `seva-test-${Date.now()}-2.json`);
+  const store = new SevaDataStore(tempDb);
+
+  const record = store.createApplication({
+    studentName: 'Priya Sharma',
+    aadhaarNumber: '443350105028',
+    phoneNumber: '9876543210',
+    institutionName: 'BMS College of Engineering',
+    courseYear: '2nd Year B.E. Computer Science',
+    pickupStop: 'Majestic Bus Stand (KBS)',
+    destinationStop: 'Bull Temple Road (Basavanagudi)',
+    submittedVia: 'SEVA_PORTAL',
+  });
+
+  assert.ok(record.applicationId);
+  assert.equal(record.studentName, 'Priya Sharma');
+  assert.equal(record.maskedAadhaar, 'XXXX-XXXX-5028');
+
+  const retrieved = store.getApplicationById(record.applicationId);
+  assert.ok(retrieved);
+  assert.equal(retrieved?.applicationId, record.applicationId);
+});
