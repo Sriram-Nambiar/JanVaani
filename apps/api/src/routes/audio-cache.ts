@@ -15,11 +15,7 @@ audioCacheRouter.get('/stats', (_req: Request, res: Response) => {
   });
 });
 
-/**
- * POST /api/audio/cache/clear
- * Clears in-memory TTS audio cache. Requires x-admin-key header.
- */
-audioCacheRouter.post('/clear', (req: Request, res: Response) => {
+function verifyAudioAdmin(req: Request, res: Response): boolean {
   const adminKey = req.headers['x-admin-key'];
   const expectedKey = process.env.AUDIO_CACHE_ADMIN_KEY;
   if (!expectedKey || adminKey !== expectedKey) {
@@ -29,6 +25,17 @@ audioCacheRouter.post('/clear', (req: Request, res: Response) => {
         message: 'Invalid or missing admin authorization key.',
       },
     });
+    return false;
+  }
+  return true;
+}
+
+/**
+ * POST /api/audio/cache/clear
+ * Clears in-memory TTS audio cache. Requires x-admin-key header.
+ */
+audioCacheRouter.post('/clear', (req: Request, res: Response) => {
+  if (!verifyAudioAdmin(req, res)) {
     return;
   }
 
@@ -46,6 +53,10 @@ audioCacheRouter.post('/clear', (req: Request, res: Response) => {
  * POST /api/audio/cache/store-persistent
  */
 audioCacheRouter.post('/store-persistent', async (req: Request, res: Response) => {
+  if (!verifyAudioAdmin(req, res)) {
+    return;
+  }
+
   const { text, speaker, result, ttlSeconds } = req.body || {};
   if (!text || typeof text !== 'string') {
     return res.status(400).json({ error: { code: 'INVALID_TEXT', message: 'text is required.' } });
@@ -62,6 +73,10 @@ audioCacheRouter.post('/store-persistent', async (req: Request, res: Response) =
  * GET /api/audio/cache/get-persistent
  */
 audioCacheRouter.get('/get-persistent', async (req: Request, res: Response) => {
+  if (!verifyAudioAdmin(req, res)) {
+    return;
+  }
+
   const text = req.query.text as string;
   const speaker = (req.query.speaker as string) || 'meera';
   if (!text) {

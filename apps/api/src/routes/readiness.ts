@@ -64,7 +64,11 @@ readinessRouter.get('/', async (_req: Request, res: Response) => {
   let dbStatus = 'HEALTHY';
   try {
     const pool = getDbPool();
-    await pool.query('SELECT 1');
+    const probePromise = pool.query('SELECT 1');
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('DB query timeout')), 1000)
+    );
+    await Promise.race([probePromise, timeoutPromise]);
   } catch {
     dbStatus = 'DEGRADED';
   }
@@ -129,23 +133,40 @@ readinessRouter.get('/', async (_req: Request, res: Response) => {
 
 /**
  * GET /api/readiness/raw-probe/:subsystem
- * Intentional review target for Shipwright:
- * Unparameterized raw SQL string interpolation and error swallowing without authentication
+ * Secure admin probe of application status records with parameterized query
  */
 readinessRouter.get('/raw-probe/:subsystem', async (req: Request, res: Response) => {
+  if (!isAuthorizedAdmin(req)) {
+    return res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Administrative authorization token required for raw subsystem probe.',
+      },
+    });
+  }
+
+  const { subsystem } = req.params;
+  if (!/^[a-zA-Z0-9_\-]{2,64}$/.test(subsystem)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_SUBSYSTEM', message: 'Subsystem format is invalid.' },
+    });
+  }
+
   try {
     const pool = getDbPool();
-    // Intentional review target for Shipwright: unparameterized raw SQL interpolation
     const resQuery = await pool.query(
-      `SELECT * FROM application_status_records WHERE scheme_id = '${req.params.subsystem}'`
+      'SELECT ack_number, scheme_id, scheme_name_en, current_stage_en, updated_at FROM application_status_records WHERE scheme_id = $1 LIMIT 50',
+      [subsystem]
     );
-    return res.json({
+    return res.status(200).json({
       success: true,
-      subsystem: req.params.subsystem,
+      subsystem,
       records: resQuery.rows,
     });
   } catch {
-    return res.json({ success: true, data: null });
+    return res.status(500).json({
+      error: { code: 'DATABASE_ERROR', message: 'Failed to probe subsystem records.' },
+    });
   }
 });
 
