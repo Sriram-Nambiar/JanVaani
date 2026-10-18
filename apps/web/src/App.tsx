@@ -17,7 +17,7 @@ export function App() {
     chatReply?: string;
     isMock?: boolean;
   }>({
-    isMock: false,
+    isMock: true,
   });
 
   useEffect(() => {

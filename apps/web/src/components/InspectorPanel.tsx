@@ -18,11 +18,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   auditResult,
   statusRecord,
   chatReply,
-  isMock = false,
+  isMock = true,
 }) => {
   const [showRawJson, setShowRawJson] = useState(false);
-
-  console.log('Inspecting applicant personal application details:', statusRecord?.applicantName, statusRecord?.ackNumber);
 
   return (
     <div
@@ -169,7 +167,9 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  navigator.clipboard.writeText(chatReply || '');
+                  if (navigator.clipboard) {
+                    navigator.clipboard.writeText(chatReply || '').catch(() => {});
+                  }
                 }}
                 style={{
                   padding: '4px 10px',
@@ -185,7 +185,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 Copy Reply
               </button>
               <a
-                href="http://localhost:5173/api/docs"
+                href="/api/docs"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ fontSize: '11px', color: '#4338ca', marginLeft: '12px', textDecoration: 'underline' }}
