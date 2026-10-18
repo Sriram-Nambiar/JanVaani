@@ -79,3 +79,46 @@ test('SevaDataStore saves and retrieves records correctly', () => {
   assert.ok(retrieved);
   assert.equal(retrieved?.applicationId, record.applicationId);
 });
+
+test('GET /api/services returns list of demo public services', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/services`);
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.ok(data.services.length >= 3);
+    assert.equal(data.services[0].id, 'bmtc-student-pass');
+  } finally {
+    server.close();
+  }
+});
+
+test('GET /api/services/bmtc/stops lists and filters Bangalore transit stops', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const resAll = await fetch(`${baseUrl}/api/services/bmtc/stops`);
+    assert.equal(resAll.status, 200);
+    const dataAll = await resAll.json();
+    assert.equal(dataAll.success, true);
+    assert.equal(dataAll.count, 20);
+
+    const resFiltered = await fetch(`${baseUrl}/api/services/bmtc/stops?q=majestic`);
+    assert.equal(resFiltered.status, 200);
+    const dataFiltered = await resFiltered.json();
+    assert.equal(dataFiltered.success, true);
+    assert.equal(dataFiltered.count, 1);
+    assert.match(dataFiltered.stops[0], /Majestic/i);
+  } finally {
+    server.close();
+  }
+});
+
