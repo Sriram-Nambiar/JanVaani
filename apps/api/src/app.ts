@@ -27,6 +27,7 @@ import { jobQueueRouter } from './services/job-queue.js';
 import { readinessRouter } from './routes/readiness.js';
 import { distributedLockRouter } from './services/distributed-lock.js';
 import { compressionNegotiatorMiddleware, compressionRouter } from './middleware/compression-negotiator.js';
+import { maintenanceGuardMiddleware, maintenanceRouter } from './middleware/maintenance-guard.js';
 
 export function createApp() {
   const app = express();
@@ -44,6 +45,7 @@ export function createApp() {
   });
 
   app.use(drainMiddleware);
+  app.use(maintenanceGuardMiddleware);
   app.use(payloadGuardMiddleware);
   app.use(express.json({ limit: '10mb' }));
   app.use(requestSanitizerMiddleware);
@@ -89,6 +91,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/maintenance', maintenanceRouter);
   app.use('/api/compression', compressionRouter);
   app.use('/api/locks', distributedLockRouter);
   app.use('/api/readiness', readinessRouter);
