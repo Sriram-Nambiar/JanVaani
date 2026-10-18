@@ -1502,7 +1502,46 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(typeof body.cleared === 'number');
     });
   });
+
+  describe('Sliding-Window IP Rate Limiter Middleware Endpoints', () => {
+    it('GET /api/rate-limit/stats returns active rate limiter telemetry', async () => {
+      const res = await fetch(`${baseUrl}/api/rate-limit/stats`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('trackedIps' in body.data);
+      assert.strictEqual(body.data.windowMs, 60000);
+      assert.strictEqual(body.data.maxRequests, 60);
+      assert.ok(res.headers.has('x-ratelimit-limit'));
+      assert.ok(res.headers.has('x-ratelimit-remaining'));
+    });
+
+    it('POST /api/rate-limit/reset rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/rate-limit/reset`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.status, 'error');
+      assert.strictEqual(body.error, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/rate-limit/reset resets window with dev secret', async () => {
+      const res = await fetch(`${baseUrl}/api/rate-limit/reset`, {
+        method: 'POST',
+        headers: { 'x-admin-key': 'janvaani_ratelimit_dev_token' },
+      });
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(typeof body.cleared === 'number');
+    });
+  });
 });
+
 
 
 
