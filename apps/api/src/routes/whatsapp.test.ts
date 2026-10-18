@@ -1930,21 +1930,39 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('Async Background Job Queue & Task Telemetry Endpoints', () => {
+    const testJobsKey = 'janvaani_test_jobs_secret_key';
+
+    beforeEach(() => {
+      process.env.JOB_QUEUE_ADMIN_KEY = testJobsKey;
+    });
+
     it('GET /api/jobs/stats returns initial job queue telemetry', async () => {
       const res = await fetch(`${baseUrl}/api/jobs/stats`);
       const body = await res.json();
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.ok('totalJobs' in body.data);
+      assert.strictEqual(body.data.maxCapacity, 200);
     });
 
-    it('POST /api/jobs/submit queues a new background processing task', async () => {
+    it('POST /api/jobs/submit rejects invalid job types with 400', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'illegal*job!type/injection' }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 400);
+      assert.strictEqual(body.error.code, 'INVALID_JOB_TYPE');
+    });
+
+    it('POST /api/jobs/submit queues a new background processing task without PII reflection', async () => {
       const res = await fetch(`${baseUrl}/api/jobs/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'sarvam_voice_synthesis',
-          metadata: { scheme: 'gruha_jyothi' },
+          citizenPhone: '9845012345',
         }),
       });
       const body = await res.json();
@@ -1952,19 +1970,30 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
       assert.ok(body.data.id.startsWith('job_'));
       assert.strictEqual(body.data.type, 'sarvam_voice_synthesis');
+      assert.strictEqual('citizenContact' in body.data, false);
+    });
+
+    it('GET /api/jobs/status/:id returns 404 for unknown job ID without PII', async () => {
+      const res = await fetch(`${baseUrl}/api/jobs/status/non-existent-job-1234`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 404);
+      assert.strictEqual(body.error.code, 'JOB_NOT_FOUND');
+      assert.strictEqual('callerPhone' in body, false);
     });
 
     it('POST /api/jobs/clear rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/jobs/clear`, {
         method: 'POST',
       });
+      const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/jobs/clear flushes queue with admin secret', async () => {
+    it('POST /api/jobs/clear flushes queue with valid admin secret', async () => {
       const res = await fetch(`${baseUrl}/api/jobs/clear`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani_jobs_admin_secret' },
+        headers: { 'x-admin-key': testJobsKey },
       });
       const body = await res.json();
       assert.strictEqual(res.status, 200);

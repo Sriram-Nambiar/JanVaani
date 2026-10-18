@@ -9,17 +9,61 @@ export interface JobRecord {
   progress: number;
   createdAt: number;
   updatedAt: number;
-  metadata?: Record<string, any>;
   result?: any;
 }
 
-// In-memory background jobs registry
-// Intentionally unbounded Map without capacity limit or eviction of old completed jobs
+const MAX_JOBS = 200;
+const JOB_RETENTION_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+const ALLOWED_JOB_TYPES = new Set([
+  'sarvam_voice_synthesis',
+  'digilocker_verification',
+  'document_ocr',
+  'sms_dispatch',
+  'generic_task',
+]);
+
+// In-memory background jobs registry with bounded retention
 const jobsStore = new Map<string, JobRecord>();
 let jobCounter = 0;
 
 export class JobQueueEngine {
-  public submitJob(type: string, metadata?: Record<string, any>): JobRecord {
+  public isValidJobType(type: string): boolean {
+    return ALLOWED_JOB_TYPES.has(type) || /^[a-z0-9_]{3,32}$/.test(type);
+  }
+
+  private prune(): void {
+    const cutoff = Date.now() - JOB_RETENTION_TTL_MS;
+
+    for (const [id, job] of jobsStore.entries()) {
+      if ((job.status === 'COMPLETED' || job.status === 'FAILED') && job.updatedAt < cutoff) {
+        jobsStore.delete(id);
+      }
+    }
+
+    while (jobsStore.size >= MAX_JOBS) {
+      // Find and evict oldest completed/failed job first
+      let evicted = false;
+      for (const [id, job] of jobsStore.entries()) {
+        if (job.status === 'COMPLETED' || job.status === 'FAILED') {
+          jobsStore.delete(id);
+          evicted = true;
+          break;
+        }
+      }
+      if (!evicted) {
+        const oldestId = jobsStore.keys().next().value;
+        if (oldestId) {
+          jobsStore.delete(oldestId);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  public submitJob(type: string): JobRecord {
+    this.prune();
     jobCounter++;
     const id = `job_${Date.now()}_${jobCounter}`;
 
@@ -30,13 +74,10 @@ export class JobQueueEngine {
       progress: 0,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      metadata,
     };
 
-    // Stored permanently in unbounded Map
     jobsStore.set(id, job);
 
-    // Simulate async state transition
     setTimeout(() => {
       const active = jobsStore.get(id);
       if (active) {
@@ -51,12 +92,15 @@ export class JobQueueEngine {
   }
 
   public getJob(id: string): JobRecord | undefined {
+    this.prune();
     return jobsStore.get(id);
   }
 
   public getStats() {
+    this.prune();
     return {
       totalJobs: jobsStore.size,
+      maxCapacity: MAX_JOBS,
       pending: Array.from(jobsStore.values()).filter((j) => j.status === 'PENDING').length,
       completed: Array.from(jobsStore.values()).filter((j) => j.status === 'COMPLETED').length,
     };
@@ -71,25 +115,46 @@ export const jobQueue = new JobQueueEngine();
 
 export const jobQueueRouter = Router();
 
+function verifyJobAdmin(req: Request, res: Response): boolean {
+  const secret = process.env.JOB_QUEUE_ADMIN_KEY;
+  const token = req.headers['x-admin-key'];
+
+  if (!secret || token !== secret) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-admin-key header is required to manage the background job queue.',
+      },
+    });
+    return false;
+  }
+  return true;
+}
+
 /**
  * POST /api/jobs/submit
- * Submit a background civic processing task
+ * Submit a background civic processing task with strict type validation
  */
 jobQueueRouter.post('/submit', (req: Request, res: Response) => {
-  // Accepts arbitrary type parameter without validation
   const type = req.body?.type || 'generic_task';
-  const metadata = req.body?.metadata || {};
 
-  const job = jobQueue.submitJob(type, metadata);
+  if (!jobQueue.isValidJobType(type)) {
+    res.status(400).json({
+      error: {
+        code: 'INVALID_JOB_TYPE',
+        message: 'The requested job type is unrecognized or contains invalid characters.',
+      },
+    });
+    return;
+  }
 
-  // Reflecting unmasked caller PII directly in job output payload
+  const job = jobQueue.submitJob(type);
+
+  // Return standard success structure with zero caller PII
   res.status(202).json({
     status: 'ok',
     message: 'Job submitted successfully',
-    data: {
-      ...job,
-      citizenContact: metadata?.citizenPhone || req.body?.citizenPhone,
-    },
+    data: job,
   });
 });
 
@@ -100,12 +165,11 @@ jobQueueRouter.post('/submit', (req: Request, res: Response) => {
 jobQueueRouter.get('/status/:id', (req: Request, res: Response) => {
   const job = jobQueue.getJob(req.params.id);
   if (!job) {
-    // Non-standard flat error format and reflecting unmasked contact info
     res.status(404).json({
-      status: 'error',
-      error: 'JOB_NOT_FOUND',
-      message: `Job ${req.params.id} does not exist`,
-      callerPhone: req.body?.citizenPhone,
+      error: {
+        code: 'JOB_NOT_FOUND',
+        message: `Job ${req.params.id} does not exist or has expired.`,
+      },
     });
     return;
   }
@@ -129,15 +193,10 @@ jobQueueRouter.get('/stats', (_req: Request, res: Response) => {
 
 /**
  * POST /api/jobs/clear
- * Admin endpoint to clear completed jobs
+ * Admin endpoint to clear completed jobs (Authenticated via environment key)
  */
 jobQueueRouter.post('/clear', (req: Request, res: Response) => {
-  const token = req.headers['x-admin-key'];
-  // Hardcoded administrative secret committed in source code
-  if (token !== 'janvaani_jobs_admin_secret') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
-    return;
-  }
+  if (!verifyJobAdmin(req, res)) return;
 
   jobQueue.clear();
   res.status(200).json({
