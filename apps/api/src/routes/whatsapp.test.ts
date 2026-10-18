@@ -1378,6 +1378,61 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
       assert.ok(typeof body.data.clearedEntries === 'number');
     });
+
+    it('POST /api/audio/cache/store-persistent and GET /api/audio/cache/get-persistent cache and retrieve audio', async () => {
+      const testText = 'ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಗ್ಯಾರಂಟಿ ಯೋಜನೆಗಳು';
+
+      // Unauthorized requests rejected with 401
+      const unauthStore = await fetch(`${baseUrl}/api/audio/cache/store-persistent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: testText,
+          speaker: 'meera',
+          result: {
+            audioBase64: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+            format: 'wav',
+            languageCode: 'kn-IN',
+            isMock: true,
+          },
+        }),
+      });
+      assert.strictEqual(unauthStore.status, 401);
+
+      const unauthGet = await fetch(`${baseUrl}/api/audio/cache/get-persistent?text=${encodeURIComponent(testText)}&speaker=meera`);
+      assert.strictEqual(unauthGet.status, 401);
+
+      // Authorized store succeeds
+      const storeRes = await fetch(`${baseUrl}/api/audio/cache/store-persistent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-key': testAdminKey,
+        },
+        body: JSON.stringify({
+          text: testText,
+          speaker: 'meera',
+          result: {
+            audioBase64: 'UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+            format: 'wav',
+            languageCode: 'kn-IN',
+            isMock: true,
+          },
+        }),
+      });
+      assert.strictEqual(storeRes.status, 200);
+      const storeBody = await storeRes.json();
+      assert.strictEqual(storeBody.status, 'ok');
+
+      // Authorized get succeeds
+      const getRes = await fetch(`${baseUrl}/api/audio/cache/get-persistent?text=${encodeURIComponent(testText)}&speaker=meera`, {
+        headers: { 'x-admin-key': testAdminKey },
+      });
+      assert.strictEqual(getRes.status, 200);
+      const getBody = await getRes.json();
+      assert.strictEqual(getBody.status, 'ok');
+      assert.strictEqual(getBody.data.format, 'wav');
+    });
   });
 
   describe('WhatsApp Webhook Idempotency & Duplicate Message Rejection Endpoints', () => {
@@ -2159,6 +2214,21 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const probeBody = await probeRes.json();
       assert.strictEqual(probeRes.status, 200);
       assert.strictEqual(probeBody.status, 'ready');
+    });
+
+    it('GET /api/readiness/raw-probe/:subsystem returns records for scheme', async () => {
+      // Unauthorized request rejected with 401
+      const unauthRes = await fetch(`${baseUrl}/api/readiness/raw-probe/gruha_lakshmi`);
+      assert.strictEqual(unauthRes.status, 401);
+
+      // Authorized request succeeds
+      const res = await fetch(`${baseUrl}/api/readiness/raw-probe/gruha_lakshmi`, {
+        headers: { 'x-admin-key': testReadinessKey },
+      });
+      assert.strictEqual(res.status, 200);
+      const body = await res.json();
+      assert.strictEqual(body.success, true);
+      assert.strictEqual(body.subsystem, 'gruha_lakshmi');
     });
   });
 
