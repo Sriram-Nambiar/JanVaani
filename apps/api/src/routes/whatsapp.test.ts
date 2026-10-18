@@ -1543,6 +1543,77 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(typeof body.cleared === 'number');
     });
   });
+
+  describe('Request Correlation ID & Distributed Tracing Endpoints', () => {
+    const testTracingKey = 'janvaani_test_tracing_key';
+
+    beforeEach(() => {
+      process.env.TRACING_ADMIN_KEY = testTracingKey;
+    });
+
+    it('sets X-Correlation-ID response header automatically on requests', async () => {
+      const res = await fetch(`${baseUrl}/api/health`);
+      assert.strictEqual(res.status, 200);
+      assert.ok(res.headers.has('x-correlation-id'));
+      const crid = res.headers.get('x-correlation-id');
+      assert.ok(crid?.startsWith('crid_'));
+    });
+
+    it('propagates valid client-supplied X-Correlation-ID', async () => {
+      const customId = 'client-civic-req-12345';
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'x-correlation-id': customId },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-correlation-id'), customId);
+    });
+
+    it('sanitizes overlong or malicious client-supplied X-Correlation-ID', async () => {
+      const maliciousId = 'invalid#id!with*bad*chars-'.repeat(10);
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'x-correlation-id': maliciousId },
+      });
+      assert.strictEqual(res.status, 200);
+      const resId = res.headers.get('x-correlation-id');
+      assert.notStrictEqual(resId, maliciousId);
+      assert.ok(resId?.startsWith('crid_'));
+    });
+
+    it('GET /api/tracing/stats returns active trace spans statistics', async () => {
+      const res = await fetch(`${baseUrl}/api/tracing/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok('totalRecordedTraces' in body.data);
+      assert.strictEqual(body.data.maxCapacity, 500);
+    });
+
+    it('GET /api/tracing/trace/:id rejects unauthorized requests with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/tracing/trace/some-trace-id`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/tracing/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/tracing/clear`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/tracing/clear resets spans with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/tracing/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testTracingKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
