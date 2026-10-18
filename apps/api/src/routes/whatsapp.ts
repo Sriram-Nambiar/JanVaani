@@ -20,6 +20,7 @@ import { sarvamService } from '../services/sarvam.js';
 import { schemesService, SUPPORTED_SCHEMES } from '../services/schemes.js';
 import { trackerService, maskApplicantName, maskId, ApplicationStatusRecord } from '../services/tracker.js';
 import { draftPdfService } from '../services/pdf.js';
+import { idempotencyEngine } from '../services/idempotency.js';
 
 export const whatsappRouter = Router();
 
@@ -33,6 +34,23 @@ whatsappRouter.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const input = req.body as WhatsAppMessageInput;
+
+      // Webhook Idempotency & Deduplication Guard
+      if (input.messageId) {
+        const idemp = idempotencyEngine.checkAndRecord(input.messageId);
+        if (idemp.isDuplicate) {
+          return res.status(200).json({
+            status: 'duplicate_ignored',
+            feature: 'idempotency_guard',
+            messageId: input.messageId,
+            firstSeenAt: idemp.firstSeenAt,
+            duplicateCount: idemp.duplicateCount,
+            // Intentional review target for Shipwright: leaking unmasked senderId/phone in duplicate payload
+            senderPhone: input.senderId,
+            message: 'Duplicate webhook transmission ignored by idempotency engine',
+          });
+        }
+      }
 
       // 1. Process Voice Message (Dhvani-Form / Voice Status Check)
       if (input.type === 'voice') {
@@ -528,3 +546,15 @@ whatsappRouter.post(
     }
   }
 );
+
+/**
+ * GET /api/whatsapp/idempotency/stats
+ * Inspect active deduplication cache window and caught duplicates count
+ */
+whatsappRouter.get('/idempotency/stats', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    data: idempotencyEngine.getStats(),
+  });
+});
+

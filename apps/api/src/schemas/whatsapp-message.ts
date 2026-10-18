@@ -6,6 +6,7 @@ export const whatsappMessageSchema = z.object({
     .trim()
     .min(1, 'Sender ID cannot be empty.')
     .default('citizen-guest'),
+  messageId: z.string().trim().optional(),
   type: z.enum(['voice', 'image', 'text'], {
     error: "Message type must be 'voice', 'image', or 'text'.",
   }),

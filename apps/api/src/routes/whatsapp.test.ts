@@ -1337,5 +1337,53 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.ok(typeof body.data.clearedEntries === 'number');
     });
   });
+
+  describe('WhatsApp Webhook Idempotency & Duplicate Message Rejection Endpoints', () => {
+    it('GET /api/whatsapp/idempotency/stats returns initial idempotency engine metrics', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/idempotency/stats`);
+      const body = await res.json();
+
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.ok(typeof body.data.activeKeys === 'number');
+      assert.ok(typeof body.data.totalDuplicatesCaught === 'number');
+      assert.strictEqual(body.data.windowMs, 600000);
+    });
+
+    it('POST /api/whatsapp/message processes first transmission and drops duplicate transmission', async () => {
+      const uniqueMsgId = `wamid.HBgLOTE5ODQ1MDEyMzQ1FQIAEhgg${Date.now()}`;
+      const payload = {
+        senderId: '9845012345',
+        messageId: uniqueMsgId,
+        type: 'text',
+        text: 'ನನ್ನ ಅರ್ಜಿ ಸಂಖ್ಯೆ RD001 ರ ಸ್ಥಿತಿ ತಿಳಿಸಿ',
+      };
+
+      // 1. First send: processes normally
+      const res1 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body1 = await res1.json();
+      assert.strictEqual(res1.status, 200);
+      assert.strictEqual(body1.status, 'ok');
+
+      // 2. Immediate second send (webhook retry): detected as duplicate and ignored
+      const res2 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body2 = await res2.json();
+      assert.strictEqual(res2.status, 200);
+      assert.strictEqual(body2.status, 'duplicate_ignored');
+      assert.strictEqual(body2.feature, 'idempotency_guard');
+      assert.strictEqual(body2.messageId, uniqueMsgId);
+      assert.strictEqual(body2.duplicateCount, 2);
+      assert.strictEqual(body2.senderPhone, '9845012345');
+    });
+  });
 });
+
 
