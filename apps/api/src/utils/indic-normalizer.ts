@@ -71,7 +71,7 @@ export interface IndicNormalizationResult {
 export function inspectIndicText(input: string): IndicNormalizationResult {
   const normalized = normalizeIndicText(input);
   const containsKannadaScript = /[\u0C80-\u0CFF]/.test(input);
-  const containsKannadaDigits = KANNADA_DIGIT_REGEX.test(input);
+  const containsKannadaDigits = /[\u0CE6-\u0CEF]/.test(input);
 
   return {
     original: input,

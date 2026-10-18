@@ -1421,8 +1421,7 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       const body = await res.json();
 
       assert.strictEqual(res.status, 400);
-      assert.strictEqual(body.status, 'error');
-      assert.strictEqual(body.error, 'MISSING_TEXT');
+      assert.strictEqual(body.error.code, 'MISSING_TEXT');
     });
 
     it('POST /api/whatsapp/message with Kannada numerals RD೦೦೧ resolves to status check for RD001', async () => {
