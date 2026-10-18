@@ -16,6 +16,7 @@ import { bhoomiRouter } from './routes/bhoomi.js';
 import { audioCacheRouter } from './routes/audio-cache.js';
 import { indicRouter } from './routes/indic.js';
 import { civicAuditLoggerMiddleware, auditRouter } from './middleware/audit-logger.js';
+import { rateLimiterMiddleware, rateLimitRouter } from './middleware/rate-limiter.js';
 
 export function createApp() {
   const app = express();
@@ -34,6 +35,7 @@ export function createApp() {
 
   app.use(express.json({ limit: '10mb' }));
   app.use(civicAuditLoggerMiddleware);
+  app.use(rateLimiterMiddleware);
 
   const handleHealth = (_req: express.Request, res: express.Response) => {
     res.setHeader('Content-Type', 'application/json');
@@ -71,6 +73,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/rate-limit', rateLimitRouter);
   app.use('/api/audit', auditRouter);
   app.use('/api/indic', indicRouter);
   app.use('/api/audio/cache', audioCacheRouter);
