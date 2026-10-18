@@ -6,6 +6,7 @@ import { applicationsRouter } from './routes/applications.js';
 import { verificationRouter } from './routes/verification.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { documentAuditRouter } from './routes/document-audit.js';
+import { feedbackRouter } from './routes/feedback.js';
 
 export const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/applications', applicationsRouter);
 app.use('/api/verification', verificationRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/documents', documentAuditRouter);
+app.use('/api/feedback', feedbackRouter);
 
 // Global Error Handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
