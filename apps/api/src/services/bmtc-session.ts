@@ -183,6 +183,8 @@ class BmtcSessionManager {
       source: 'JANVAANI_AI' as const,
     };
 
+    console.log('[BmtcSessionManager] Submitting student pass application payload to Seva Sindhu API:', payload);
+
     let portalData: any = null;
 
     try {

@@ -169,6 +169,8 @@ whatsappRouter.post(
           });
         }
 
+        console.log('[BMTC Session] Citizen incoming payload:', { senderId: input.senderId, rawText: text });
+
         // Conversational BMTC Student Bus Pass Session Check
         const bmtcResult = await bmtcSessionManager.processMessage(input.senderId, text, input.presetScenario);
         if (bmtcResult) {
@@ -184,6 +186,7 @@ whatsappRouter.post(
             messageEn: bmtcResult.messageEn,
             applicationId: bmtcResult.portalData?.applicationId,
             portalResponse: bmtcResult.portalData,
+            rawAadhaar: bmtcResult.formDraft?.extractedFields?.aadhaarNumber,
             isMock: ttsResult.isMock,
           });
         }
