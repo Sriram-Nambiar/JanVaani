@@ -2197,6 +2197,101 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(body.status, 'ok');
     });
   });
+
+  describe('Compression Negotiator & Bandwidth Optimization Endpoints', () => {
+    const testCompressionKey = 'janvaani_test_compression_secret_key';
+
+    beforeEach(() => {
+      process.env.COMPRESSION_ADMIN_KEY = testCompressionKey;
+    });
+
+    it('sets X-Negotiated-Encoding header to gzip for gzip-capable requests', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'gzip, deflate, br' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'gzip');
+    });
+
+    it('respects q=0 to skip refused encodings (e.g. gzip;q=0 selects deflate)', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'gzip;q=0, deflate;q=0.8' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'deflate');
+    });
+
+    it('selects br when highest q-value is specified', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'gzip;q=0.5, br;q=1.0' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'br');
+    });
+
+    it('sets X-Negotiated-Encoding header to identity for plain requests', async () => {
+      const res = await fetch(`${baseUrl}/api/health`, {
+        headers: { 'Accept-Encoding': 'identity' },
+      });
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(res.headers.get('x-negotiated-encoding'), 'identity');
+    });
+
+    it('GET /api/compression/stats returns telemetry metrics', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/stats`);
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+      assert.strictEqual(typeof body.data.totalRequestsChecked, 'number');
+    });
+
+    it('POST /api/compression/test-negotiate tests client encoding preference', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/test-negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ encoding: 'gzip' }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.data.negotiated, 'gzip');
+      assert.strictEqual(body.data.supported, true);
+    });
+
+    it('POST /api/compression/test-negotiate rejects invalid encoding with 406 and zero PII reflection', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/test-negotiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          encoding: 'unsupported_compression_algo',
+          citizenPhone: '9845012345',
+        }),
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 406);
+      assert.strictEqual(body.error.code, 'UNACCEPTABLE_ENCODING');
+      assert.strictEqual('callerContact' in body, false);
+      assert.strictEqual('citizenPhone' in body, false);
+    });
+
+    it('POST /api/compression/clear rejects unauthorized request with 401', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/clear`, {
+        method: 'POST',
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
+    });
+
+    it('POST /api/compression/clear flushes telemetry with valid admin secret', async () => {
+      const res = await fetch(`${baseUrl}/api/compression/clear`, {
+        method: 'POST',
+        headers: { 'x-admin-key': testCompressionKey },
+      });
+      const body = await res.json();
+      assert.strictEqual(res.status, 200);
+      assert.strictEqual(body.status, 'ok');
+    });
+  });
 });
 
 
