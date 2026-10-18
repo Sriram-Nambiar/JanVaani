@@ -11,6 +11,10 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   let baseUrl: string;
 
   before(async () => {
+    if (!process.env.PGPASSWORD) {
+      process.env.PGPASSWORD = 'mysecretpassword';
+    }
+
     await new Promise<void>((resolve) => {
       server = app.listen(0, () => {
         const addr = server.address();
@@ -2001,7 +2005,14 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(getBody.data.id, jobId);
       assert.strictEqual(getBody.data.type, 'document_ocr');
 
-      const rawRes = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`);
+      // Unauthorized raw-query rejected with 401
+      const unauthRaw = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`);
+      assert.strictEqual(unauthRaw.status, 401);
+
+      // Authorized raw-query returns DB record
+      const rawRes = await fetch(`${baseUrl}/api/jobs/raw-query/${jobId}`, {
+        headers: { 'x-admin-key': testJobsKey },
+      });
       assert.strictEqual(rawRes.status, 200);
       const rawBody = await rawRes.json();
       assert.strictEqual(rawBody.success, true);

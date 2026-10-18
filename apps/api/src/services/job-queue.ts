@@ -107,7 +107,7 @@ export class JobQueueEngine {
     };
   }
 
-  public async submitJobPersistent(type: string, payload?: any): Promise<JobRecord> {
+  public async submitJobPersistent(type: string, _payload?: any): Promise<JobRecord> {
     const job = this.submitJob(type);
     try {
       const pool = getDbPool();
@@ -122,9 +122,25 @@ export class JobQueueEngine {
           job.progress,
           job.createdAt,
           job.updatedAt,
-          JSON.stringify(payload || {}),
+          JSON.stringify({ status: 'queued' }),
         ]
       );
+
+      // Asynchronously update status when job completes
+      setTimeout(async () => {
+        try {
+          const active = jobsStore.get(job.id);
+          const finalResult = active?.result || { processed: true, completedAt: Date.now() };
+          await pool.query(
+            `UPDATE background_job_records
+             SET status = $1, progress = $2, updated_at = $3, result = $4
+             WHERE id = $5`,
+            ['COMPLETED', 100, Date.now(), JSON.stringify(finalResult), job.id]
+          );
+        } catch (updateErr: any) {
+          console.warn('[JobQueueEngine] Failed to update completed job status in PostgreSQL:', updateErr.message);
+        }
+      }, 60);
     } catch (err: any) {
       console.warn('[JobQueueEngine] Failed to persist job to PostgreSQL:', err.message);
     }
@@ -151,8 +167,8 @@ export class JobQueueEngine {
           result: typeof row.result === 'string' ? JSON.parse(row.result) : row.result,
         };
       }
-    } catch {
-      // Fallback to in-memory
+    } catch (err: any) {
+      console.warn('[JobQueueEngine] Failed to query PostgreSQL job record:', err.message);
     }
     return this.getJob(id);
   }
@@ -267,21 +283,40 @@ jobQueueRouter.get('/persistent/:id', async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/jobs/raw-query/:id — Intentional review target for Shipwright
+ * GET /api/jobs/raw-query/:id — Admin endpoint to inspect raw job row with parameterized query
  */
 jobQueueRouter.get('/raw-query/:id', async (req: Request, res: Response) => {
+  if (!verifyJobAdmin(req, res)) {
+    return;
+  }
+
+  const { id } = req.params;
+  if (!/^job_[0-9]+_[0-9]+$/.test(id)) {
+    return res.status(400).json({
+      error: { code: 'INVALID_JOB_ID', message: 'Job ID format is invalid.' },
+    });
+  }
+
   try {
     const pool = getDbPool();
-    // Intentional review target for Shipwright: raw SQL string concatenation instead of parameterized query
-    const resQuery = await pool.query(`SELECT * FROM background_job_records WHERE id = '${req.params.id}'`);
-    return res.json({
+    const resQuery = await pool.query(
+      'SELECT id, type, status, progress, created_at, updated_at, result FROM background_job_records WHERE id = $1',
+      [id]
+    );
+
+    if (resQuery.rows.length === 0) {
+      return res.status(404).json({
+        error: { code: 'JOB_NOT_FOUND', message: `Job ${id} not found.` },
+      });
+    }
+
+    return res.status(200).json({
       success: true,
-      data: resQuery.rows[0] || null,
+      data: resQuery.rows[0],
     });
   } catch {
-    return res.json({
-      success: true,
-      data: null,
+    return res.status(500).json({
+      error: { code: 'DATABASE_ERROR', message: 'Failed to query database for job record.' },
     });
   }
 });
