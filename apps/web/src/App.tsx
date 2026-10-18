@@ -197,6 +197,25 @@ export function App() {
             >
               <span>🏛️</span> Mock Government Servers (ಸರ್ಕಾರಿ ಸೇವೆಗಳು)
             </button>
+            <a
+              href="http://localhost:5174"
+              target="_blank"
+              style={{
+                background: '#1e3a8a',
+                color: '#ffffff',
+                textDecoration: 'none',
+                padding: '5px 12px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                border: '1px solid #3b82f6',
+              }}
+            >
+              <span>🌐</span> Seva Sindhu Portal (Port 5174) ↗
+            </a>
           </div>
 
           {/* Layout Switcher (when in Copilot view) */}
