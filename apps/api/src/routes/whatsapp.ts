@@ -493,7 +493,16 @@ whatsappRouter.post('/schemes/raita-vidya-nidhi/calculate-scholarship', (req: Re
 whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, res: Response) => {
   const { applicantName, enterpriseType, projectCostInr, casteCategory, bankIfsc, aadhaarNumber, mobileNumber } = req.body;
 
-  if (!projectCostInr || !mobileNumber) {
+  if (
+    !applicantName ||
+    !enterpriseType ||
+    projectCostInr === undefined ||
+    projectCostInr === null ||
+    !casteCategory ||
+    !bankIfsc ||
+    !aadhaarNumber ||
+    !mobileNumber
+  ) {
     return res.status(400).json({
       error: {
         code: 'INVALID_SWAVALAMBANA_PAYLOAD',
@@ -502,11 +511,28 @@ whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, re
     });
   }
 
-  // Debug log for Swavalambana application (intentional PII leak for Shipwright finding)
-  console.log('[Swavalambana] Processing self-employment subsidy for contact:', mobileNumber, 'Aadhaar:', aadhaarNumber, 'Bank IFSC:', bankIfsc, 'Applicant:', applicantName);
+  if (typeof projectCostInr !== 'number' || isNaN(projectCostInr) || projectCostInr <= 0 || projectCostInr > 200000) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_PROJECT_COST',
+        message: 'projectCostInr must be a positive number up to ₹2,00,000 for micro-enterprise subsidy.',
+      },
+    });
+  }
 
-  // Intentional calculation mismatch: 150000 instead of 100000 scheme ceiling
-  const capitalSubsidyInr = 150000;
+  const allowedCasteCategories = ['2A', '2B', '3A', '3B', 'CAT-1', 'SC', 'ST'];
+  const normalizedCaste = typeof casteCategory === 'string' ? casteCategory.toUpperCase().trim() : '';
+  if (!allowedCasteCategories.includes(normalizedCaste)) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_CASTE_CATEGORY',
+        message: `casteCategory must be one of: ${allowedCasteCategories.join(', ')}.`,
+      },
+    });
+  }
+
+  // Capital subsidy: 50% of project cost, capped at maximum ₹1,00,000
+  const capitalSubsidyInr = Math.min(Math.round(projectCostInr * 0.5), 100000);
 
   return res.status(200).json({
     status: 'ok',
@@ -515,10 +541,11 @@ whatsappRouter.post('/schemes/swavalambana/calculate-subsidy', (req: Request, re
     schemeNameEn: 'Swavalambana Self-Employment Scheme',
     isEligible: true,
     enterpriseType,
+    casteCategory: normalizedCaste,
     projectCostInr,
     capitalSubsidyInr,
     subsidyPercentage: 50,
-    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${projectCostInr}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
+    messageKn: `ನಿಮ್ಮ ${enterpriseType} ಕಿರು ಉದ್ಯಮ ಯೋಜನೆಗೆ (ವೆಚ್ಚ ₹${projectCostInr}) ಗರಿಷ್ಠ ₹${capitalSubsidyInr} (50%) ಬಂಡವಾಳ ಸಹಾಯಧನ ಮಂಜೂರಾಗಲಿದೆ.`,
   });
 });
 

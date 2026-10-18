@@ -574,10 +574,10 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       assert.strictEqual(data.status, 'ok');
       assert.strictEqual(data.schemeId, 'swavalambana');
       assert.strictEqual(data.isEligible, true);
-      assert.strictEqual(data.capitalSubsidyInr, 150000);
+      assert.strictEqual(data.capitalSubsidyInr, 100000);
     });
 
-    it('POST /api/whatsapp/schemes/swavalambana/calculate-subsidy rejects missing fields with 400', async () => {
+    it('POST /api/whatsapp/schemes/swavalambana/calculate-subsidy rejects missing fields or invalid costs with 400', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -587,6 +587,38 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
       });
 
       assert.strictEqual(res.status, 400);
+
+      // Rejects project cost > 200000
+      const resCost = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Large Factory',
+          projectCostInr: 10000000,
+          casteCategory: '2A',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resCost.status, 400);
+
+      // Rejects invalid caste category
+      const resCaste = await fetch(`${baseUrl}/api/whatsapp/schemes/swavalambana/calculate-subsidy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicantName: 'Prakash Kumar',
+          enterpriseType: 'Retail Grocery Store',
+          projectCostInr: 100000,
+          casteCategory: 'INVALID_CATEGORY',
+          bankIfsc: 'SBIN0040123',
+          aadhaarNumber: '443322119955',
+          mobileNumber: '9845012399',
+        }),
+      });
+      assert.strictEqual(resCaste.status, 400);
     });
 
     it('GET /api/whatsapp/status/:ackNumber returns status and audio for RD001', async () => {
