@@ -1799,31 +1799,48 @@ describe('JanVaani WhatsApp & Voice Copilot Engine Test Suite', () => {
   });
 
   describe('HTTP Response ETag & Conditional Cache Endpoints', () => {
+    const testETagKey = 'janvaani_test_etag_secret';
+
+    beforeEach(() => {
+      process.env.ETAG_ADMIN_KEY = testETagKey;
+    });
+
     it('GET /api/cache/etag/stats returns initial cache statistics', async () => {
       const res = await fetch(`${baseUrl}/api/cache/etag/stats`);
       const body = await res.json();
       assert.strictEqual(res.status, 200);
       assert.strictEqual(body.status, 'ok');
       assert.ok('cachedEntriesCount' in body.data);
+      assert.strictEqual(body.data.maxCapacity, 200);
     });
 
-    it('attaches ETag header on successful GET response', async () => {
-      const res = await fetch(`${baseUrl}/api/health`);
-      assert.strictEqual(res.status, 200);
-      assert.ok(res.headers.has('etag'));
+    it('attaches ETag header on successful GET response and responds 304 for matching If-None-Match', async () => {
+      const firstRes = await fetch(`${baseUrl}/api/services?query=ration`);
+      assert.strictEqual(firstRes.status, 200);
+      assert.ok(firstRes.headers.has('etag'));
+      const etag = firstRes.headers.get('etag');
+      assert.ok(etag?.startsWith('W/"'));
+
+      // Conditional GET with matching If-None-Match header
+      const secondRes = await fetch(`${baseUrl}/api/services?query=ration`, {
+        headers: { 'if-none-match': etag! },
+      });
+      assert.strictEqual(secondRes.status, 304);
     });
 
     it('POST /api/cache/etag/flush rejects unauthorized request with 401', async () => {
       const res = await fetch(`${baseUrl}/api/cache/etag/flush`, {
         method: 'POST',
       });
+      const body = await res.json();
       assert.strictEqual(res.status, 401);
+      assert.strictEqual(body.error.code, 'UNAUTHORIZED');
     });
 
-    it('POST /api/cache/etag/flush clears cache with admin secret', async () => {
+    it('POST /api/cache/etag/flush clears cache with valid admin secret', async () => {
       const res = await fetch(`${baseUrl}/api/cache/etag/flush`, {
         method: 'POST',
-        headers: { 'x-admin-key': 'janvaani_etag_admin_secret' },
+        headers: { 'x-admin-key': testETagKey },
       });
       const body = await res.json();
       assert.strictEqual(res.status, 200);
