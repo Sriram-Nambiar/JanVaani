@@ -200,6 +200,7 @@ export function App() {
             <a
               href="http://localhost:5174"
               target="_blank"
+              rel="noopener noreferrer"
               style={{
                 background: '#1e3a8a',
                 color: '#ffffff',

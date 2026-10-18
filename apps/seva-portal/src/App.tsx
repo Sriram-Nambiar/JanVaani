@@ -30,11 +30,11 @@ export const App: React.FC = () => {
               API Server: http://localhost:3002
             </span>
           </div>
-          {/* Target link missing rel="noopener noreferrer" */}
           <div className="mt-6">
             <a
               href="http://localhost:3002/api/health"
               target="_blank"
+              rel="noopener noreferrer"
               className="text-xs text-blue-600 hover:underline"
             >
               Verify Seva API Health Check ↗
