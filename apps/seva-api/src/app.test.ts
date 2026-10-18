@@ -122,3 +122,68 @@ test('GET /api/services/bmtc/stops lists and filters Bangalore transit stops', a
   }
 });
 
+test('POST /api/demo/otp/send sends mock Aadhaar OTP and masks PII', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/demo/otp/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadhaarNumber: '4433 5010 5028' }),
+    });
+    assert.equal(res.status, 200);
+    const data = await res.json();
+    assert.equal(data.success, true);
+    assert.equal(data.demoOtp, '3344');
+    assert.equal(data.maskedAadhaar, 'XXXX-XXXX-5028');
+    assert.equal(data.aadhaarNumber, undefined); // Ensure plaintext Aadhaar is not leaked
+
+    // Invalid Aadhaar length rejection
+    const resInvalid = await fetch(`${baseUrl}/api/demo/otp/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ aadhaarNumber: '123' }),
+    });
+    assert.equal(resInvalid.status, 400);
+    const dataInvalid = await resInvalid.json();
+    assert.equal(dataInvalid.error, 'INVALID_AADHAAR_FORMAT');
+  } finally {
+    server.close();
+  }
+});
+
+test('POST /api/demo/otp/verify strictly validates demo OTP 3344 and rejects incorrect codes', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const resValid = await fetch(`${baseUrl}/api/demo/otp/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp: '3344' }),
+    });
+    assert.equal(resValid.status, 200);
+    const dataValid = await resValid.json();
+    assert.equal(dataValid.verified, true);
+
+    // Incorrect OTP must be rejected
+    const resInvalid = await fetch(`${baseUrl}/api/demo/otp/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ otp: '0000' }),
+    });
+    assert.equal(resInvalid.status, 400);
+    const dataInvalid = await resInvalid.json();
+    assert.equal(dataInvalid.verified, false);
+    assert.equal(dataInvalid.error, 'INVALID_DEMO_OTP');
+  } finally {
+    server.close();
+  }
+});
+
+
