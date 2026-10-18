@@ -415,6 +415,32 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
           🤖 ಸೇವಾ ಸಿಂಧು ಏಜೆಂಟ್ ಸಲ್ಲಿಕೆ
         </button>
         <button
+          type="button"
+          aria-label="Ask Sarvam AI"
+          onClick={() => {
+            const userMsg: ChatMessage = {
+              id: `usr-${Date.now()}`,
+              sender: 'citizen',
+              type: 'text',
+              text: 'ನಮಸ್ಕಾರ, ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಯೋಜನೆಗಳ ಪಟ್ಟಿ ತಿಳಿಸಿ',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            handleSend({ type: 'text', text: 'ನಮಸ್ಕಾರ, ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಯೋಜನೆಗಳ ಪಟ್ಟಿ ತಿಳಿಸಿ', senderId: 'citizen-demo-user' }, userMsg);
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #7c3aed',
+            backgroundColor: '#7c3aed',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          💬 ಸರ್ವಂ AI ಪ್ರಶ್ನೆ (Sarvam-105B)
+        </button>
+        <button
           onClick={() => triggerPreset('gruha_lakshmi_apply', 'ಗೃಹಲಕ್ಷ್ಮಿ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು')}
           style={{
             fontSize: '11px',
