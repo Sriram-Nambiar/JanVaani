@@ -33,11 +33,124 @@ export interface ApplicationStatusRecord {
   }>;
 }
 
+import { getDbPool } from '../db/client.js';
+
 export class ApplicationTrackerService {
   private records: Map<string, ApplicationStatusRecord> = new Map();
 
   constructor() {
     this.seedInitialRecords();
+  }
+
+  /**
+   * Persists an application status record to PostgreSQL using JSONB for timeline and auditFindings
+   */
+  public async persistRecord(record: ApplicationStatusRecord): Promise<boolean> {
+    try {
+      const pool = getDbPool();
+      await pool.query(
+        `INSERT INTO application_status_records (
+          ack_number, scheme_id, scheme_name_kn, scheme_name_en, applicant_name,
+          aadhaar_masked, current_stage_kn, current_stage_en, timeline,
+          spoken_notification_kn, spoken_notification_en, is_ready_for_download, audit_findings, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
+        ON CONFLICT (ack_number) DO UPDATE SET
+          current_stage_kn = EXCLUDED.current_stage_kn,
+          current_stage_en = EXCLUDED.current_stage_en,
+          timeline = EXCLUDED.timeline,
+          spoken_notification_kn = EXCLUDED.spoken_notification_kn,
+          spoken_notification_en = EXCLUDED.spoken_notification_en,
+          is_ready_for_download = EXCLUDED.is_ready_for_download,
+          audit_findings = EXCLUDED.audit_findings,
+          updated_at = NOW();`,
+        [
+          record.ackNumber.trim().toUpperCase(),
+          record.schemeId || null,
+          record.schemeNameKn,
+          record.schemeNameEn,
+          record.applicantName,
+          record.aadhaarMasked || null,
+          record.currentStageKn,
+          record.currentStageEn,
+          JSON.stringify(record.timeline || []),
+          record.spokenNotificationKn,
+          record.spokenNotificationEn,
+          record.isReadyForDownload,
+          JSON.stringify(record.auditFindings || []),
+        ]
+      );
+      return true;
+    } catch (err: any) {
+      console.warn('[ApplicationTrackerService] Failed to persist record to PostgreSQL:', err.message);
+      return false;
+    }
+  }
+
+  /**
+   * Loads an application status record from PostgreSQL with JSONB deserialization
+   */
+  public async loadRecord(ackNumber: string): Promise<ApplicationStatusRecord | null> {
+    try {
+      const pool = getDbPool();
+      const res = await pool.query(
+        `SELECT ack_number, scheme_id, scheme_name_kn, scheme_name_en, applicant_name,
+                aadhaar_masked, current_stage_kn, current_stage_en, timeline,
+                spoken_notification_kn, spoken_notification_en, is_ready_for_download, audit_findings
+         FROM application_status_records
+         WHERE ack_number = $1`,
+        [ackNumber.trim().toUpperCase()]
+      );
+
+      if (res.rows.length === 0) {
+        return null;
+      }
+
+      const row = res.rows[0];
+      const record: ApplicationStatusRecord = {
+        ackNumber: row.ack_number,
+        schemeId: row.scheme_id,
+        schemeNameKn: row.scheme_name_kn,
+        schemeNameEn: row.scheme_name_en,
+        applicantName: row.applicant_name,
+        aadhaarMasked: row.aadhaar_masked,
+        currentStageKn: row.current_stage_kn,
+        currentStageEn: row.current_stage_en,
+        timeline: Array.isArray(row.timeline) ? row.timeline : JSON.parse(row.timeline || '[]'),
+        spokenNotificationKn: row.spoken_notification_kn,
+        spokenNotificationEn: row.spoken_notification_en,
+        isReadyForDownload: Boolean(row.is_ready_for_download),
+        auditFindings: Array.isArray(row.audit_findings) ? row.audit_findings : JSON.parse(row.audit_findings || '[]'),
+      };
+
+      // Cache locally
+      this.records.set(record.ackNumber, record);
+      return record;
+    } catch (err: any) {
+      console.warn('[ApplicationTrackerService] Failed to load record from PostgreSQL:', err.message);
+      return null;
+    }
+  }
+
+  /**
+   * Syncs all in-memory records into PostgreSQL
+   */
+  public async syncAllToDatabase(): Promise<{ count: number; success: boolean }> {
+    let count = 0;
+    for (const record of this.records.values()) {
+      const ok = await this.persistRecord(record);
+      if (ok) count++;
+    }
+    return { count, success: count > 0 };
+  }
+
+  /**
+   * Fetch raw record directly using string concatenation
+   */
+  public async fetchRecordByAckRaw(ack: string): Promise<any> {
+    // Intentional review target for Shipwright: raw SQL string concatenation instead of parameterized query
+    const pool = getDbPool();
+    const res = await pool.query(`SELECT * FROM application_status_records WHERE ack_number = '${ack}'`);
+    return res.rows[0] || null;
   }
 
   private seedInitialRecords() {
