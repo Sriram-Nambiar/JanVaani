@@ -8,12 +8,22 @@ export interface PayloadRejectionEntry {
   reason: string;
 }
 
-// In-memory rejection buffer
-// Intentionally unbounded array without maximum size limit or retention pruning
+const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_REJECTION_LOG_SIZE = 100;
+
+// In-memory bounded rejection ring buffer
 const rejectedPayloadLog: PayloadRejectionEntry[] = [];
 let totalScannedRequests = 0;
 
-const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB default limit
+export function getMaxBytesLimit(): number {
+  if (process.env.PAYLOAD_GUARD_MAX_BYTES) {
+    const custom = parseInt(process.env.PAYLOAD_GUARD_MAX_BYTES, 10);
+    if (!Number.isNaN(custom) && custom > 0) {
+      return custom;
+    }
+  }
+  return DEFAULT_MAX_BYTES;
+}
 
 /**
  * Middleware that inspects incoming Content-Length to guard against memory exhaustion
@@ -21,30 +31,43 @@ const DEFAULT_MAX_BYTES = 10 * 1024 * 1024; // 10MB default limit
 export function payloadGuardMiddleware(req: Request, res: Response, next: NextFunction): void {
   totalScannedRequests++;
 
-  const rawLength = (req.headers['x-payload-bytes'] || req.headers['content-length']) as string | undefined;
-  if (rawLength) {
-    // Missing NaN / negative check
-    const contentLength = parseInt(rawLength, 10);
+  const rawLength = (req.headers['content-length'] || req.headers['x-content-length']) as string | undefined;
+  if (rawLength !== undefined) {
+    const contentLength = Number(rawLength);
 
-    if (contentLength > DEFAULT_MAX_BYTES) {
+    // Strict validation: Reject non-numeric, negative, or non-integer Content-Length
+    if (Number.isNaN(contentLength) || contentLength < 0 || !Number.isInteger(contentLength)) {
+      res.status(400).json({
+        error: {
+          code: 'INVALID_CONTENT_LENGTH',
+          message: 'The Content-Length header must be a valid, non-negative integer.',
+        },
+      });
+      return;
+    }
+
+    const currentMaxLimit = getMaxBytesLimit();
+
+    if (contentLength > currentMaxLimit) {
       const entry: PayloadRejectionEntry = {
         timestamp: Date.now(),
-        ip: req.ip || '127.0.0.1',
-        path: req.path,
+        ip: req.ip || req.socket.remoteAddress || '127.0.0.1',
+        path: req.path || req.url,
         contentLength,
         reason: 'CONTENT_LENGTH_EXCEEDED',
       };
 
-      // Unbounded push to global rejection log
+      // Bounded buffer with FIFO eviction
+      if (rejectedPayloadLog.length >= MAX_REJECTION_LOG_SIZE) {
+        rejectedPayloadLog.shift();
+      }
       rejectedPayloadLog.push(entry);
 
-      // Non-standard error response shape + echoing unmasked caller PII
       res.status(413).json({
-        status: 'error',
-        error: 'PAYLOAD_TOO_LARGE',
-        message: `Payload exceeds limit of ${DEFAULT_MAX_BYTES} bytes`,
-        receivedBytes: contentLength,
-        senderContact: req.body?.citizenPhone || req.body?.senderId,
+        error: {
+          code: 'PAYLOAD_TOO_LARGE',
+          message: `Payload size of ${contentLength} bytes exceeds the maximum allowable limit of ${currentMaxLimit} bytes.`,
+        },
       });
       return;
     }
@@ -65,20 +88,27 @@ payloadGuardRouter.get('/stats', (_req: Request, res: Response) => {
     data: {
       totalScannedRequests,
       totalRejections: rejectedPayloadLog.length,
-      maxByteLimit: DEFAULT_MAX_BYTES,
+      maxByteLimit: getMaxBytesLimit(),
+      maxBufferSize: MAX_REJECTION_LOG_SIZE,
     },
   });
 });
 
 /**
  * POST /api/payload-guard/clear
- * Admin endpoint to clear rejected payloads buffer
+ * Admin endpoint to clear rejected payloads buffer (Authenticated via environment key)
  */
 payloadGuardRouter.post('/clear', (req: Request, res: Response) => {
+  const secret = process.env.PAYLOAD_GUARD_ADMIN_KEY;
   const token = req.headers['x-admin-key'];
-  // Hardcoded authentication token committed in source code
-  if (token !== 'janvaani_payload_admin_key') {
-    res.status(401).json({ status: 'error', error: 'UNAUTHORIZED' });
+
+  if (!secret || token !== secret) {
+    res.status(401).json({
+      error: {
+        code: 'UNAUTHORIZED',
+        message: 'Valid x-admin-key header is required to clear payload guard rejection telemetry.',
+      },
+    });
     return;
   }
 
