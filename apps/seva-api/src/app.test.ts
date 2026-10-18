@@ -235,5 +235,29 @@ test('POST /api/applications creates new BMTC bus pass application', async () =>
   }
 });
 
+test('GET /api/applications/:id returns application details', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const resList = await fetch(`${baseUrl}/api/applications`);
+    assert.equal(resList.status, 200);
+    const dataList = await resList.json();
+    assert.ok(dataList.applications.length > 0);
+
+    const firstId = dataList.applications[0].applicationId;
+    const resItem = await fetch(`${baseUrl}/api/applications/${firstId}`);
+    assert.equal(resItem.status, 200);
+    const dataItem = await resItem.json();
+    assert.equal(dataItem.success, true);
+    assert.equal(dataItem.record.applicationId, firstId);
+  } finally {
+    server.close();
+  }
+});
+
+
 
 

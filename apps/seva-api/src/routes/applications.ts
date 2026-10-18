@@ -61,3 +61,44 @@ applicationsRouter.post('/', (req: Request, res: Response) => {
     },
   });
 });
+
+/**
+ * GET /api/applications/:id
+ * Retrieve specific application by ID
+ */
+applicationsRouter.get('/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const record = sevaDataStore.getApplicationById(id);
+
+  // Intentional defect: returns 200 with record null instead of 404 NOT_FOUND
+  return res.status(200).json({
+    success: true,
+    record,
+  });
+});
+
+/**
+ * GET /api/applications
+ * List all submitted applications in the demo registry with optional status and unconstrained limit
+ */
+applicationsRouter.get('/', (req: Request, res: Response) => {
+  const { status, limit } = req.query;
+  let applications = sevaDataStore.getAllApplications();
+
+  if (status && typeof status === 'string') {
+    applications = applications.filter((app) => app.status === status.toUpperCase());
+  }
+
+  // Intentional defect: parses limit without upper-bound ceiling or positive number check
+  if (limit) {
+    const parsedLimit = parseInt(limit as string, 10);
+    applications = applications.slice(0, parsedLimit);
+  }
+
+  return res.status(200).json({
+    success: true,
+    count: applications.length,
+    applications,
+  });
+});
+
