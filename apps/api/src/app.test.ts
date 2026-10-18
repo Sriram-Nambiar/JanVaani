@@ -459,4 +459,139 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(checkIsMainModule(currentMetaUrl, undefined), false);
     });
   });
+
+  describe('BMTC Student Bus Pass & Seva Sindhu Integration', () => {
+    it('GET /api/whatsapp/schemes lists bmtc_student_pass', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/schemes`);
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      const bmtc = data.data.find((s: any) => s.id === 'bmtc_student_pass');
+      assert.ok(bmtc);
+      assert.strictEqual(bmtc.nameEn, 'BMTC Student Concessional Bus Pass');
+    });
+
+    it('POST /api/whatsapp/message recognizes "i want apply for bmtc student pass" and creates draft', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: 'citizen-student-1',
+          type: 'text',
+          text: 'i want apply for bmtc student pass',
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.feature, 'dhvani_form');
+      assert.strictEqual(data.formDraft?.schemeId, 'bmtc_student_pass');
+      assert.strictEqual(data.formDraft?.extractedFields?.studentName, 'Priya Sharma');
+      assert.ok(data.messageKn.includes('ಬಿಎಂಟಿಸಿ'));
+    });
+
+    it('POST /api/whatsapp/agent/submit-seva-sindhu registers BMTC application with zero PII leaks', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/agent/submit-seva-sindhu`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schemeId: 'bmtc_student_pass',
+          fields: {
+            studentName: 'Priya Sharma',
+            institutionName: 'BMS College of Engineering',
+            course: 'B.Tech CS - 3rd Year',
+            pickupStop: 'Banashankari TTMC',
+            destinationStop: 'Majestic',
+            mobileNumber: '9845012345',
+            aadhaarNumber: '4433 5010 5028',
+            otpCode: '3344',
+          },
+        }),
+      });
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.schemeId, 'bmtc_student_pass');
+      assert.ok(data.acknowledgmentNumber);
+      assert.strictEqual(data.aadhaarMasked, 'XXXX-XXXX-5028');
+    });
+
+    it('GET /api/whatsapp/status/SEVA-DEMO-TEST123 returns valid BMTC status record', async () => {
+      const res = await fetch(`${baseUrl}/api/whatsapp/status/SEVA-DEMO-TEST123`);
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+      assert.strictEqual(data.data?.schemeId, 'bmtc_student_pass');
+      assert.strictEqual(data.data?.aadhaarMasked, 'XXXX-XXXX-5028');
+    });
+
+    it('conversational multi-turn interactive test: Intent -> Aadhaar (443350105028) -> OTP (3344) -> Submission', async () => {
+      const sender = `judge-demo-${Date.now()}`;
+
+      // Turn 1: User says "i want apply for bmtc student pass"
+      const res1 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: 'i want apply for bmtc student pass',
+        }),
+      });
+      assert.strictEqual(res1.status, 200);
+      const data1 = await res1.json();
+      assert.strictEqual(data1.status, 'ok');
+      assert.strictEqual(data1.formDraft?.schemeId, 'bmtc_student_pass');
+      assert.strictEqual(data1.formDraft?.isComplete, false);
+      assert.ok(data1.messageKn.includes('ಆಧಾರ್'));
+
+      // Turn 2: User types Aadhaar "443350105028"
+      const res2 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: '443350105028',
+        }),
+      });
+      assert.strictEqual(res2.status, 200);
+      const data2 = await res2.json();
+      assert.strictEqual(data2.status, 'ok');
+      assert.ok(data2.messageKn.includes('XXXX-XXXX-5028'));
+      assert.ok(data2.messageKn.includes('ಓಟಿಪಿ'));
+
+      // Turn 3: User enters invalid OTP
+      const res3 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: '9999',
+        }),
+      });
+      assert.strictEqual(res3.status, 200);
+      const data3 = await res3.json();
+      assert.strictEqual(data3.status, 'ok');
+      assert.ok(data3.messageKn.includes('ತಪ್ಪಾದ ಓಟಿಪಿ'));
+
+      // Turn 4: User enters correct OTP 3344
+      const res4 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: '3344',
+        }),
+      });
+      assert.strictEqual(res4.status, 200);
+      const data4 = await res4.json();
+      assert.strictEqual(data4.status, 'ok');
+      assert.strictEqual(data4.formDraft?.isComplete, true);
+      assert.ok(data4.applicationId?.startsWith('SEVA-DEMO-'));
+      assert.ok(data4.messageKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
+    });
+  });
 });

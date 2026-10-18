@@ -159,23 +159,28 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
-              {Object.entries(formDraft.extractedFields).map(([key, val]) => (
-                <div
-                  key={key}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    padding: '6px 10px',
-                    backgroundColor: '#ffffff',
-                    borderRadius: '6px',
-                    border: '1px solid #e0f2fe',
-                    fontSize: '12px',
-                  }}
-                >
-                  <span style={{ color: '#64748b' }}>{key}:</span>
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{String(val)}</span>
-                </div>
-              ))}
+              {Object.entries(formDraft.extractedFields).map(([key, val]) => {
+                const displayVal = key.toLowerCase().includes('aadhaar')
+                  ? 'XXXX-XXXX-' + (String(val).replace(/\D/g, '').slice(-4) || '5028')
+                  : String(val);
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      backgroundColor: '#ffffff',
+                      borderRadius: '6px',
+                      border: '1px solid #e0f2fe',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <span style={{ color: '#64748b' }}>{key}:</span>
+                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{displayVal}</span>
+                  </div>
+                );
+              })}
             </div>
 
             <button
@@ -324,6 +329,28 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </div>
               ))}
             </div>
+
+            {statusRecord.ackNumber.startsWith('SEVA-DEMO-') && (
+              <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#eff6ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                <span style={{ fontSize: '11px', color: '#1e40af', display: 'block', marginBottom: '6px' }}>
+                  🏛️ View application live in Seva Sindhu Portal:
+                </span>
+                <a
+                  href={`http://localhost:5174/status?appId=${encodeURIComponent(statusRecord.ackNumber)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-block',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: '#1d4ed8',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Open in Seva Sindhu Demo Portal ↗
+                </a>
+              </div>
+            )}
           </div>
         )}
 
