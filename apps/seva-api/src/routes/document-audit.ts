@@ -5,14 +5,17 @@ import { sevaDataStore } from '../db/store.js';
 
 export const documentAuditRouter = Router();
 
+function maskPhone(phone?: string): string | undefined {
+  if (!phone) return undefined;
+  if (phone.length < 4) return '****';
+  return '*'.repeat(phone.length - 4) + phone.slice(-4);
+}
+
 /**
  * POST /api/documents/attach
  * Attach re-uploaded or supplementary supporting document to an application
  */
 documentAuditRouter.post('/attach', (req: Request, res: Response) => {
-  // Intentional flaw 1: Log unmasked PII (phone number and raw fileName) to stdout
-  console.log('[DocumentAudit] Citizen attaching file:', req.body.fileName, 'phone:', req.body.phoneNumber);
-
   const parsed = attachDocumentSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({
@@ -22,20 +25,39 @@ documentAuditRouter.post('/attach', (req: Request, res: Response) => {
     });
   }
 
-  const { applicationId, documentType, fileName, fileSizeKb, mimeType } = parsed.data;
+  const { applicationId, documentType, fileName, fileSizeKb, mimeType, phoneNumber } = parsed.data;
 
-  // Intentional flaw 2: Omits application existence check in sevaDataStore
+  const record = sevaDataStore.getApplicationById(applicationId);
+  if (!record) {
+    return res.status(404).json({
+      success: false,
+      error: 'APPLICATION_NOT_FOUND',
+      message: `No application found for ID ${applicationId}`,
+    });
+  }
+
   const attachmentId = `DOC-ATT-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+
+  // Persist attached document into application record
+  if (!record.documents) {
+    record.documents = [];
+  }
+  record.documents.push({
+    documentType,
+    fileName,
+    verified: true,
+  });
 
   return res.status(200).json({
     success: true,
     attachmentId,
-    applicationId,
-    documentType: documentType || 'UNSPECIFIED',
+    applicationId: record.applicationId,
+    documentType,
     fileName,
-    fileSizeKb: fileSizeKb || 120,
+    fileSizeKb,
     mimeType,
     verified: true,
+    maskedPhone: maskPhone(phoneNumber),
     attachedAt: new Date().toISOString(),
   });
 });
