@@ -18,6 +18,7 @@ import { indicRouter } from './routes/indic.js';
 import { civicAuditLoggerMiddleware, auditRouter } from './middleware/audit-logger.js';
 import { rateLimiterMiddleware, rateLimitRouter } from './middleware/rate-limiter.js';
 import { correlationIdMiddleware, tracingRouter } from './middleware/correlation-id.js';
+import { circuitBreakerRouter } from './services/circuit-breaker.js';
 
 export function createApp() {
   const app = express();
@@ -75,6 +76,7 @@ export function createApp() {
   });
 
   // JanVaani WhatsApp Civic Copilot route (Dhvani-Form, Kagada-Check, Audio Status Bell)
+  app.use('/api/circuit-breaker', circuitBreakerRouter);
   app.use('/api/tracing', tracingRouter);
   app.use('/api/rate-limit', rateLimitRouter);
   app.use('/api/audit', auditRouter);
