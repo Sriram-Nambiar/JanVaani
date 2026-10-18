@@ -350,16 +350,42 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
         </button>
         <button
           type="button"
-          aria-label="Confirm BMTC Pass OTP 3344"
+          aria-label="Enter Aadhaar 443350105028"
           onClick={() => {
             const userMsg: ChatMessage = {
               id: `usr-${Date.now()}`,
               sender: 'citizen',
               type: 'text',
-              text: 'Confirm OTP 3344',
+              text: '443350105028',
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             };
-            handleSend({ type: 'text', text: 'Confirm OTP 3344', senderId: 'citizen-demo-user' }, userMsg);
+            handleSend({ type: 'text', text: '443350105028', senderId: 'citizen-demo-user' }, userMsg);
+          }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 8px',
+            borderRadius: '14px',
+            border: '1px solid #4338ca',
+            backgroundColor: '#4338ca',
+            color: '#ffffff',
+            cursor: 'pointer',
+            fontWeight: 700,
+          }}
+        >
+          🪪 ಆಧಾರ್ 443350105028
+        </button>
+        <button
+          type="button"
+          aria-label="Enter OTP 3344"
+          onClick={() => {
+            const userMsg: ChatMessage = {
+              id: `usr-${Date.now()}`,
+              sender: 'citizen',
+              type: 'text',
+              text: '3344',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            };
+            handleSend({ type: 'text', text: '3344', senderId: 'citizen-demo-user' }, userMsg);
           }}
           style={{
             fontSize: '11px',
@@ -372,7 +398,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
             fontWeight: 700,
           }}
         >
-          ✅ Confirm BMTC Pass
+          🔑 OTP 3344
         </button>
         <button
           onClick={() => triggerPreset('gruha_jyothi_apply', 'ಗೃಹ ಜ್ಯೋತಿ 200 ಯೂನಿಟ್ ಉಚಿತ ಕರೆಂಟ್ ಯೋಜನೆಗೆ ಅರ್ಜಿ ಹಾಕಬೇಕು')}
@@ -669,7 +695,7 @@ export const WhatsAppChat: React.FC<WhatsAppChatProps> = ({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="ಕನ್ನಡದಲ್ಲಿ ಸಂದೇಶ ಅಥವಾ RD ನಂಬರ್ ಬರೆಯಿರಿ..."
+              placeholder="ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ (ಉದಾ: ಹೆಸರು, ಮೊಬೈಲ್, ಆಧಾರ್, OTP 3344)..."
               style={{
                 width: '100%',
                 padding: '9px 16px',

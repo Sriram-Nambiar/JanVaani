@@ -471,7 +471,7 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(bmtc.nameEn, 'BMTC Student Concessional Bus Pass');
     });
 
-    it('POST /api/whatsapp/message recognizes "i want apply for bmtc student pass" and creates draft', async () => {
+    it('POST /api/whatsapp/message recognizes "i want apply for bmtc student pass" and initiates conversational intake', async () => {
       const res = await fetch(`${baseUrl}/api/whatsapp/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -486,8 +486,8 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(data.status, 'ok');
       assert.strictEqual(data.feature, 'dhvani_form');
       assert.strictEqual(data.formDraft?.schemeId, 'bmtc_student_pass');
-      assert.strictEqual(data.formDraft?.extractedFields?.studentName, 'Priya Sharma');
-      assert.ok(data.messageKn.includes('ಬಿಎಂಟಿಸಿ'));
+      assert.strictEqual(data.formDraft?.extractedFields?.studentName, undefined);
+      assert.ok(data.messageKn.includes('ಪೂರ್ಣ ಹೆಸರನ್ನು') || data.messageEn.includes('full name'));
     });
 
     it('POST /api/whatsapp/agent/submit-seva-sindhu registers BMTC application with zero PII leaks', async () => {
@@ -525,10 +525,10 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(data.data?.aadhaarMasked, 'XXXX-XXXX-5028');
     });
 
-    it('conversational multi-turn interactive test: Intent -> Aadhaar (443350105028) -> OTP (3344) -> Submission', async () => {
+    it('conversational multi-turn interactive test: Intent -> Name -> Mobile -> Aadhaar -> OTP -> Submission', async () => {
       const sender = `judge-demo-${Date.now()}`;
 
-      // Turn 1: User says "i want apply for bmtc student pass"
+      // Turn 1: User triggers BMTC pass
       const res1 = await fetch(`${baseUrl}/api/whatsapp/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -543,10 +543,42 @@ describe('JanVaani API Test Suite', () => {
       assert.strictEqual(data1.status, 'ok');
       assert.strictEqual(data1.formDraft?.schemeId, 'bmtc_student_pass');
       assert.strictEqual(data1.formDraft?.isComplete, false);
-      assert.ok(data1.messageKn.includes('ಆಧಾರ್'));
+      assert.ok(data1.messageEn.includes('full name') || data1.messageKn.includes('ಹೆಸರನ್ನು'));
 
-      // Turn 2: User types Aadhaar "443350105028"
+      // Turn 2: User enters Name
       const res2 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: 'Sriram Nambiar',
+        }),
+      });
+      assert.strictEqual(res2.status, 200);
+      const data2 = await res2.json();
+      assert.strictEqual(data2.status, 'ok');
+      assert.strictEqual(data2.formDraft?.extractedFields?.studentName, 'Sriram Nambiar');
+      assert.ok(data2.messageEn.includes('10-digit mobile') || data2.messageKn.includes('ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು'));
+
+      // Turn 3: User enters Mobile number
+      const res3 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          senderId: sender,
+          type: 'text',
+          text: '9845012345',
+        }),
+      });
+      assert.strictEqual(res3.status, 200);
+      const data3 = await res3.json();
+      assert.strictEqual(data3.status, 'ok');
+      assert.strictEqual(data3.formDraft?.extractedFields?.mobileNumber, '9845012345');
+      assert.ok(data3.messageEn.includes('12-digit Aadhaar') || data3.messageKn.includes('ಆಧಾರ್ ಸಂಖ್ಯೆಯನ್ನು'));
+
+      // Turn 4: User enters Aadhaar "443350105028"
+      const res4 = await fetch(`${baseUrl}/api/whatsapp/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -555,14 +587,14 @@ describe('JanVaani API Test Suite', () => {
           text: '443350105028',
         }),
       });
-      assert.strictEqual(res2.status, 200);
-      const data2 = await res2.json();
-      assert.strictEqual(data2.status, 'ok');
-      assert.ok(data2.messageKn.includes('XXXX-XXXX-5028'));
-      assert.ok(data2.messageKn.includes('ಓಟಿಪಿ'));
+      assert.strictEqual(res4.status, 200);
+      const data4 = await res4.json();
+      assert.strictEqual(data4.status, 'ok');
+      assert.ok(data4.messageKn.includes('XXXX-XXXX-5028'));
+      assert.ok(data4.messageKn.includes('ಓಟಿಪಿ'));
 
-      // Turn 3: User enters invalid OTP
-      const res3 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+      // Turn 5: User enters invalid OTP
+      const res5 = await fetch(`${baseUrl}/api/whatsapp/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -571,13 +603,13 @@ describe('JanVaani API Test Suite', () => {
           text: '9999',
         }),
       });
-      assert.strictEqual(res3.status, 200);
-      const data3 = await res3.json();
-      assert.strictEqual(data3.status, 'ok');
-      assert.ok(data3.messageKn.includes('ತಪ್ಪಾದ ಓಟಿಪಿ'));
+      assert.strictEqual(res5.status, 200);
+      const data5 = await res5.json();
+      assert.strictEqual(data5.status, 'ok');
+      assert.ok(data5.messageKn.includes('ತಪ್ಪಾದ ಓಟಿಪಿ'));
 
-      // Turn 4: User enters correct OTP 3344
-      const res4 = await fetch(`${baseUrl}/api/whatsapp/message`, {
+      // Turn 6: User enters correct OTP 3344
+      const res6 = await fetch(`${baseUrl}/api/whatsapp/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -586,12 +618,13 @@ describe('JanVaani API Test Suite', () => {
           text: '3344',
         }),
       });
-      assert.strictEqual(res4.status, 200);
-      const data4 = await res4.json();
-      assert.strictEqual(data4.status, 'ok');
-      assert.strictEqual(data4.formDraft?.isComplete, true);
-      assert.ok(data4.applicationId?.startsWith('SEVA-DEMO-'));
-      assert.ok(data4.messageKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
+      assert.strictEqual(res6.status, 200);
+      const data6 = await res6.json();
+      assert.strictEqual(data6.status, 'ok');
+      assert.strictEqual(data6.formDraft?.isComplete, true);
+      assert.ok(data6.applicationId?.startsWith('SEVA-DEMO-'));
+      assert.ok(data6.messageKn.includes('ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ'));
+      assert.ok(data6.messageKn.includes('Sriram Nambiar'));
     });
   });
 });

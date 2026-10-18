@@ -271,6 +271,8 @@ class BmtcSessionManager {
 
     const appId = portalData?.applicationId || `SEVA-DEMO-${Date.now()}-A8F2`;
     session.applicationId = appId;
+    const student = session.studentName || 'ಪ್ರಿಯಾ ಶರ್ಮಾ (Priya Sharma)';
+    const mobile = session.mobileNumber || '9845012345';
 
     const statusRecord = trackerService.registerUniqueRecord(
       () => ({
@@ -278,7 +280,7 @@ class BmtcSessionManager {
         schemeId: 'bmtc_student_pass',
         schemeNameKn: 'ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್',
         schemeNameEn: 'BMTC Student Concessional Bus Pass',
-        applicantName: 'ಪ್ರಿಯಾ ಶರ್ಮಾ (Priya Sharma)',
+        applicantName: student,
         aadhaarMasked: 'XXXX-XXXX-5028',
         currentStageKn: 'ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ನೋಂದಣಿಯಾಗಿದೆ - ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ',
         currentStageEn: 'Registered at Seva Sindhu Portal - Under Verification',
@@ -312,19 +314,21 @@ class BmtcSessionManager {
         ],
         spokenNotificationKn: `ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ. ನಿಮ್ಮ ಅರ್ಜಿ ಸಂಖ್ಯೆ ${appId}.`,
         spokenNotificationEn:
-          portalData?.acknowledgement ||
-          `Success! Your BMTC Student Pass application has been registered with Seva Sindhu Portal (ID: ${appId}). Status: SUBMITTED.`,
+          typeof portalData?.acknowledgement === 'string'
+            ? portalData.acknowledgement
+            : `Success! Your BMTC Student Pass application for ${student} has been registered with Seva Sindhu Portal (ID: ${appId}). Status: SUBMITTED.`,
       }),
       () => appId
     );
 
     const draft = this.buildDraft(session, true);
 
-    const messageKn = `🎉 ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Seva Sindhu) ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!\n\n📋 ಅರ್ಜಿ ಸಂಖ್ಯೆ (Application ID): ${appId}\n👤 ವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ\n🚌 ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ➔ ಮೆಜೆಸ್ಟಿಕ್\n🏫 ಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು (BMSCE)\n✅ ಸ್ಥಿತಿ: ಸ್ವೀಕರಿಸಲಾಗಿದೆ (SUBMITTED)\n\nನೀವು ಈ ಅರ್ಜಿ ಸಂಖ್ಯೆಯನ್ನು ಬಳಸಿ ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Port 5174) ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸಬಹುದು.`;
+    const messageKn = `🎉 ಶುಭ ಸುದ್ದಿ! ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿಯನ್ನು ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Seva Sindhu) ಯಶಸ್ವಿಯಾಗಿ ಸಲ್ಲಿಸಲಾಗಿದೆ!\n\n📋 ಅರ್ಜಿ ಸಂಖ್ಯೆ (Application ID): ${appId}\n👤 ವಿದ್ಯಾರ್ಥಿ: ${student}\n📱 ಮೊಬೈಲ್: ${mobile}\n🚌 ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ➔ ಮೆಜೆಸ್ಟಿಕ್\n🏫 ಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು (BMSCE)\n✅ ಸ್ಥಿತಿ: ಸ್ವೀಕರಿಸಲಾಗಿದೆ (SUBMITTED)\n\nನೀವು ಈ ಅರ್ಜಿ ಸಂಖ್ಯೆಯನ್ನು ಬಳಸಿ ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Port 5174) ಯಾವುದೇ ಸಮಯದಲ್ಲಿ ಸ್ಥಿತಿ ಪರಿಶೀಲಿಸಬಹುದು.`;
 
     const messageEn =
-      portalData?.acknowledgement ||
-      `Your BMTC Concessional Student Pass application has been registered with Seva Sindhu Portal (ID: ${appId}). Status: SUBMITTED.`;
+      typeof portalData?.acknowledgement === 'string'
+        ? portalData.acknowledgement
+        : `Success! BMTC Concessional Student Pass application for ${student} (Phone: ${mobile}) has been registered with Seva Sindhu Portal (ID: ${appId}). Status: SUBMITTED.`;
 
     return {
       step: 'SUBMITTED',

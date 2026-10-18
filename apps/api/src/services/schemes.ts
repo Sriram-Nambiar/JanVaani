@@ -195,22 +195,15 @@ export class SchemesService {
     const extractedFields: Record<string, string | number> = {};
 
     if (scheme.id === 'bmtc_student_pass') {
-      extractedFields.studentName = 'Priya Sharma';
       extractedFields.institutionName = 'BMS College of Engineering, Basavanagudi';
       extractedFields.course = 'B.Tech Computer Science - 3rd Year';
       extractedFields.pickupStop = 'Banashankari TTMC';
       extractedFields.destinationStop = 'Majestic (Kempegowda Bus Station)';
-      extractedFields.mobileNumber = '9845012345';
-      extractedFields.aadhaarNumber = '4433 5010 5028';
 
-      const hasOtpOrConfirm =
-        scenarioHint === 'bmtc_student_pass_submit' ||
-        transcript.includes('3344') ||
-        transcript.toLowerCase().includes('confirm') ||
-        transcript.toLowerCase().includes('yes') ||
-        transcript.includes('ಹೌದು');
-
-      if (hasOtpOrConfirm) {
+      if (scenarioHint === 'bmtc_student_pass_submit') {
+        extractedFields.studentName = 'Priya Sharma';
+        extractedFields.mobileNumber = '9845012345';
+        extractedFields.aadhaarNumber = '4433 5010 5028';
         extractedFields.otpCode = '3344';
       }
 
@@ -220,8 +213,8 @@ export class SchemesService {
 
       const isComplete = missingFields.length === 0;
       const promptForCitizenKn = isComplete
-        ? `ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿ ವಿವರಗಳು ಪೂರ್ಣಗೊಂಡಿವೆ! ವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ, ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ಇಂದ ಮೆಜೆಸ್ಟಿಕ್, ಕಾಲೇಜು: ಬಿಎಂಎಸ್ ಇಂಜಿನಿಯರಿಂಗ್ ಕಾಲೇಜು. ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Port 3002) ಅರ್ಜಿ ಸಲ್ಲಿಸಲು 'CONFIRM' ಅಥವಾ 'YES' ಎಂದು ಉತ್ತರಿಸಿ.`
-        : `ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ ನಿಮ್ಮ ಅರ್ಜಿ ಕರಡು ಸಿದ್ಧವಾಗಿದೆ (ವಿದ್ಯಾರ್ಥಿ: ಪ್ರಿಯಾ ಶರ್ಮಾ, ಬಿಎಂಎಸ್ ಕಾಲೇಜು, ಮಾರ್ಗ: ಬನಶಂಕರಿ TTMC ಇಂದ ಮೆಜೆಸ್ಟಿಕ್). ದಯವಿಟ್ಟು ಡೆಮೊ ಓಟಿಪಿ '3344' ನಮೂದಿಸಿ ಅಥವಾ 'CONFIRM' ಎಂದು ಉತ್ತರಿಸಿ.`;
+        ? `ನಿಮ್ಮ ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ಬಸ್ ಪಾಸ್ ಅರ್ಜಿ ವಿವರಗಳು ಪೂರ್ಣಗೊಂಡಿವೆ! ಸೇವಾ ಸಿಂಧು ಪೋರ್ಟಲ್‌ನಲ್ಲಿ (Port 3002) ಅರ್ಜಿ ಸಲ್ಲಿಸಲು 'CONFIRM' ಅಥವಾ 'YES' ಎಂದು ಉತ್ತರಿಸಿ.`
+        : `ಖಂಡಿತ! ಬಿಎಂಟಿಸಿ ವಿದ್ಯಾರ್ಥಿ ರಿಯಾಯಿತಿ ಬಸ್ ಪಾಸ್‌ಗೆ ಅರ್ಜಿ ಸಲ್ಲಿಸಲು ನಾನು ನಿಮಗೆ ಸಹಾಯ ಮಾಡುತ್ತೇನೆ. ಮೊದಲಿಗೆ ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರನ್ನು ತಿಳಿಸಿ.`;
 
       return {
         schemeId: scheme.id,
