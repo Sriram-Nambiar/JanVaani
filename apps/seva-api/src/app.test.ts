@@ -23,6 +23,25 @@ test('GET /api/health returns 200 with service information', async () => {
   }
 });
 
+test('CORS rejects unauthorized origins', async () => {
+  const server = app.listen(0);
+  const address = server.address();
+  const port = typeof address === 'object' && address ? address.port : 3002;
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  try {
+    const res = await fetch(`${baseUrl}/api/health`, {
+      headers: { Origin: 'http://malicious-site.example.com' },
+    });
+    // In express cors middleware, rejecting calls callback with error, triggering error handler
+    assert.equal(res.status, 500);
+    const data = await res.json();
+    assert.match(data.message, /not allowed by CORS/);
+  } finally {
+    server.close();
+  }
+});
+
 test('SevaDataStore generates properly formatted IDs and masks Aadhaar', () => {
   const tempDb = path.join(os.tmpdir(), `seva-test-${Date.now()}.json`);
   const store = new SevaDataStore(tempDb);
